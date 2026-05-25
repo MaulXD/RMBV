@@ -1,0 +1,94 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  GERENTE
+  COLABORADOR
+}
+
+enum ClientStatus {
+  AGUARDANDO
+  LOCALIZADO
+  SEM_SUCESSO
+  TENTE_NOVAMENTE
+}
+
+model User {
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(COLABORADOR)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  clientsCreated Client[] @relation("CreatedBy")
+}
+
+model Category {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  permissions Permission[]
+  clients     ClientCategory[]
+}
+
+model Permission {
+  id         String   @id @default(uuid())
+  role       Role
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  canCreate  Boolean  @default(false)
+  canRead    Boolean  @default(false)
+  canUpdate  Boolean  @default(false)
+  canDelete  Boolean  @default(false)
+
+  @@unique([role, categoryId])
+}
+
+model Client {
+  id             String           @id @default(uuid())
+  cod            String?
+  tese           String?
+  name           String
+  cpf            String?
+  birthDate      String?
+  obito          String?
+  deathDate      String?
+  phone1         String?
+  phone2         String?
+  phone3         String?
+  phone4         String?
+  phone5         String?
+  phone6         String?
+  phone7         String?
+  phone8         String?
+  phone9         String?
+  phone10        String?
+  address1       String?
+  address2       String?
+  address3       String?
+  status         ClientStatus     @default(AGUARDANDO)
+  rawExtractText String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  createdById    String
+  createdBy      User             @relation("CreatedBy", fields: [createdById], references: [id])
+  categories     ClientCategory[]
+}
+
+model ClientCategory {
+  clientId   String
+  categoryId String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, categoryId])
+}
