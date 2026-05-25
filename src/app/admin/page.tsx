@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { CSV_HEADERS } from "@/lib/client-fields";
+import { TeseManager } from "@/components/TeseManager";
 
 type Category = { id: string; name: string };
 
@@ -131,6 +132,10 @@ export default function AdminPage() {
         {result && <p className="text-sm text-muted">{result}</p>}
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </section>
+
+      <div className="mt-8">
+        <TeseManager />
+      </div>
     </AppShell>
   );
 }

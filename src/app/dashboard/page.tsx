@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { ClientsTable } from "@/components/ClientsTable";
+import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 import type { ClientStatus } from "@prisma/client";
 
@@ -11,40 +13,47 @@ type ClientRow = {
   name: string;
   cod: string | null;
   cpf: string | null;
+  tese: string | null;
   status: ClientStatus;
   createdAt: string;
   primaryPhone: string | null;
   categories: { id: string; name: string }[];
 };
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const { activeTeseId, activeTese } = useTeseFilter();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const loadClients = useCallback(async () => {
     setLoading(true);
     try {
-      const qs = statusFilter ? `?status=${statusFilter}` : "";
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status", statusFilter);
+      if (activeTeseId) params.set("teseId", activeTeseId);
+      const qs = params.toString() ? `?${params}` : "";
       const res = await fetch(`/api/clients${qs}`);
       const data = await res.json();
       if (res.ok) setClients(data.clients ?? []);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, activeTeseId]);
 
   useEffect(() => {
     loadClients();
   }, [loadClients]);
 
   return (
-    <AppShell>
+    <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-wide">Painel de clientes</h1>
           <p className="mt-1 text-sm text-muted">
-            Perfil completo conforme modelo CSV — clique em Abrir para ver e editar
+            {activeTese
+              ? `Exibindo apenas: ${activeTese.name}`
+              : "Exibindo todas as teses — selecione uma acima para focar"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -60,12 +69,23 @@ export default function DashboardPage() {
               </option>
             ))}
           </select>
+          <Link href="/clients/new" className="btn-primary">
+            Cadastro manual
+          </Link>
           <button type="button" className="btn-ghost" onClick={loadClients}>
             Atualizar
           </button>
         </div>
       </div>
       <ClientsTable clients={clients} loading={loading} />
+    </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <AppShell>
+      <DashboardContent />
     </AppShell>
   );
 }

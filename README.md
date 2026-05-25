@@ -1,6 +1,6 @@
-# Gestão Industrial
+# RMBV System
 
-Sistema de gestão de clientes com Prisma, RBAC por categoria, tema industrial (Tailwind) e extração de dados via LLM.
+Sistema de gestão de clientes com Prisma, RBAC por categoria, filtros por tese, documentação, relatórios PDF/CSV e extração de dados via LLM.
 
 ## Pré-requisitos
 

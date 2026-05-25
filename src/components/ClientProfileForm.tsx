@@ -2,14 +2,18 @@
 
 import { useState } from "react";
 import type { ClientProfileData } from "@/lib/client-fields";
-import { CLIENT_FIELD_GROUPS, STATUS_OPTIONS } from "@/lib/client-fields";
+import { STATUS_OPTIONS } from "@/lib/client-fields";
 import type { ExtractionResult } from "@/lib/extract-types";
+import { ClientExtractionSection } from "./ClientExtractionSection";
+import { ClientFormFields, type ClientFormFieldKey } from "./ClientFormFields";
+import { TeseSelect } from "./TeseSelect";
+import { useTeseFilter } from "./TeseFilterProvider";
 
 type Category = { id: string; name: string };
 
 export function ClientProfileForm({
   client,
-  categories,
+  categories: _categories,
   onSaved,
   readOnly = false,
 }: {
@@ -18,14 +22,16 @@ export function ClientProfileForm({
   onSaved: (client: ClientProfileData) => void;
   readOnly?: boolean;
 }) {
+  const { teses } = useTeseFilter();
   const [form, setForm] = useState(client);
+  const [teseId, setTeseId] = useState(client.teseId ?? "");
   const [rawText, setRawText] = useState(client.rawExtractText ?? "");
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function setField(key: keyof ClientProfileData, value: string) {
+  function setField(key: ClientFormFieldKey, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -47,6 +53,12 @@ export function ClientProfileForm({
         ...extracted,
         name: extracted.name || prev.name,
       }));
+      if (extracted.tese) {
+        const match = teses.find(
+          (t) => t.name.toLowerCase() === String(extracted.tese).toLowerCase()
+        );
+        if (match) setTeseId(match.id);
+      }
       setMessage("Dados extraídos e aplicados ao formulário.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro na extração");
@@ -72,6 +84,7 @@ export function ClientProfileForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...payload,
+          teseId: teseId || null,
           rawExtractText: rawText,
         }),
       });
@@ -88,32 +101,13 @@ export function ClientProfileForm({
 
   return (
     <div className="space-y-6">
-      {!readOnly && (
-        <section className="industrial-panel p-4">
-          <h3 className="mb-3 text-xs font-semibold tracking-widest text-muted uppercase">
-            Texto para extração
-          </h3>
-          <textarea
-            className="terminal-textarea min-h-[200px]"
-            placeholder="Cole o texto bruto para extrair COD, TESE, telefones, endereços..."
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-          />
-          <div className="mt-3 flex justify-end gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleExtract}
-              disabled={extracting || !rawText.trim()}
-            >
-              {extracting ? "Extraindo..." : "Extrair com IA"}
-            </button>
-          </div>
-        </section>
-      )}
-
       <section className="industrial-panel space-y-4 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
+          <TeseSelect
+            value={teseId}
+            onChange={setTeseId}
+            required={false}
+          />
           <div>
             <label className="mb-1 block text-xs text-muted">Status</label>
             <select
@@ -136,40 +130,25 @@ export function ClientProfileForm({
           </div>
         </div>
 
-        {CLIENT_FIELD_GROUPS.map((group) => (
-          <fieldset key={group.title} className="space-y-3">
-            <legend className="text-xs font-semibold tracking-widest text-muted uppercase">
-              {group.title}
-            </legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {group.fields.map((field) => (
-                <div
-                  key={field.key}
-                  className={field.key.startsWith("address") && field.key === "address1" ? "sm:col-span-2" : ""}
-                >
-                  <label className="mb-1 block text-xs text-muted">{field.label}</label>
-                  <input
-                    className="industrial-input"
-                    disabled={readOnly}
-                    value={String(form[field.key as keyof ClientProfileData] ?? "")}
-                    onChange={(e) =>
-                      setField(field.key as keyof ClientProfileData, e.target.value)
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          </fieldset>
-        ))}
-
-        {!readOnly && (
-          <div className="flex justify-end pt-2">
-            <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar alterações"}
-            </button>
-          </div>
-        )}
+        <ClientFormFields values={form} onChange={setField} readOnly={readOnly} />
       </section>
+
+      {!readOnly && (
+        <ClientExtractionSection
+          rawText={rawText}
+          onRawTextChange={setRawText}
+          onExtract={handleExtract}
+          extracting={extracting}
+        />
+      )}
+
+      {!readOnly && (
+        <div className="flex justify-end">
+          <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? "Salvando..." : "Salvar alterações"}
+          </button>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {message && <p className="text-sm text-muted">{message}</p>}

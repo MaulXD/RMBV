@@ -31,6 +31,7 @@ export const clientUpdateSchema = extractionResultSchema
   .partial()
   .extend({
     name: z.string().min(1).optional(),
+    teseId: z.string().uuid().optional().nullable(),
     status: z.enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"]).optional(),
     rawExtractText: z.string().optional().nullable(),
     categoryId: z.string().uuid().optional(),

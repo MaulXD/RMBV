@@ -28,7 +28,6 @@ export const CLIENT_FIELD_GROUPS = [
     title: "Identificação",
     fields: [
       { key: "cod", label: "COD" },
-      { key: "tese", label: "TESE" },
       { key: "name", label: "NOME" },
       { key: "cpf", label: "CPF" },
       { key: "birthDate", label: "DATA DE NASCIMENTO" },
@@ -68,6 +67,7 @@ export const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
 export type ClientProfileData = {
   id: string;
   cod: string | null;
+  teseId: string | null;
   tese: string | null;
   name: string;
   cpf: string | null;
@@ -120,10 +120,121 @@ export function clientToExportRow(client: ClientProfileData) {
   };
 }
 
+export type ClientFormFieldValues = {
+  cod: string | null;
+  name: string;
+  cpf: string | null;
+  birthDate: string | null;
+  obito: string | null;
+  deathDate: string | null;
+  phone1: string | null;
+  phone2: string | null;
+  phone3: string | null;
+  phone4: string | null;
+  phone5: string | null;
+  phone6: string | null;
+  phone7: string | null;
+  phone8: string | null;
+  phone9: string | null;
+  phone10: string | null;
+  address1: string | null;
+  address2: string | null;
+  address3: string | null;
+};
+
+export type ClientFormValues = {
+  cod: string;
+  name: string;
+  cpf: string;
+  birthDate: string;
+  obito: string;
+  deathDate: string;
+  phone1: string;
+  phone2: string;
+  phone3: string;
+  phone4: string;
+  phone5: string;
+  phone6: string;
+  phone7: string;
+  phone8: string;
+  phone9: string;
+  phone10: string;
+  address1: string;
+  address2: string;
+  address3: string;
+  status: ClientStatus;
+};
+
+export function createEmptyClientForm(): ClientFormValues {
+  return {
+    cod: "",
+    name: "",
+    cpf: "",
+    birthDate: "",
+    obito: "",
+    deathDate: "",
+    phone1: "",
+    phone2: "",
+    phone3: "",
+    phone4: "",
+    phone5: "",
+    phone6: "",
+    phone7: "",
+    phone8: "",
+    phone9: "",
+    phone10: "",
+    address1: "",
+    address2: "",
+    address3: "",
+    status: "AGUARDANDO",
+  };
+}
+
+const NULLABLE_FORM_KEYS = [
+  "cod",
+  "cpf",
+  "birthDate",
+  "obito",
+  "deathDate",
+  "phone1",
+  "phone2",
+  "phone3",
+  "phone4",
+  "phone5",
+  "phone6",
+  "phone7",
+  "phone8",
+  "phone9",
+  "phone10",
+  "address1",
+  "address2",
+  "address3",
+] as const;
+
+export function formValuesToCreatePayload(
+  form: ClientFormValues,
+  extras?: { rawExtractText?: string | null; teseId?: string | null }
+) {
+  const payload: Record<string, string | null | ClientStatus> = {
+    name: form.name.trim(),
+    status: form.status,
+    rawExtractText: extras?.rawExtractText?.trim() || null,
+    teseId: extras?.teseId ?? null,
+  };
+
+  for (const key of NULLABLE_FORM_KEYS) {
+    const value = form[key].trim();
+    payload[key] = value || null;
+  }
+
+  return payload;
+}
+
 export function formatClientForApi(
   client: {
     id: string;
     cod: string | null;
+    teseId: string | null;
     tese: string | null;
     name: string;
     cpf: string | null;
@@ -148,12 +259,14 @@ export function formatClientForApi(
     createdAt: Date;
     updatedAt: Date;
     categories: { category: { id: string; name: string } }[];
+    teseRef?: { id: string; name: string; color: string | null } | null;
   }
 ): ClientProfileData {
   return {
     id: client.id,
     cod: client.cod,
-    tese: client.tese,
+    teseId: client.teseId,
+    tese: client.teseRef?.name ?? client.tese,
     name: client.name,
     cpf: client.cpf,
     birthDate: client.birthDate,

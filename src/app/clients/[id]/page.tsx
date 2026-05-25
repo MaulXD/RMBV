@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ClientProfileForm } from "@/components/ClientProfileForm";
 import { ClientProfileView } from "@/components/ClientProfileView";
+import { ClientDocuments } from "@/components/ClientDocuments";
 import type { ClientProfileData } from "@/lib/client-fields";
 
 type Category = { id: string; name: string };
@@ -17,6 +18,7 @@ export default function ClientDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const loadClient = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}`);
@@ -28,9 +30,11 @@ export default function ClientDetailPage() {
     Promise.all([
       loadClient(),
       fetch("/api/categories").then((r) => r.json()),
+      fetch("/api/auth/me").then((r) => r.json()),
     ])
-      .then(([, catData]) => {
+      .then(([, catData, meData]) => {
         setCategories(catData.categories ?? []);
+        setIsAdmin(meData.user?.role === "ADMIN");
       })
       .finally(() => setLoading(false));
   }, [loadClient]);
@@ -72,18 +76,21 @@ export default function ClientDetailPage() {
         </button>
       </div>
 
-      {editMode ? (
-        <ClientProfileForm
-          client={client}
-          categories={categories}
-          onSaved={(updated) => {
-            setClient(updated);
-            setEditMode(false);
-          }}
-        />
-      ) : (
-        <ClientProfileView client={client} />
-      )}
+      <div className="space-y-6">
+        {editMode ? (
+          <ClientProfileForm
+            client={client}
+            categories={categories}
+            onSaved={(updated) => {
+              setClient(updated);
+              setEditMode(false);
+            }}
+          />
+        ) : (
+          <ClientProfileView client={client} />
+        )}
+        <ClientDocuments clientId={client.id} isAdmin={isAdmin} />
+      </div>
     </AppShell>
   );
 }

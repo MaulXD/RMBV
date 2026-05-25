@@ -96,6 +96,36 @@ async function main() {
     });
   }
 
+  const defaultTeses = [
+    { name: "Tese Principal", color: "#45454d", sortOrder: 0 },
+    { name: "Tese Secundária", color: "#6b7585", sortOrder: 1 },
+    { name: "Tese Urgente", color: "#b45309", sortOrder: 2 },
+  ];
+
+  for (const t of defaultTeses) {
+    await prisma.tese.upsert({
+      where: { name: t.name },
+      update: { color: t.color, sortOrder: t.sortOrder },
+      create: t,
+    });
+  }
+
+  const clients = await prisma.client.findMany({
+    where: { tese: { not: null }, teseId: null },
+    select: { id: true, tese: true },
+  });
+
+  for (const client of clients) {
+    if (!client.tese) continue;
+    const tese = await prisma.tese.findFirst({ where: { name: client.tese } });
+    if (tese) {
+      await prisma.client.update({
+        where: { id: client.id },
+        data: { teseId: tese.id },
+      });
+    }
+  }
+
   console.log(`Seed concluído. Admin: ${admin.email} (id: ${admin.id})`);
 }
 

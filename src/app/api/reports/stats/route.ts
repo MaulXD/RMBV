@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { getReadableCategoryIds } from "@/lib/permissions";
+import { buildClientWhere } from "@/lib/client-query";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
-export async function GET() {
+export async function GET(request: Request) {
   return withAuth(async (user) => {
-    const readableIds = await getReadableCategoryIds(user);
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const teseId = searchParams.get("teseId");
 
-    const baseWhere = {
-      categories: { some: { categoryId: { in: readableIds } } },
-    };
+    const baseWhere = await buildClientWhere(user, { status, teseId });
 
     const total = await prisma.client.count({ where: baseWhere });
 

@@ -1,4 +1,4 @@
-# Projeto — Sistema de Gestão Industrial
+# Projeto — RMBV System
 
 ## Passo 1: Infraestrutura e Banco de Dados
 
