@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { getClientIfAllowed } from "@/lib/client-access";
 import { saveClientDocument } from "@/lib/document-storage";
+export const runtime = "nodejs";
 
 export async function GET(
   _request: Request,

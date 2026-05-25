@@ -16,11 +16,21 @@ export function ClientProfileForm({
   categories: _categories,
   onSaved,
   readOnly = false,
+  latestPhoneChecks,
+  onPhoneCheckRecorded,
+  phoneActionsDisabled,
+  onHistoryRefresh,
 }: {
   client: ClientProfileData;
   categories: Category[];
   onSaved: (client: ClientProfileData) => void;
   readOnly?: boolean;
+  latestPhoneChecks?: Partial<
+    Record<string, import("@prisma/client").PhoneCheckResult>
+  >;
+  onPhoneCheckRecorded?: () => void;
+  phoneActionsDisabled?: boolean;
+  onHistoryRefresh?: () => void;
 }) {
   const { teses } = useTeseFilter();
   const [form, setForm] = useState(client);
@@ -30,6 +40,9 @@ export function ClientProfileForm({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusChangeNote, setStatusChangeNote] = useState("");
+  const initialStatus = client.status;
+  const statusChanged = form.status !== initialStatus;
 
   function setField(key: ClientFormFieldKey, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -71,6 +84,12 @@ export function ClientProfileForm({
     setSaving(true);
     setError(null);
     setMessage(null);
+    if (statusChanged && statusChangeNote.trim().length < 3) {
+      setError("Ao alterar o status, descreva o motivo no histórico (mínimo 3 caracteres).");
+      setSaving(false);
+      return;
+    }
+
     try {
       const {
         id: _id,
@@ -86,11 +105,16 @@ export function ClientProfileForm({
           ...payload,
           teseId: teseId || null,
           rawExtractText: rawText,
+          ...(statusChanged
+            ? { statusChangeNote: statusChangeNote.trim() }
+            : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha ao salvar");
       onSaved(data.client);
+      setStatusChangeNote("");
+      onHistoryRefresh?.();
       setMessage("Cliente atualizado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao salvar");
@@ -130,7 +154,33 @@ export function ClientProfileForm({
           </div>
         </div>
 
-        <ClientFormFields values={form} onChange={setField} readOnly={readOnly} />
+        {statusChanged && !readOnly && (
+          <div>
+            <label className="mb-1 block text-xs text-muted">
+              Observação para o histórico (obrigatória ao mudar status) *
+            </label>
+            <textarea
+              className="industrial-input min-h-[80px] resize-y"
+              value={statusChangeNote}
+              onChange={(e) => setStatusChangeNote(e.target.value)}
+              placeholder="Descreva o motivo da mudança de status..."
+              required
+            />
+          </div>
+        )}
+
+        <ClientFormFields
+          values={form}
+          onChange={setField}
+          readOnly={readOnly}
+          clientId={client.id}
+          latestPhoneChecks={latestPhoneChecks}
+          onPhoneCheckRecorded={() => {
+            onPhoneCheckRecorded?.();
+            onHistoryRefresh?.();
+          }}
+          phoneActionsDisabled={phoneActionsDisabled}
+        />
       </section>
 
       {!readOnly && (

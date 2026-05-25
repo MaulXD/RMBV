@@ -57,6 +57,26 @@ async function main() {
 
     await prisma.permission.upsert({
       where: {
+        role_categoryId: { role: Role.ADV, categoryId: category.id },
+      },
+      update: {
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: true,
+      },
+      create: {
+        role: Role.ADV,
+        categoryId: category.id,
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: true,
+      },
+    });
+
+    await prisma.permission.upsert({
+      where: {
         role_categoryId: { role: Role.GERENTE, categoryId: category.id },
       },
       update: {
@@ -82,7 +102,7 @@ async function main() {
       update: {
         canCreate: true,
         canRead: true,
-        canUpdate: false,
+        canUpdate: true,
         canDelete: false,
       },
       create: {
@@ -90,7 +110,7 @@ async function main() {
         categoryId: category.id,
         canCreate: true,
         canRead: true,
-        canUpdate: false,
+        canUpdate: true,
         canDelete: false,
       },
     });
@@ -126,7 +146,36 @@ async function main() {
     }
   }
 
-  console.log(`Seed concluído. Admin: ${admin.email} (id: ${admin.id})`);
+  const advPassword = await bcrypt.hash(process.env.ADV_PASSWORD ?? "Adv@123", 12);
+  const adv = await prisma.user.upsert({
+    where: { email: process.env.ADV_EMAIL ?? "adv@sistema.local" },
+    update: { role: Role.ADV },
+    create: {
+      name: process.env.ADV_NAME ?? "ADV",
+      email: process.env.ADV_EMAIL ?? "adv@sistema.local",
+      passwordHash: advPassword,
+      role: Role.ADV,
+      isActive: true,
+    },
+  });
+
+  const gerentePassword = await bcrypt.hash(process.env.GERENTE_PASSWORD ?? "Gerente@123", 12);
+  const gerente = await prisma.user.upsert({
+    where: { email: process.env.GERENTE_EMAIL ?? "gerente@sistema.local" },
+    update: { role: Role.GERENTE },
+    create: {
+      name: process.env.GERENTE_NAME ?? "Gerente",
+      email: process.env.GERENTE_EMAIL ?? "gerente@sistema.local",
+      passwordHash: gerentePassword,
+      role: Role.GERENTE,
+      isActive: true,
+    },
+  });
+
+  console.log(`Seed concluído.
+  Admin: ${admin.email}
+  ADV: ${adv.email}
+  Gerente: ${gerente.email}`);
 }
 
 main()

@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { buildClientWhere } from "@/lib/client-query";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
+export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   return withAuth(async (user) => {

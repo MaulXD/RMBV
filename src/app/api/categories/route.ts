@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { getReadableCategoryIds } from "@/lib/permissions";
+export const runtime = "nodejs";
 
 export async function GET() {
   return withAuth(async (user) => {

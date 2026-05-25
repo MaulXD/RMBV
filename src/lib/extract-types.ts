@@ -33,6 +33,7 @@ export const clientUpdateSchema = extractionResultSchema
     name: z.string().min(1).optional(),
     teseId: z.string().uuid().optional().nullable(),
     status: z.enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"]).optional(),
+    statusChangeNote: z.string().min(3).max(2000).optional(),
     rawExtractText: z.string().optional().nullable(),
     categoryId: z.string().uuid().optional(),
   });

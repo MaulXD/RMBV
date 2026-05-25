@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { buildClientWhere, clientListInclude } from "@/lib/client-query";
 import { clientToExportRow, formatClientForApi } from "@/lib/client-fields";
 import { clientsToCsv } from "@/lib/csv-import";
+export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   return withAuth(async (user) => {

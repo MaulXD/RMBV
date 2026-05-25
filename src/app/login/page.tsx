@@ -22,7 +22,13 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Falha no login");
+      if (!res.ok) {
+        const hint =
+          res.status === 503
+            ? "\n\nDica: em produção configure DATABASE_URL (PostgreSQL) e JWT_SECRET, depois rode o seed."
+            : "";
+        throw new Error((data.error ?? "Falha no login") + hint);
+      }
       const from = searchParams.get("from") ?? "/dashboard";
       router.push(from);
       router.refresh();

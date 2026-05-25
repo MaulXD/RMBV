@@ -10,6 +10,9 @@ import { getClientIfAllowed } from "@/lib/client-access";
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientUpdateSchema } from "@/lib/extract-types";
 import { formatClientForApi } from "@/lib/client-fields";
+import type { ClientStatus } from "@prisma/client";
+export const runtime = "nodejs";
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -35,6 +38,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
     }
 
+    if (existing.workflowStatus === "FINALIZADO") {
+      return NextResponse.json(
+        { error: "Cliente finalizado não pode ser editado" },
+        { status: 400 }
+      );
+    }
+
     const categoryId = existing.categories[0]?.categoryId;
     if (!categoryId) {
       return NextResponse.json({ error: "Cliente sem categoria" }, { status: 400 });
@@ -55,12 +65,54 @@ export async function PATCH(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const { categoryId: newCategoryId, teseId, tese, ...data } = parsed.data;
+    const {
+      categoryId: newCategoryId,
+      teseId,
+      tese,
+      statusChangeNote,
+      status: newStatus,
+      ...data
+    } = parsed.data;
     const teseData = await resolveTeseForClient({ teseId, tese });
 
-    await prisma.client.update({
-      where: { id },
-      data: { ...data, ...teseData },
+    const statusChanging =
+      newStatus !== undefined && newStatus !== existing.status;
+
+    if (statusChanging) {
+      const note = statusChangeNote?.trim();
+      if (!note || note.length < 3) {
+        return NextResponse.json(
+          {
+            error:
+              "Ao alterar o status, informe uma observação no histórico (mínimo 3 caracteres).",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.client.update({
+        where: { id },
+        data: {
+          ...data,
+          ...teseData,
+          ...(newStatus !== undefined ? { status: newStatus } : {}),
+        },
+      });
+
+      if (statusChanging && newStatus) {
+        await tx.clientHistory.create({
+          data: {
+            clientId: id,
+            type: "STATUS_CHANGE",
+            createdById: user.id,
+            fromStatus: existing.status as ClientStatus,
+            toStatus: newStatus,
+            note: statusChangeNote!.trim(),
+          },
+        });
+      }
     });
 
     if (newCategoryId && newCategoryId !== categoryId) {

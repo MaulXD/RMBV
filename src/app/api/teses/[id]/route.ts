@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
+export const runtime = "nodejs";
 
 export async function DELETE(
   _request: Request,

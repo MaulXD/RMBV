@@ -1,4 +1,4 @@
-import type { ClientStatus } from "@prisma/client";
+import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 
 export const CSV_HEADERS = [
   "COD",
@@ -57,6 +57,12 @@ export const CLIENT_FIELD_GROUPS = [
   },
 ] as const;
 
+export const WORKFLOW_OPTIONS: { value: ClientWorkflowStatus; label: string }[] = [
+  { value: "EM_ANDAMENTO", label: "Em andamento" },
+  { value: "FINALIZACAO_SOLICITADA", label: "Finalização solicitada" },
+  { value: "FINALIZADO", label: "Finalizado" },
+];
+
 export const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
   { value: "AGUARDANDO", label: "Aguardando" },
   { value: "LOCALIZADO", label: "Localizado" },
@@ -88,6 +94,11 @@ export type ClientProfileData = {
   address2: string | null;
   address3: string | null;
   status: ClientStatus;
+  workflowStatus: ClientWorkflowStatus;
+  finalizationRequestedAt: string | null;
+  finalizationRequestedBy: { id: string; name: string; email: string } | null;
+  finalizedAt: string | null;
+  finalizedBy: { id: string; name: string; email: string } | null;
   rawExtractText: string | null;
   createdAt: string;
   updatedAt: string;
@@ -117,6 +128,9 @@ export function clientToExportRow(client: ClientProfileData) {
     "ENDERECO 2": client.address2 ?? "",
     "ENDERECO 3": client.address3 ?? "",
     STATUS: STATUS_OPTIONS.find((s) => s.value === client.status)?.label ?? client.status,
+    "STATUS WORKFLOW":
+      WORKFLOW_OPTIONS.find((s) => s.value === client.workflowStatus)?.label ??
+      client.workflowStatus,
   };
 }
 
@@ -255,6 +269,11 @@ export function formatClientForApi(
     address2: string | null;
     address3: string | null;
     status: ClientStatus;
+    workflowStatus: ClientWorkflowStatus;
+    finalizationRequestedAt: Date | null;
+    finalizationRequestedBy?: { id: string; name: string; email: string } | null;
+    finalizedAt: Date | null;
+    finalizedBy?: { id: string; name: string; email: string } | null;
     rawExtractText: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -286,6 +305,11 @@ export function formatClientForApi(
     address2: client.address2,
     address3: client.address3,
     status: client.status,
+    workflowStatus: client.workflowStatus,
+    finalizationRequestedAt: client.finalizationRequestedAt?.toISOString() ?? null,
+    finalizationRequestedBy: client.finalizationRequestedBy ?? null,
+    finalizedAt: client.finalizedAt?.toISOString() ?? null,
+    finalizedBy: client.finalizedBy ?? null,
     rawExtractText: client.rawExtractText,
     createdAt: client.createdAt.toISOString(),
     updatedAt: client.updatedAt.toISOString(),

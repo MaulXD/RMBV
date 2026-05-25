@@ -20,13 +20,16 @@ const createClientSchema = extractionResultSchema.extend({
   rawExtractText: z.string().optional().nullable(),
 });
 
+export const runtime = "nodejs";
+
 export async function GET(request: Request) {
   return withAuth(async (user) => {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const teseId = searchParams.get("teseId");
+    const workflowStatus = searchParams.get("workflowStatus");
 
-    const where = await buildClientWhere(user, { status, teseId });
+    const where = await buildClientWhere(user, { status, teseId, workflowStatus });
 
     const clients = await prisma.client.findMany({
       where,

@@ -6,7 +6,8 @@ import { AppShell } from "@/components/AppShell";
 import { ClientsTable } from "@/components/ClientsTable";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
-import type { ClientStatus } from "@prisma/client";
+import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
+import { WORKFLOW_OPTIONS } from "@/lib/client-fields";
 
 type ClientRow = {
   id: string;
@@ -15,6 +16,7 @@ type ClientRow = {
   cpf: string | null;
   tese: string | null;
   status: ClientStatus;
+  workflowStatus: ClientWorkflowStatus;
   createdAt: string;
   primaryPhone: string | null;
   categories: { id: string; name: string }[];
@@ -25,6 +27,7 @@ function DashboardContent() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useState("");
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -32,6 +35,7 @@ function DashboardContent() {
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
       if (activeTeseId) params.set("teseId", activeTeseId);
+      if (workflowFilter) params.set("workflowStatus", workflowFilter);
       const qs = params.toString() ? `?${params}` : "";
       const res = await fetch(`/api/clients${qs}`);
       const data = await res.json();
@@ -39,7 +43,7 @@ function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, activeTeseId]);
+  }, [statusFilter, workflowFilter, activeTeseId]);
 
   useEffect(() => {
     loadClients();
@@ -64,6 +68,18 @@ function DashboardContent() {
           >
             <option value="">Todos os status</option>
             {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="industrial-input w-auto min-w-[200px]"
+            value={workflowFilter}
+            onChange={(e) => setWorkflowFilter(e.target.value)}
+          >
+            <option value="">Todas finalizações</option>
+            {WORKFLOW_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>

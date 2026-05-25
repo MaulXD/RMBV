@@ -7,6 +7,8 @@ const bodySchema = z.object({
   text: z.string().min(10, "Texto muito curto para extração"),
 });
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   return withAuth(async () => {
     try {

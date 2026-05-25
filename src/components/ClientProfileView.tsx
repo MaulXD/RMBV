@@ -3,18 +3,29 @@
 import type { ClientProfileData } from "@/lib/client-fields";
 import { CLIENT_FIELD_GROUPS } from "@/lib/client-fields";
 import { StatusBadge } from "./StatusBadge";
+import { WorkflowBadge } from "./WorkflowBadge";
 import { CopyButton } from "./CopyButton";
+import { PhoneCheckButtons } from "./PhoneCheckButtons";
+import { isPhoneFieldKey } from "@/lib/client-history";
+import type { PhoneCheckResult } from "@prisma/client";
 
-function isPhoneKey(key: string) {
-  return /^phone\d+$/.test(key);
-}
-
-export function ClientProfileView({ client }: { client: ClientProfileData }) {
+export function ClientProfileView({
+  client,
+  latestPhoneChecks,
+  onPhoneCheckRecorded,
+  phoneActionsDisabled,
+}: {
+  client: ClientProfileData;
+  latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
+  onPhoneCheckRecorded?: () => void;
+  phoneActionsDisabled?: boolean;
+}) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold">{client.name}</h2>
         <StatusBadge status={client.status} />
+        <WorkflowBadge status={client.workflowStatus} />
         {client.categories.map((c) => (
           <span
             key={c.id}
@@ -41,17 +52,27 @@ export function ClientProfileView({ client }: { client: ClientProfileData }) {
             {group.fields.map((field) => {
               const value = client[field.key as keyof ClientProfileData];
               const text = value ? String(value) : "";
-              const isPhone = isPhoneKey(field.key);
+              const isPhone = isPhoneFieldKey(field.key);
 
               return (
                 <div key={field.key}>
                   <dt className="text-xs text-muted">{field.label}</dt>
-                  {isPhone && text ? (
-                    <dd className="mt-0.5 flex items-center gap-1">
+                  {isPhone ? (
+                    <dd className="mt-0.5 flex flex-wrap items-center gap-1">
                       <span className="min-w-0 flex-1 text-sm font-medium break-words">
-                        {text}
+                        {text || "—"}
                       </span>
-                      <CopyButton value={text} label={`Copiar ${field.label}`} />
+                      {text ? (
+                        <CopyButton value={text} label={`Copiar ${field.label}`} />
+                      ) : null}
+                      <PhoneCheckButtons
+                        clientId={client.id}
+                        phoneKey={field.key}
+                        phoneValue={text}
+                        currentResult={latestPhoneChecks?.[field.key]}
+                        disabled={phoneActionsDisabled}
+                        onRecorded={onPhoneCheckRecorded}
+                      />
                     </dd>
                   ) : (
                     <dd className="mt-0.5 text-sm font-medium break-words">

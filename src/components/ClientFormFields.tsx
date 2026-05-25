@@ -6,10 +6,9 @@ import {
   type ClientFormValues,
 } from "@/lib/client-fields";
 import { CopyButton } from "./CopyButton";
-
-function isPhoneKey(key: string) {
-  return /^phone\d+$/.test(key);
-}
+import { PhoneCheckButtons } from "./PhoneCheckButtons";
+import { isPhoneFieldKey } from "@/lib/client-history";
+import type { PhoneCheckResult } from "@prisma/client";
 
 const FORM_FIELD_KEYS = [
   "cod",
@@ -40,11 +39,19 @@ export function ClientFormFields({
   onChange,
   readOnly = false,
   requiredName = false,
+  clientId,
+  latestPhoneChecks,
+  onPhoneCheckRecorded,
+  phoneActionsDisabled,
 }: {
   values: ClientFormFieldValues | ClientFormValues;
   onChange: (key: ClientFormFieldKey, value: string) => void;
   readOnly?: boolean;
   requiredName?: boolean;
+  clientId?: string;
+  latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
+  onPhoneCheckRecorded?: () => void;
+  phoneActionsDisabled?: boolean;
 }) {
   return (
     <>
@@ -56,7 +63,7 @@ export function ClientFormFields({
           <div className="grid gap-3 sm:grid-cols-2">
             {group.fields.map((field) => {
               const value = String(values[field.key as ClientFormFieldKey] ?? "");
-              const isPhone = isPhoneKey(field.key);
+              const isPhone = isPhoneFieldKey(field.key);
               const colSpan =
                 field.key === "name" || field.key === "address1" ? "sm:col-span-2" : "";
 
@@ -67,7 +74,7 @@ export function ClientFormFields({
                     {requiredName && field.key === "name" ? " *" : ""}
                   </label>
                   {isPhone ? (
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
                       <input
                         className="industrial-input min-w-0 flex-1"
                         disabled={readOnly}
@@ -75,6 +82,16 @@ export function ClientFormFields({
                         onChange={(e) => onChange(field.key as ClientFormFieldKey, e.target.value)}
                       />
                       <CopyButton value={value} label={`Copiar ${field.label}`} />
+                      {clientId && (
+                        <PhoneCheckButtons
+                          clientId={clientId}
+                          phoneKey={field.key}
+                          phoneValue={value}
+                          currentResult={latestPhoneChecks?.[field.key]}
+                          disabled={phoneActionsDisabled || readOnly}
+                          onRecorded={onPhoneCheckRecorded}
+                        />
+                      )}
                     </div>
                   ) : (
                     <input
