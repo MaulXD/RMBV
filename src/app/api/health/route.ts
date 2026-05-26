@@ -5,10 +5,17 @@ import { usesBlobStorage } from "@/lib/document-storage";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const dbUrl = process.env.DATABASE_URL ?? "";
+  const dbUrlRaw = process.env.DATABASE_URL;
+  const dbUrl = dbUrlRaw?.trim() ?? "";
   const checks: Record<string, string> = {
     JWT_SECRET: process.env.JWT_SECRET ? "ok" : "missing",
-    DATABASE_URL: dbUrl ? "ok" : "missing",
+    DATABASE_URL: dbUrlRaw === undefined
+      ? "missing"
+      : !dbUrl
+        ? "empty — reconecte Neon ou cole URL no painel"
+        : dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://")
+          ? "ok"
+          : "invalid (precisa postgresql://)",
     database_provider:
       dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://")
         ? "postgresql"
