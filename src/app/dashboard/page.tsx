@@ -25,6 +25,7 @@ type ClientRow = {
 
 function DashboardContent() {
   const { activeTeseId, activeTese } = useTeseFilter();
+  const [teamLabel, setTeamLabel] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
@@ -55,7 +56,11 @@ function DashboardContent() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d) => setIsAdmin(d.user?.role === "ADMIN"));
+      .then((d) => {
+        setIsAdmin(d.user?.role === "ADMIN");
+        if (d.user?.role === "ADMIN") setTeamLabel("Todas as equipes");
+        else if (d.user?.teamName) setTeamLabel(d.user.teamName);
+      });
   }, []);
 
   useEffect(() => {
@@ -91,9 +96,10 @@ function DashboardContent() {
         <div>
           <h1 className="text-xl font-semibold tracking-wide">Painel de clientes</h1>
           <p className="mt-1 text-sm text-muted">
+            {teamLabel && <span className="block">Equipe: {teamLabel}</span>}
             {activeTese
-              ? `Exibindo apenas: ${activeTese.name}`
-              : "Exibindo todas as teses — selecione uma acima para focar"}
+              ? `Tese: ${activeTese.name}`
+              : "Todas as teses — selecione uma acima"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -9,6 +9,7 @@ import { buildClientWhere, clientListInclude } from "@/lib/client-query";
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { extractionResultSchema } from "@/lib/extract-types";
 import { formatClientForApi } from "@/lib/client-fields";
+import { resolveTeamIdForCreate, TeamAccessError } from "@/lib/team-access";
 import { z } from "zod";
 
 const createClientSchema = extractionResultSchema.extend({
@@ -28,8 +29,9 @@ export async function GET(request: Request) {
     const status = searchParams.get("status");
     const teseId = searchParams.get("teseId");
     const workflowStatus = searchParams.get("workflowStatus");
+    const teamId = searchParams.get("teamId");
 
-    const where = await buildClientWhere(user, { status, teseId, workflowStatus });
+    const where = await buildClientWhere(user, { status, teseId, workflowStatus, teamId });
 
     const clients = await prisma.client.findMany({
       where,
@@ -72,12 +74,23 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    const teseData = await resolveTeseForClient({ teseId, tese });
+    let teamId: string;
+    try {
+      teamId = await resolveTeamIdForCreate(user);
+    } catch (err) {
+      if (err instanceof TeamAccessError) {
+        return NextResponse.json({ error: err.message }, { status: 403 });
+      }
+      throw err;
+    }
+
+    const teseData = await resolveTeseForClient({ teseId, tese, teamId });
 
     const client = await prisma.client.create({
       data: {
         ...data,
         ...teseData,
+        teamId,
         status: status ?? "AGUARDANDO",
         rawExtractText: rawExtractText ?? null,
         createdById: user.id,

@@ -12,6 +12,8 @@ export type SessionUser = {
   email: string;
   name: string;
   role: Role;
+  teamId: string | null;
+  teamName: string | null;
 };
 
 function getSecret() {
@@ -50,6 +52,8 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
       email: String(payload.email),
       name: String(payload.name ?? ""),
       role: payload.role as Role,
+      teamId: null,
+      teamName: null,
     };
   } catch {
     return null;
@@ -82,7 +86,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const user = await prisma.user.findUnique({
     where: { id: session.id },
-    select: { id: true, email: true, name: true, role: true, isActive: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      isActive: true,
+      teamId: true,
+      team: { select: { name: true } },
+    },
   });
 
   if (!user || !user.isActive) return null;
@@ -92,6 +104,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     email: user.email,
     name: user.name,
     role: user.role,
+    teamId: user.teamId,
+    teamName: user.team?.name ?? null,
   };
 }
 
@@ -132,10 +146,17 @@ export async function authenticateUser(login: string, password: string) {
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) return null;
 
+  const full = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { teamId: true, team: { select: { name: true } } },
+  });
+
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
+    teamId: full?.teamId ?? null,
+    teamName: full?.team?.name ?? null,
   } satisfies SessionUser;
 }

@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
     const categoryId = String(formData.get("categoryId") ?? "");
+    const teamId = String(formData.get("teamId") ?? "");
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Arquivo CSV obrigatório" }, { status: 400 });
@@ -22,6 +23,15 @@ export async function POST(request: Request) {
 
     if (!categoryId) {
       return NextResponse.json({ error: "Categoria obrigatória" }, { status: 400 });
+    }
+
+    if (!teamId) {
+      return NextResponse.json({ error: "Equipe obrigatória" }, { status: 400 });
+    }
+
+    const team = await prisma.team.findUnique({ where: { id: teamId } });
+    if (!team) {
+      return NextResponse.json({ error: "Equipe inválida" }, { status: 400 });
     }
 
     const category = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -42,11 +52,12 @@ export async function POST(request: Request) {
     let imported = 0;
     for (const row of rows) {
       const { tese, ...rest } = row;
-      const teseData = await resolveTeseForClient({ tese });
+      const teseData = await resolveTeseForClient({ tese, teamId });
       await prisma.client.create({
         data: {
           ...rest,
           ...teseData,
+          teamId,
           status: "AGUARDANDO",
           createdById: user.id,
           categories: { create: [{ categoryId }] },

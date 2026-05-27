@@ -1,11 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import type { SessionUser } from "./auth";
 import { getReadableCategoryIds } from "./permissions";
+import { teamScopeWhere } from "./team-access";
 
 export type ClientListFilters = {
   status?: string | null;
   teseId?: string | null;
   workflowStatus?: string | null;
+  teamId?: string | null;
 };
 
 export async function buildClientWhere(
@@ -15,7 +17,9 @@ export async function buildClientWhere(
   const readableIds = await getReadableCategoryIds(user);
 
   return {
+    ...teamScopeWhere(user),
     categories: { some: { categoryId: { in: readableIds } } },
+    ...(filters.teamId && user.role === "ADMIN" ? { teamId: filters.teamId } : {}),
     ...(filters.status
       ? {
           status: filters.status as

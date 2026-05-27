@@ -99,6 +99,13 @@ npm run dev
 
 **Produção online:** https://rmbv.vercel.app — login `Admin` / `rmbvadmin` (não depende do `.env` local).
 
+## Equipes (isolamento)
+
+- Cada **equipe** vê só seus clientes, teses e membros.
+- **Admin** vê tudo → menu **Administração** → criar equipes e ADV.
+- **ADV** → menu **Minha equipe** → cadastra **Gerente** e **Colaborador** + teses da equipe.
+- Após deploy, o `db:seed` cria **Equipe Padrão** e vincula dados antigos.
+
 ## Login padrão (após seed)
 
 | Papel | Login | Senha |
