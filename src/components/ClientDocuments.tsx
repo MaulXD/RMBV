@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAppConfig } from "./useAppConfig";
 
 type DocumentRow = {
   id: string;
@@ -29,6 +30,7 @@ export function ClientDocuments({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { config: appConfig } = useAppConfig();
 
   const loadDocuments = useCallback(async () => {
     setLoading(true);
@@ -93,20 +95,28 @@ export function ClientDocuments({
             Documentação do cliente
           </h3>
           <p className="mt-1 text-xs text-muted">
-            Armazenamento local em servidor · PDF, imagens, Word, Excel, TXT (máx. 15 MB)
+            {appConfig.blobStorage
+              ? "Vercel Blob · PDF, imagens, Word, Excel, TXT (máx. 15 MB)"
+              : "Armazenamento local (dev) · em produção configure Vercel Blob"}
           </p>
         </div>
-        <label className="btn-primary cursor-pointer">
+        <label className={`btn-primary cursor-pointer ${!appConfig.documentUpload ? "pointer-events-none opacity-50" : ""}`}>
           {uploading ? "Enviando..." : "Subir documento"}
           <input
             type="file"
             className="hidden"
-            disabled={uploading}
+            disabled={uploading || !appConfig.documentUpload}
             accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.doc,.docx,.xls,.xlsx"
             onChange={handleUpload}
           />
         </label>
       </div>
+
+      {!appConfig.documentUpload && appConfig.hints.documentUpload && (
+        <p className="rounded-[var(--radius-ui)] border border-amber-600/40 bg-amber-600/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+          {appConfig.hints.documentUpload}
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted">Carregando documentos...</p>

@@ -13,12 +13,14 @@ import { ClientExtractionSection } from "./ClientExtractionSection";
 import { ClientFormFields, type ClientFormFieldKey } from "./ClientFormFields";
 import { TeseSelect } from "./TeseSelect";
 import { useTeseFilter } from "./TeseFilterProvider";
+import { useAppConfig } from "./useAppConfig";
 
 type Category = { id: string; name: string };
 
 export function ClientManualCreateForm({ categories }: { categories: Category[] }) {
   const router = useRouter();
   const { activeTeseId, teses } = useTeseFilter();
+  const { config: appConfig } = useAppConfig();
   const [form, setForm] = useState<ClientFormValues>(createEmptyClientForm);
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [teseId, setTeseId] = useState(activeTeseId ?? "");
@@ -172,6 +174,8 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         onExtract={handleExtract}
         extracting={extracting}
         optional
+        aiAvailable={appConfig.openaiExtract}
+        aiHint={appConfig.hints.openaiExtract}
       />
 
       <div className="flex justify-end gap-2">

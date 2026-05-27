@@ -8,6 +8,7 @@ import { ClientExtractionSection } from "./ClientExtractionSection";
 import { ClientFormFields, type ClientFormFieldKey } from "./ClientFormFields";
 import { TeseSelect } from "./TeseSelect";
 import { useTeseFilter } from "./TeseFilterProvider";
+import { useAppConfig } from "./useAppConfig";
 
 type Category = { id: string; name: string };
 
@@ -33,6 +34,7 @@ export function ClientProfileForm({
   onHistoryRefresh?: () => void;
 }) {
   const { teses } = useTeseFilter();
+  const { config: appConfig } = useAppConfig();
   const [form, setForm] = useState(client);
   const [teseId, setTeseId] = useState(client.teseId ?? "");
   const [rawText, setRawText] = useState(client.rawExtractText ?? "");
@@ -189,6 +191,8 @@ export function ClientProfileForm({
           onRawTextChange={setRawText}
           onExtract={handleExtract}
           extracting={extracting}
+          aiAvailable={appConfig.openaiExtract}
+          aiHint={appConfig.hints.openaiExtract}
         />
       )}
 
