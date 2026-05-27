@@ -7,8 +7,6 @@ import type { Role, PhoneCheckResult } from "@prisma/client";
 import { AppShell } from "@/components/AppShell";
 import { ClientProfileForm } from "@/components/ClientProfileForm";
 import { ClientProfileView } from "@/components/ClientProfileView";
-import { ClientRawExtractPanel } from "@/components/ClientRawExtractPanel";
-import { useAppConfig } from "@/components/useAppConfig";
 import { ClientDocuments } from "@/components/ClientDocuments";
 import { ClientFinalizationPanel } from "@/components/ClientFinalizationPanel";
 import { ClientProfileTabs } from "@/components/ClientProfileTabs";
@@ -32,8 +30,6 @@ export default function ClientDetailPage() {
   const [latestPhoneChecks, setLatestPhoneChecks] = useState<
     Partial<Record<string, PhoneCheckResult>>
   >({});
-  const { config: appConfig } = useAppConfig();
-
   const loadClient = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}`);
     const data = await res.json();
@@ -103,15 +99,6 @@ export default function ClientDetailPage() {
 
   const perfilContent = (
     <>
-      <ClientRawExtractPanel
-        clientId={client.id}
-        initialText={client.rawExtractText}
-        onUpdated={setClient}
-        disabled={isFinalized}
-        aiAvailable={appConfig.openaiExtract}
-        aiHint={appConfig.hints.openaiExtract}
-      />
-
       {editMode && !isFinalized ? (
         <ClientProfileForm
           key={client.updatedAt}
@@ -145,7 +132,9 @@ export default function ClientDetailPage() {
           <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
             ← Voltar ao painel
           </Link>
-          <h1 className="mt-2 text-xl font-semibold tracking-wide">Perfil do cliente</h1>
+          <h1 className="font-display mt-2 text-xl font-semibold tracking-wide">
+            Perfil do cliente
+          </h1>
         </div>
         {!isFinalized && (
           <button

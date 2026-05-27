@@ -2,10 +2,10 @@ import type { ClientStatus } from "@prisma/client";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
 const STATUS_STYLES: Record<ClientStatus, string> = {
-  AGUARDANDO: "border-titanio-400 text-titanio-600 dark:text-titanio-300",
-  LOCALIZADO: "border-green-600 text-green-700 dark:text-green-400",
-  SEM_SUCESSO: "border-red-500 text-red-700 dark:text-red-400",
-  TENTE_NOVAMENTE: "border-amber-500 text-amber-700 dark:text-amber-400",
+  AGUARDANDO: "border-border text-muted",
+  LOCALIZADO: "border-success/50 text-success",
+  SEM_SUCESSO: "border-danger/50 text-danger",
+  TENTE_NOVAMENTE: "border-primary/50 text-foreground",
 };
 
 export function StatusBadge({ status }: { status: ClientStatus }) {

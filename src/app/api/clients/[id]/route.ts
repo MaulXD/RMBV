@@ -8,7 +8,7 @@ import {
 import { clientListInclude } from "@/lib/client-query";
 import { getClientIfAllowed } from "@/lib/client-access";
 import { resolveTeseForClient } from "@/lib/tese-sync";
-import { clientUpdateSchema } from "@/lib/extract-types";
+import { clientUpdateSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
 import type { ClientStatus } from "@prisma/client";
 export const runtime = "nodejs";

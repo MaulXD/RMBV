@@ -36,7 +36,7 @@ export function ClientProfileTabs({
             onClick={() => setTab(t.id)}
             className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
               tab === t.id
-                ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-accent"
+                ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
                 : "text-muted hover:text-foreground"
             }`}
           >

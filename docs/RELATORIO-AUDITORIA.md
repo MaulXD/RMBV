@@ -45,4 +45,4 @@ Passagem focada em UI (ícones, temas), painel admin (equipes/usuários) e menu 
 2. Aba Usuários → criar Gerente/Colaborador na mesma equipe
 3. Aba Importar CSV com equipe selecionada
 4. Redimensionar janela: ≥768px nav horizontal; &lt;768px menu lateral
-5. `/api/health` — `DATABASE_URL`, `JWT_SECRET`, `openai_extract` conforme env
+5. `/api/health` — `DATABASE_URL`, `JWT_SECRET`, `blob_storage` conforme env

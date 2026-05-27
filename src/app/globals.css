@@ -2,90 +2,36 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* design.md — tokens */
 @theme {
-  --color-grafite-50: #f4f4f5;
-  --color-grafite-100: #e8e8ea;
-  --color-grafite-200: #d1d1d5;
-  --color-grafite-300: #a8a8af;
-  --color-grafite-400: #7a7a84;
-  --color-grafite-500: #5c5c66;
-  --color-grafite-600: #45454d;
-  --color-grafite-700: #35353b;
-  --color-grafite-800: #252528;
-  --color-grafite-900: #18181b;
-  --color-grafite-950: #0c0c0e;
+  --color-surface: #f0f4f8;
+  --color-surface-glass: rgb(226 232 240 / 0.6);
+  --color-foreground: #1e293b;
+  --color-muted: #475569;
+  --color-border: #cbd5e1;
+  --color-primary: #00e5ff;
+  --color-primary-foreground: #0f172a;
+  --color-accent: #00d4ee;
+  --color-success: #10b981;
+  --color-danger: #f43f5e;
 
-  --color-titanio-50: #f8f9fa;
-  --color-titanio-100: #eef0f2;
-  --color-titanio-200: #d8dce1;
-  --color-titanio-300: #b5bcc6;
-  --color-titanio-400: #8d97a5;
-  --color-titanio-500: #6b7585;
-  --color-titanio-600: #555d6b;
-  --color-titanio-700: #454b57;
-  --color-titanio-800: #3b404a;
-  --color-titanio-900: #343841;
-  --color-titanio-950: #22252b;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-playfair), ui-serif, Georgia, serif;
 
-  --color-aco-50: #f6f7f8;
-  --color-aco-100: #eceef0;
-  --color-aco-200: #d5d9de;
-  --color-aco-300: #b0b8c1;
-  --color-aco-400: #85909d;
-  --color-aco-500: #667382;
-  --color-aco-600: #515c69;
-  --color-aco-700: #434b56;
-  --color-aco-800: #3a4049;
-  --color-aco-900: #33383f;
-  --color-aco-950: #21242a;
-
-  --color-platina-50: #fafafa;
-  --color-platina-100: #f4f4f5;
-  --color-platina-200: #e4e4e7;
-  --color-platina-300: #d4d4d8;
-  --color-platina-400: #a1a1aa;
-  --color-platina-500: #71717a;
-  --color-platina-600: #52525b;
-  --color-platina-700: #3f3f46;
-  --color-platina-800: #27272a;
-  --color-platina-900: #18181b;
-  --color-platina-950: #09090b;
-
-  --color-ambar-50: #fffbeb;
-  --color-ambar-100: #fef3c7;
-  --color-ambar-200: #fde68a;
-  --color-ambar-300: #fcd34d;
-  --color-ambar-400: #fbbf24;
-  --color-ambar-500: #f59e0b;
-  --color-ambar-600: #d97706;
-  --color-ambar-700: #b45309;
-  --color-ambar-800: #92400e;
-  --color-ambar-900: #78350f;
-  --color-ambar-950: #451a03;
-
-  /* Modo claro — neutro suave, sem brilho forte */
-  --color-surface: #eeeff1;
-  --color-surface-elevated: #f7f7f8;
-  --color-foreground: #2c2d31;
-  --color-muted: #64676e;
-  --color-border: #d8dbe0;
-  --color-primary: #c98a0a;
-  --color-primary-foreground: #1c1917;
-  --color-accent: #b45309;
-
-  --radius-ui: 10px;
+  --radius-ui: 12px;
 }
 
 .dark {
-  /* Modo escuro — cinza azulado, menos “preto puro” */
-  --color-surface: #16171a;
-  --color-surface-elevated: #1f2126;
-  --color-foreground: #e8eaed;
-  --color-muted: #9aa0a8;
-  --color-border: #2e3238;
-  --color-primary: #e5a020;
-  --color-primary-foreground: #1a1508;
-  --color-accent: #f0b429;
+  --color-surface: #0f172a;
+  --color-surface-glass: rgb(30 41 59 / 0.6);
+  --color-foreground: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-border: #334155;
+  --color-primary: #00f0ff;
+  --color-primary-foreground: #0f172a;
+  --color-accent: #22d3ee;
+  --color-success: #34d399;
+  --color-danger: #fb7185;
 }
 
 @layer base {
@@ -98,7 +44,7 @@
   }
 
   body {
-    @apply bg-surface text-foreground antialiased;
+    @apply bg-surface font-sans text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -108,28 +54,44 @@
 }
 
 @layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
   .industrial-panel {
-    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated shadow-sm;
+    @apply rounded-[var(--radius-ui)] shadow-sm;
+    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    background: var(--color-surface-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   .industrial-input {
-    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-ambar-200/50 dark:bg-[#25272c] dark:focus:ring-ambar-500/25;
+    @apply w-full rounded-[var(--radius-ui)] border border-border/80 px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
+    background: color-mix(in srgb, var(--color-surface-glass) 80%, var(--color-surface));
+  }
+
+  .industrial-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors duration-150;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-[filter,transform] duration-150;
   }
 
   .btn-primary:hover {
-    @apply border-accent bg-accent;
+    filter: brightness(1.05);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-border bg-surface-elevated/60 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-accent/60 hover:bg-surface-elevated;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-border/80 px-3 py-2.5 text-sm text-foreground transition-colors;
+    background: color-mix(in srgb, var(--color-surface-glass) 50%, transparent);
   }
 
-  .terminal-textarea {
-    @apply min-h-[280px] w-full resize-y rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-4 font-mono text-sm leading-relaxed text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-ambar-200/50 dark:bg-[#1c1e22] dark:focus:ring-ambar-500/25;
+  .btn-ghost:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border));
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   .alert {
@@ -137,18 +99,36 @@
   }
 
   .alert-error {
-    @apply border-red-500/30 bg-red-500/8 text-red-800 dark:text-red-300;
+    border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    color: var(--color-danger);
+  }
+
+  .dark .alert-error {
+    color: #fecdd3;
   }
 
   .alert-success {
-    @apply border-emerald-500/30 bg-emerald-500/8 text-emerald-900 dark:text-emerald-200;
+    border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    color: #047857;
+  }
+
+  .dark .alert-success {
+    color: #a7f3d0;
   }
 
   .alert-warn {
-    @apply border-amber-500/30 bg-amber-500/8 text-amber-900 dark:text-amber-200;
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-900 dark:text-amber-200;
   }
 
   .nav-link-active {
-    @apply bg-ambar-100/90 font-medium text-ambar-900 dark:bg-ambar-950/50 dark:text-ambar-100;
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    color: var(--color-foreground);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  }
+
+  .dark .nav-link-active {
+    color: var(--color-primary);
   }
 }

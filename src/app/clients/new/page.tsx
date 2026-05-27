@@ -24,10 +24,8 @@ export default function NewClientPage() {
         <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
           ← Voltar ao painel
         </Link>
-        <h1 className="mt-2 text-xl font-semibold tracking-wide">Cadastro manual</h1>
-        <p className="mt-1 text-sm text-muted">
-          Preencha os campos do modelo ou use extração por texto para agilizar
-        </p>
+        <h1 className="font-display mt-2 text-xl font-semibold tracking-wide">Cadastro manual</h1>
+        <p className="mt-1 text-sm text-muted">Preencha os campos do cadastro do cliente</p>
       </div>
 
       {loading ? (

@@ -3,20 +3,17 @@
 import { useEffect, useState } from "react";
 
 export type AppConfig = {
-  openaiExtract: boolean;
   blobStorage: boolean;
   documentUpload: boolean;
   hints: {
-    openaiExtract: string | null;
     documentUpload: string | null;
   };
 };
 
 const DEFAULT_CONFIG: AppConfig = {
-  openaiExtract: false,
   blobStorage: false,
   documentUpload: true,
-  hints: { openaiExtract: null, documentUpload: null },
+  hints: { documentUpload: null },
 };
 
 export function useAppConfig() {

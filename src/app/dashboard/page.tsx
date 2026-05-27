@@ -94,7 +94,9 @@ function DashboardContent() {
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-wide">Painel de clientes</h1>
+          <h1 className="font-display text-xl font-semibold tracking-wide">
+            Painel de clientes
+          </h1>
           <p className="mt-1 text-sm text-muted">
             {teamLabel && <span className="block">Equipe: {teamLabel}</span>}
             {activeTese

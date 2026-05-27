@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { usesBlobStorage } from "@/lib/document-storage";
-import { isOpenAiConfigured } from "@/lib/openai-env";
 import { resolveDatabaseUrl } from "@/lib/database-url";
 
 export const runtime = "nodejs";
@@ -25,7 +24,6 @@ export async function GET() {
           ? "sqlite (não suportado na Vercel)"
           : "unknown",
     blob_storage: usesBlobStorage() ? "ok (Vercel Blob)" : "local (apenas dev)",
-    openai_extract: isOpenAiConfigured() ? "ok" : "missing — opcional (extração IA)",
     database: "unknown",
     users: "unknown",
   };

@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const optionalString = z.string().optional().nullable();
 
-export const extractionResultSchema = z.object({
+/** Campos do cliente (cadastro e edição). */
+export const clientDataSchema = z.object({
   cod: optionalString,
   tese: optionalString,
   name: z.string().min(1),
@@ -25,15 +26,12 @@ export const extractionResultSchema = z.object({
   address3: optionalString,
 });
 
-export type ExtractionResult = z.infer<typeof extractionResultSchema>;
+export type ClientDataInput = z.infer<typeof clientDataSchema>;
 
-export const clientUpdateSchema = extractionResultSchema
-  .partial()
-  .extend({
-    name: z.string().min(1).optional(),
-    teseId: z.string().uuid().optional().nullable(),
-    status: z.enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"]).optional(),
-    statusChangeNote: z.string().min(3).max(2000).optional(),
-    rawExtractText: z.string().optional().nullable(),
-    categoryId: z.string().uuid().optional(),
-  });
+export const clientUpdateSchema = clientDataSchema.partial().extend({
+  name: z.string().min(1).optional(),
+  teseId: z.string().uuid().optional().nullable(),
+  status: z.enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"]).optional(),
+  statusChangeNote: z.string().min(3).max(2000).optional(),
+  categoryId: z.string().uuid().optional(),
+});
