@@ -63,11 +63,11 @@
   --color-ambar-900: #78350f;
   --color-ambar-950: #451a03;
 
-  --color-surface: var(--color-platina-50);
-  --color-surface-elevated: #ffffff;
-  --color-foreground: var(--color-grafite-900);
-  --color-muted: var(--color-titanio-500);
-  --color-border: var(--color-aco-200);
+  --color-surface: #e8eaed;
+  --color-surface-elevated: #f3f4f6;
+  --color-foreground: var(--color-grafite-800);
+  --color-muted: var(--color-titanio-600);
+  --color-border: #c8cdd4;
   --color-primary: var(--color-ambar-600);
   --color-primary-foreground: var(--color-grafite-950);
   --color-accent: var(--color-ambar-700);
@@ -103,15 +103,15 @@
 
 @layer utilities {
   .industrial-panel {
-    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated shadow-sm;
+    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated shadow-sm dark:shadow-sm;
   }
 
   .industrial-input {
-    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ambar-200 dark:focus:ring-ambar-900/40;
+    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ambar-200/80 dark:bg-grafite-900 dark:focus:ring-ambar-900/40;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors duration-150;
+    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors duration-150 dark:shadow-none;
   }
 
   .btn-primary:hover {

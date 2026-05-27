@@ -23,6 +23,31 @@ export const CSV_HEADERS = [
   "ENDERECO 3",
 ] as const;
 
+export const PHONE_FIELD_KEYS = [
+  "phone1",
+  "phone2",
+  "phone3",
+  "phone4",
+  "phone5",
+  "phone6",
+  "phone7",
+  "phone8",
+  "phone9",
+  "phone10",
+] as const;
+
+export type PhoneFieldKey = (typeof PHONE_FIELD_KEYS)[number];
+
+export function countVisiblePhones(values: ClientFormFieldValues): number {
+  let lastFilled = 0;
+  PHONE_FIELD_KEYS.forEach((key, index) => {
+    const v = values[key];
+    if (v != null && String(v).trim()) lastFilled = index + 1;
+  });
+  const withEmpty = lastFilled < 10 ? lastFilled + 1 : 10;
+  return Math.min(10, Math.max(1, withEmpty));
+}
+
 export const CLIENT_FIELD_GROUPS = [
   {
     title: "Identificação",

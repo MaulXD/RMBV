@@ -22,7 +22,7 @@ export function IconTooltipButton({
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-ui)] border border-border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-ui)] border border-border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
           active
             ? activeClassName ?? "border-accent bg-accent/15 text-accent"
             : "bg-surface hover:bg-muted/20"

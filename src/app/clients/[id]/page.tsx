@@ -7,6 +7,8 @@ import type { Role, PhoneCheckResult } from "@prisma/client";
 import { AppShell } from "@/components/AppShell";
 import { ClientProfileForm } from "@/components/ClientProfileForm";
 import { ClientProfileView } from "@/components/ClientProfileView";
+import { ClientRawExtractPanel } from "@/components/ClientRawExtractPanel";
+import { useAppConfig } from "@/components/useAppConfig";
 import { ClientDocuments } from "@/components/ClientDocuments";
 import { ClientFinalizationPanel } from "@/components/ClientFinalizationPanel";
 import { ClientProfileTabs } from "@/components/ClientProfileTabs";
@@ -30,6 +32,7 @@ export default function ClientDetailPage() {
   const [latestPhoneChecks, setLatestPhoneChecks] = useState<
     Partial<Record<string, PhoneCheckResult>>
   >({});
+  const { config: appConfig } = useAppConfig();
 
   const loadClient = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}`);
@@ -91,13 +94,22 @@ export default function ClientDetailPage() {
 
   const perfilContent = (
     <>
+      <ClientRawExtractPanel
+        clientId={client.id}
+        initialText={client.rawExtractText}
+        onUpdated={setClient}
+        disabled={isFinalized}
+        aiAvailable={appConfig.openaiExtract}
+        aiHint={appConfig.hints.openaiExtract}
+      />
+
       {editMode && !isFinalized ? (
         <ClientProfileForm
+          key={client.updatedAt}
           client={client}
           categories={categories}
           onSaved={(updated) => {
             setClient(updated);
-            setEditMode(false);
             refreshHistory();
           }}
           latestPhoneChecks={latestPhoneChecks}

@@ -1,13 +1,12 @@
 "use client";
 
+import type { PhoneCheckResult } from "@prisma/client";
 import type { ClientProfileData } from "@/lib/client-fields";
-import { CLIENT_FIELD_GROUPS } from "@/lib/client-fields";
+import { CLIENT_FIELD_GROUPS, PHONE_FIELD_KEYS } from "@/lib/client-fields";
 import { StatusBadge } from "./StatusBadge";
 import { WorkflowBadge } from "./WorkflowBadge";
 import { CopyButton } from "./CopyButton";
 import { PhoneCheckButtons } from "./PhoneCheckButtons";
-import { isPhoneFieldKey } from "@/lib/client-history";
-import type { PhoneCheckResult } from "@prisma/client";
 
 export function ClientProfileView({
   client,
@@ -20,6 +19,14 @@ export function ClientProfileView({
   onPhoneCheckRecorded?: () => void;
   phoneActionsDisabled?: boolean;
 }) {
+  const filledPhones = PHONE_FIELD_KEYS.map((key, index) => ({
+    key,
+    label: `TELEFONE ${index + 1}`,
+    value: String(client[key] ?? "").trim(),
+  })).filter((p) => p.value);
+
+  const nonPhoneGroups = CLIENT_FIELD_GROUPS.filter((g) => g.title !== "Telefones");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -43,7 +50,7 @@ export function ClientProfileView({
         <p className="text-sm font-medium">{client.tese ?? "—"}</p>
       </section>
 
-      {CLIENT_FIELD_GROUPS.map((group) => (
+      {nonPhoneGroups.map((group) => (
         <section key={group.title} className="industrial-panel p-4">
           <h3 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
             {group.title}
@@ -52,33 +59,11 @@ export function ClientProfileView({
             {group.fields.map((field) => {
               const value = client[field.key as keyof ClientProfileData];
               const text = value ? String(value) : "";
-              const isPhone = isPhoneFieldKey(field.key);
 
               return (
                 <div key={field.key}>
                   <dt className="text-xs text-muted">{field.label}</dt>
-                  {isPhone ? (
-                    <dd className="mt-0.5 flex flex-wrap items-center gap-1">
-                      <span className="min-w-0 flex-1 text-sm font-medium break-words">
-                        {text || "—"}
-                      </span>
-                      {text ? (
-                        <CopyButton value={text} label={`Copiar ${field.label}`} />
-                      ) : null}
-                      <PhoneCheckButtons
-                        clientId={client.id}
-                        phoneKey={field.key}
-                        phoneValue={text}
-                        currentResult={latestPhoneChecks?.[field.key]}
-                        disabled={phoneActionsDisabled}
-                        onRecorded={onPhoneCheckRecorded}
-                      />
-                    </dd>
-                  ) : (
-                    <dd className="mt-0.5 text-sm font-medium break-words">
-                      {text || "—"}
-                    </dd>
-                  )}
+                  <dd className="mt-0.5 text-sm font-medium break-words">{text || "—"}</dd>
                 </div>
               );
             })}
@@ -86,16 +71,37 @@ export function ClientProfileView({
         </section>
       ))}
 
-      {client.rawExtractText && (
-        <section className="industrial-panel p-4">
-          <h3 className="mb-3 text-xs font-semibold tracking-widest text-muted uppercase">
-            Texto para extração
-          </h3>
-          <pre className="whitespace-pre-wrap font-mono text-xs text-muted">
-            {client.rawExtractText}
-          </pre>
-        </section>
-      )}
+      <section className="industrial-panel p-4">
+        <h3 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+          Telefones
+        </h3>
+        {filledPhones.length === 0 ? (
+          <p className="text-sm text-muted">Nenhum telefone cadastrado.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {filledPhones.map((phone) => (
+              <div
+                key={phone.key}
+                className="rounded-[var(--radius-ui)] border border-border/60 bg-surface/50 p-3"
+              >
+                <p className="text-xs text-muted">{phone.label}</p>
+                <p className="mt-1 text-sm font-medium break-words">{phone.value}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <CopyButton value={phone.value} label={`Copiar ${phone.label}`} compact />
+                  <PhoneCheckButtons
+                    clientId={client.id}
+                    phoneKey={phone.key}
+                    phoneValue={phone.value}
+                    currentResult={latestPhoneChecks?.[phone.key]}
+                    disabled={phoneActionsDisabled}
+                    onRecorded={onPhoneCheckRecorded}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
