@@ -14,6 +14,7 @@ import { ClientFormFields, type ClientFormFieldKey } from "./ClientFormFields";
 import { TeseSelect } from "./TeseSelect";
 import { useTeseFilter } from "./TeseFilterProvider";
 import { useAppConfig } from "./useAppConfig";
+import { SelectField } from "./ui/SelectField";
 
 type Category = { id: string; name: string };
 
@@ -125,40 +126,29 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
       <section className="industrial-panel space-y-4 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <TeseSelect value={teseId} onChange={setTeseId} />
-          <div>
-            <label className="mb-1 block text-xs text-muted">Categoria *</label>
-            <select
-              className="industrial-input"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              required
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Status</label>
-            <select
-              className="industrial-input"
-              value={form.status}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  status: e.target.value as ClientFormValues["status"],
-                }))
-              }
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SelectField label="Categoria *" value={categoryId} onChange={setCategoryId} required>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </SelectField>
+          <SelectField
+            label="Status"
+            value={form.status}
+            onChange={(v) =>
+              setForm((prev) => ({
+                ...prev,
+                status: v as ClientFormValues["status"],
+              }))
+            }
+          >
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </SelectField>
         </div>
 
         <ClientFormFields

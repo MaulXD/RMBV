@@ -1,6 +1,7 @@
 "use client";
 
 import { useTeseFilter } from "./TeseFilterProvider";
+import { SelectField } from "./ui/SelectField";
 
 export function TeseSelect({
   value,
@@ -14,24 +15,18 @@ export function TeseSelect({
   const { teses, loading } = useTeseFilter();
 
   return (
-    <div>
-      <label className="mb-1 block text-xs text-muted">
-        TESE {required ? "*" : ""}
-      </label>
-      <select
-        className="industrial-input"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        disabled={loading}
-      >
-        <option value="">— Selecione —</option>
-        {teses.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <SelectField
+      label={`TESE${required ? " *" : ""}`}
+      value={value}
+      onChange={onChange}
+      required={required}
+    >
+      <option value="">{loading ? "Carregando..." : "— Selecione —"}</option>
+      {teses.map((t) => (
+        <option key={t.id} value={t.id}>
+          {t.name}
+        </option>
+      ))}
+    </SelectField>
   );
 }
