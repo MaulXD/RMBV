@@ -77,16 +77,27 @@ Se `users` for `empty`, rode o seed. Se `database_provider` mencionar sqlite, a 
 
 ## Desenvolvimento local
 
-Use o **mesmo** PostgreSQL (Neon) no `.env` — o projeto não usa mais SQLite.
+Use o **mesmo** PostgreSQL (Neon) no `.env.local` — o projeto não usa mais SQLite.
 
 ```bash
 cp .env.example .env
-# edite DATABASE_URL e JWT_SECRET
+npx vercel env pull .env.local --environment=production
+npm run env:setup-local
+```
+
+O `vercel env pull` **não traz** valores secretos (ficam vazios). Copie manualmente no painel Vercel → **rmbv** → Settings → Environment Variables:
+
+- `DATABASE_URL` → cole em `.env.local`
+- `JWT_SECRET` → gere localmente (32+ caracteres) se vier vazio
+
+```bash
 npm install
 npm run db:push
 npm run db:seed
 npm run dev
 ```
+
+**Produção online:** https://rmbv.vercel.app — login `Admin` / `rmbvadmin` (não depende do `.env` local).
 
 ## Login padrão (após seed)
 
