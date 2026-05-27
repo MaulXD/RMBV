@@ -9,14 +9,14 @@ export async function POST(request: Request) {
     assertAuthEnv();
 
     const body = await request.json();
-    const email = String(body.email ?? "").trim().toLowerCase();
+    const login = String(body.login ?? body.email ?? "").trim();
     const password = String(body.password ?? "");
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email e senha obrigatórios" }, { status: 400 });
+    if (!login || !password) {
+      return NextResponse.json({ error: "Login e senha obrigatórios" }, { status: 400 });
     }
 
-    const user = await authenticateUser(email, password);
+    const user = await authenticateUser(login, password);
     if (!user) {
       return NextResponse.json(
         {
