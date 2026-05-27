@@ -27,15 +27,30 @@ export async function extractClientDataFromText(rawText: string): Promise<Extrac
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY!.trim() });
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: rawText },
-    ],
-  });
+  let completion: Awaited<ReturnType<typeof client.chat.completions.create>>;
+  try {
+    completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: rawText },
+      ],
+    });
+  } catch (err) {
+    const anyErr = err as any;
+    const status = anyErr?.status ?? anyErr?.response?.status;
+    const code = anyErr?.code ?? anyErr?.error?.code;
+
+    if (status === 429 || code === "insufficient_quota") {
+      throw new Error(
+        "OPENAI_QUOTA: OpenAI sem quota/crédito (429). Verifique Billing/Usage e limites do projeto/chave."
+      );
+    }
+
+    throw err instanceof Error ? err : new Error("Falha na extração com IA");
+  }
 
   const content = completion.choices[0]?.message?.content;
   if (!content) throw new Error("Resposta vazia do modelo");

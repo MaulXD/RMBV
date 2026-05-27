@@ -40,51 +40,89 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     ...(user?.role === "ADMIN" ? [{ href: "/admin", label: "Administração" }] : []),
   ];
 
+  const currentTitle =
+    nav.find((n) => pathname.startsWith(n.href))?.label ??
+    (pathname.startsWith("/clients/") ? "Cliente" : "RMBV");
+
   return (
     <TeseFilterProvider>
       <div className="min-h-screen bg-surface">
-        <header className="border-b border-border bg-surface-elevated">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-8">
-              <span className="text-sm font-semibold tracking-widest uppercase text-muted">
-                RMBV System
-              </span>
-              <nav className="flex gap-1">
-                {nav.map((item) => {
-                  const active = pathname.startsWith(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`rounded-[var(--radius-ui)] px-3 py-2 text-sm transition-colors ${
-                        active
-                          ? "bg-grafite-900 text-platina-50 dark:bg-platina-100 dark:text-grafite-950"
-                          : "text-muted hover:text-foreground"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-            <div className="flex items-center gap-2">
-              {user && (
-                <span className="hidden text-xs text-muted sm:inline">{user.name}</span>
-              )}
-              <button type="button" onClick={toggleTheme} className="btn-ghost">
-                {theme === "dark" ? "Modo claro" : "Modo escuro"}
+        <div className="mx-auto flex min-h-screen max-w-7xl gap-6 px-4 py-4 sm:px-6">
+          <aside className="industrial-panel hidden w-64 shrink-0 p-4 md:flex md:flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold tracking-widest uppercase text-muted">
+                  RMBV
+                </span>
+                <span className="mt-1 text-sm font-semibold text-foreground">
+                  {user?.name ?? "Sistema"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="btn-ghost px-3 py-2 text-xs"
+                title={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+              >
+                {theme === "dark" ? "Claro" : "Escuro"}
               </button>
+            </div>
+
+            <nav className="mt-4 flex flex-col gap-1">
+              {nav.map((item) => {
+                const active = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`rounded-[var(--radius-ui)] px-3 py-2.5 text-sm transition-colors ${
+                      active
+                        ? "bg-ambar-100 text-ambar-900 dark:bg-ambar-950/40 dark:text-ambar-200"
+                        : "text-muted hover:bg-platina-100 hover:text-foreground dark:hover:bg-grafite-800"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="mt-auto pt-4">
               <form action="/api/auth/logout" method="post">
-                <button type="submit" className="btn-ghost">
+                <button type="submit" className="btn-ghost w-full justify-center">
                   Sair
                 </button>
               </form>
             </div>
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <header className="industrial-panel flex items-center justify-between px-4 py-3 md:hidden">
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold tracking-widest uppercase text-muted">
+                  RMBV
+                </span>
+                <span className="text-sm font-semibold">{currentTitle}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={toggleTheme} className="btn-ghost">
+                  {theme === "dark" ? "Claro" : "Escuro"}
+                </button>
+                <form action="/api/auth/logout" method="post">
+                  <button type="submit" className="btn-ghost">
+                    Sair
+                  </button>
+                </form>
+              </div>
+            </header>
+
+            <div className="industrial-panel overflow-hidden">
+              <TeseFilterBar showPdfButton={showTesePdf} />
+            </div>
+
+            <main className="min-w-0">{children}</main>
           </div>
-        </header>
-        <TeseFilterBar showPdfButton={showTesePdf} />
-        <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+        </div>
       </div>
     </TeseFilterProvider>
   );

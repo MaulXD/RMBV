@@ -28,7 +28,10 @@ export async function POST(request: Request) {
       const message =
         err instanceof Error ? err.message : "Falha na extração com IA";
       const status =
-        message.includes("OPENAI") || message.includes("Extração com IA indisponível")
+        message.includes("OPENAI_QUOTA")
+          ? 429
+          : message.includes("OPENAI") ||
+              message.includes("Extração com IA indisponível")
           ? 503
           : 500;
       return NextResponse.json({ error: message }, { status });

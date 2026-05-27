@@ -24,7 +24,7 @@ export function ClientExtractionSection({
       </h3>
 
       {!aiAvailable && (
-        <p className="mb-3 rounded-[var(--radius-ui)] border border-amber-600/40 bg-amber-600/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+        <p className="alert alert-warn mb-3">
           Extração com IA indisponível.{" "}
           {aiHint ??
             "Configure OPENAI_API_KEY no servidor (Vercel → Environment Variables) e faça redeploy."}
