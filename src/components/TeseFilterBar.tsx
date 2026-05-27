@@ -19,7 +19,7 @@ export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
 
   return (
     <div className="border-b border-border bg-surface-elevated">
-      <div className="mx-auto max-w-6xl px-6 py-3">
+      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold tracking-widest text-muted uppercase">
