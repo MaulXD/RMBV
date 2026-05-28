@@ -2,18 +2,19 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* design.md — tokens */
+/* Modo claro: fundo #cffeff — botões teal (sem neon cegante) */
 @theme {
-  --color-surface: #f0f4f8;
-  --color-surface-glass: rgb(226 232 240 / 0.6);
-  --color-foreground: #1e293b;
+  --color-surface: #cffeff;
+  --color-surface-elevated: #e8fbfb;
+  --color-surface-glass: rgb(255 255 255 / 0.78);
+  --color-foreground: #0f172a;
   --color-muted: #475569;
-  --color-border: #cbd5e1;
-  --color-primary: #00e5ff;
-  --color-primary-foreground: #0f172a;
-  --color-accent: #00d4ee;
-  --color-success: #10b981;
-  --color-danger: #f43f5e;
+  --color-border: #7eb8c4;
+  --color-primary: #0f766e;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #115e59;
+  --color-success: #059669;
+  --color-danger: #e11d48;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-playfair), ui-serif, Georgia, serif;
@@ -24,6 +25,7 @@
 .dark {
   --color-surface: #0f172a;
   --color-surface-glass: rgb(30 41 59 / 0.6);
+  --color-surface-elevated: #1e293b;
   --color-foreground: #f8fafc;
   --color-muted: #94a3b8;
   --color-border: #334155;
@@ -60,37 +62,61 @@
 
   .industrial-panel {
     @apply rounded-[var(--radius-ui)] shadow-sm;
-    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
     background: var(--color-surface-glass);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .industrial-input {
-    @apply w-full rounded-[var(--radius-ui)] border border-border/80 px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
+    @apply w-full rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
+    border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
+    background: color-mix(in srgb, #ffffff 88%, var(--color-surface));
+  }
+
+  .dark .industrial-input {
     background: color-mix(in srgb, var(--color-surface-glass) 80%, var(--color-surface));
   }
 
   .industrial-input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 28%, transparent);
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-[filter,transform] duration-150;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border px-4 py-2.5 text-sm font-semibold transition-colors duration-150;
+    border-color: var(--color-accent);
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
   }
 
   .btn-primary:hover {
-    filter: brightness(1.05);
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    filter: none;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.55;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-border/80 px-3 py-2.5 text-sm text-foreground transition-colors;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground transition-colors;
+    border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
+    background: color-mix(in srgb, #ffffff 70%, var(--color-surface));
+  }
+
+  .dark .btn-ghost {
     background: color-mix(in srgb, var(--color-surface-glass) 50%, transparent);
   }
 
   .btn-ghost:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border));
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+    background: color-mix(in srgb, #ffffff 92%, var(--color-surface));
+    color: var(--color-foreground);
+  }
+
+  .dark .btn-ghost:hover {
     background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
@@ -100,35 +126,46 @@
 
   .alert-error {
     border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
-    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 10%, #ffffff);
+    color: #9f1239;
   }
 
   .dark .alert-error {
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
     color: #fecdd3;
   }
 
   .alert-success {
     border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
-    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    background: color-mix(in srgb, var(--color-success) 10%, #ffffff);
     color: #047857;
   }
 
   .dark .alert-success {
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
     color: #a7f3d0;
   }
 
   .alert-warn {
-    @apply border-amber-500/35 bg-amber-500/10 text-amber-900 dark:text-amber-200;
+    border-color: color-mix(in srgb, #d97706 35%, transparent);
+    background: color-mix(in srgb, #fbbf24 12%, #ffffff);
+    color: #92400e;
+  }
+
+  .dark .alert-warn {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-200;
   }
 
   .nav-link-active {
-    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
-    color: var(--color-foreground);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+    background: color-mix(in srgb, #ffffff 88%, var(--color-surface));
+    color: var(--color-primary);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+    font-weight: 600;
   }
 
   .dark .nav-link-active {
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
     color: var(--color-primary);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
   }
 }

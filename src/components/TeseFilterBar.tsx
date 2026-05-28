@@ -32,7 +32,7 @@ export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
               className={`rounded-[var(--radius-ui)] border px-3 py-1.5 text-xs transition-colors ${
                 activeTeseId === null
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted hover:text-foreground"
+                  : "border-border bg-white/65 text-foreground hover:bg-white/85 dark:bg-transparent dark:text-muted dark:hover:text-foreground"
               }`}
             >
               Todas
@@ -48,7 +48,7 @@ export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
                   className={`rounded-[var(--radius-ui)] border px-3 py-1.5 text-xs transition-colors ${
                     activeTeseId === tese.id
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-muted hover:text-foreground"
+                      : "border-border bg-white/65 text-foreground hover:bg-white/85 dark:bg-transparent dark:text-muted dark:hover:text-foreground"
                   }`}
                   style={
                     activeTeseId !== tese.id && tese.color
