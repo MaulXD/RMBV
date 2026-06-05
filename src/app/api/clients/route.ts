@@ -9,11 +9,12 @@ import { buildClientWhere, clientListInclude } from "@/lib/client-query";
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientDataSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
-import { resolveTeamIdForCreate, TeamAccessError } from "@/lib/team-access";
+import { isAdminUser, resolveTeamIdForCreate, TeamAccessError } from "@/lib/team-access";
 import { z } from "zod";
 
 const createClientSchema = clientDataSchema.extend({
   categoryId: z.string().uuid(),
+  teamId: z.string().uuid().optional().nullable(),
   teseId: z.string().uuid().optional().nullable(),
   status: z
     .enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"])
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { categoryId, status, teseId, tese, ...data } = parsed.data;
+    const { categoryId, status, teamId: bodyTeamId, teseId, tese, ...data } = parsed.data;
 
     try {
       await assertCategoryPermission(user, categoryId, "canCreate");
@@ -73,9 +74,18 @@ export async function POST(request: Request) {
       throw err;
     }
 
+    let explicitTeamId = bodyTeamId ?? null;
+    if (isAdminUser(user) && !explicitTeamId && teseId) {
+      const teseRow = await prisma.tese.findUnique({
+        where: { id: teseId },
+        select: { teamId: true },
+      });
+      explicitTeamId = teseRow?.teamId ?? null;
+    }
+
     let teamId: string;
     try {
-      teamId = await resolveTeamIdForCreate(user);
+      teamId = await resolveTeamIdForCreate(user, explicitTeamId);
     } catch (err) {
       if (err instanceof TeamAccessError) {
         return NextResponse.json({ error: err.message }, { status: 403 });
