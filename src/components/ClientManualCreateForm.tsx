@@ -8,83 +8,25 @@ import {
   formValuesToCreatePayload,
   type ClientFormValues,
 } from "@/lib/client-fields";
-import type { ExtractionResult } from "@/lib/extract-types";
-import { ClientExtractionSection } from "./ClientExtractionSection";
 import { ClientFormFields, type ClientFormFieldKey } from "./ClientFormFields";
 import { TeseSelect } from "./TeseSelect";
 import { useTeseFilter } from "./TeseFilterProvider";
-import { useAppConfig } from "./useAppConfig";
 import { SelectField } from "./ui/SelectField";
+import { Icon } from "./ui/Icon";
 
 type Category = { id: string; name: string };
 
 export function ClientManualCreateForm({ categories }: { categories: Category[] }) {
   const router = useRouter();
-  const { activeTeseId, teses } = useTeseFilter();
-  const { config: appConfig } = useAppConfig();
+  const { activeTeseId } = useTeseFilter();
   const [form, setForm] = useState<ClientFormValues>(createEmptyClientForm);
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [teseId, setTeseId] = useState(activeTeseId ?? "");
-  const [rawText, setRawText] = useState("");
-  const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function setField(key: ClientFormFieldKey, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function applyExtraction(data: ExtractionResult) {
-    setForm((prev) => ({
-      ...prev,
-      cod: data.cod ?? prev.cod,
-      name: data.name || prev.name,
-      cpf: data.cpf ?? prev.cpf,
-      birthDate: data.birthDate ?? prev.birthDate,
-      obito: data.obito ?? prev.obito,
-      deathDate: data.deathDate ?? prev.deathDate,
-      phone1: data.phone1 ?? prev.phone1,
-      phone2: data.phone2 ?? prev.phone2,
-      phone3: data.phone3 ?? prev.phone3,
-      phone4: data.phone4 ?? prev.phone4,
-      phone5: data.phone5 ?? prev.phone5,
-      phone6: data.phone6 ?? prev.phone6,
-      phone7: data.phone7 ?? prev.phone7,
-      phone8: data.phone8 ?? prev.phone8,
-      phone9: data.phone9 ?? prev.phone9,
-      phone10: data.phone10 ?? prev.phone10,
-      address1: data.address1 ?? prev.address1,
-      address2: data.address2 ?? prev.address2,
-      address3: data.address3 ?? prev.address3,
-    }));
-    if (data.tese) {
-      const match = teses.find(
-        (t) => t.name.toLowerCase() === String(data.tese).toLowerCase()
-      );
-      if (match) setTeseId(match.id);
-    }
-  }
-
-  async function handleExtract() {
-    if (!rawText.trim()) return;
-    setExtracting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: rawText }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Falha na extração");
-      applyExtraction(data);
-      setMessage("Dados extraídos e preenchidos no formulário.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro na extração");
-    } finally {
-      setExtracting(false);
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -100,14 +42,13 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
 
     setSaving(true);
     setError(null);
-    setMessage(null);
 
     try {
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formValuesToCreatePayload(form, { rawExtractText: rawText, teseId: teseId || null }),
+          ...formValuesToCreatePayload(form, { teseId: teseId || null }),
           categoryId,
         }),
       });
@@ -151,38 +92,20 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
           </SelectField>
         </div>
 
-        <ClientFormFields
-          values={form}
-          onChange={setField}
-          requiredName
-        />
+        <ClientFormFields values={form} onChange={setField} requiredName />
       </section>
 
-      <ClientExtractionSection
-        rawText={rawText}
-        onRawTextChange={setRawText}
-        onExtract={handleExtract}
-        extracting={extracting}
-        optional
-        aiAvailable={appConfig.openaiExtract}
-        aiHint={appConfig.hints.openaiExtract}
-      />
-
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={() => router.push("/dashboard")}
-        >
+        <button type="button" className="btn-ghost" onClick={() => router.push("/dashboard")}>
           Cancelar
         </button>
         <button type="submit" className="btn-primary" disabled={saving}>
+          <Icon name="userPlus" className="h-4 w-4" />
           {saving ? "Cadastrando..." : "Cadastrar cliente"}
         </button>
       </div>
 
       {error && <p className="alert alert-error">{error}</p>}
-      {message && <p className="alert alert-success">{message}</p>}
     </form>
   );
 }

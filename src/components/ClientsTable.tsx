@@ -89,7 +89,7 @@ export function ClientsTable({
               <tr
                 key={client.id}
                 className={`border-b border-border last:border-0 ${
-                  selected ? "bg-ambar-50/60 dark:bg-ambar-950/20" : ""
+                  selected ? "bg-primary/10" : ""
                 }`}
               >
                 {selectable && (

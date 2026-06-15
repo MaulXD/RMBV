@@ -252,12 +252,11 @@ const NULLABLE_FORM_KEYS = [
 
 export function formValuesToCreatePayload(
   form: ClientFormValues,
-  extras?: { rawExtractText?: string | null; teseId?: string | null }
+  extras?: { teseId?: string | null }
 ) {
   const payload: Record<string, string | null | ClientStatus> = {
     name: form.name.trim(),
     status: form.status,
-    rawExtractText: extras?.rawExtractText?.trim() || null,
     teseId: extras?.teseId ?? null,
   };
 

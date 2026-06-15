@@ -15,12 +15,12 @@
 | `JWT_SECRET` | String aleatória com **mín. 32 caracteres** |
 | `ADMIN_EMAIL` | Email do admin (seed) |
 | `ADMIN_PASSWORD` | Senha do admin (seed) |
+| `ADMIN_NAME` | Login exibido (ex.: `Admin`) |
 
 Opcionais:
 
 | Variável | Descrição |
 |----------|-----------|
-| `OPENAI_API_KEY` | **Extração com IA** — sem ela o botão "Extrair com IA" fica desabilitado |
 | `BLOB_READ_WRITE_TOKEN` | Upload de documentos (Vercel Blob) |
 | `ADV_*`, `GERENTE_*` | Usuários extras no seed |
 
@@ -38,6 +38,7 @@ $env:DATABASE_URL="postgresql://..."
 $env:JWT_SECRET="sua-chave-secreta-longa"
 $env:ADMIN_EMAIL="admin@sistema.local"
 $env:ADMIN_PASSWORD="rmbvadmin"
+$env:ADMIN_NAME="Admin"
 npm run db:push
 npm run db:seed
 ```
@@ -77,7 +78,7 @@ Se `users` for `empty`, rode o seed. Se `database_provider` mencionar sqlite, a 
 
 ## Desenvolvimento local
 
-Use o **mesmo** PostgreSQL (Neon) no `.env.local` — o projeto não usa mais SQLite.
+Use o **mesmo** PostgreSQL (Neon) no `.env.local` — o projeto não usa SQLite.
 
 ```bash
 cp .env.example .env
@@ -85,7 +86,7 @@ npx vercel env pull .env.local --environment=production
 npm run env:setup-local
 ```
 
-O `vercel env pull` **não traz** valores secretos (ficam vazios). Copie manualmente no painel Vercel → **rmbv** → Settings → Environment Variables:
+O `vercel env pull` **não traz** valores secretos (ficam vazios). Copie manualmente no painel Vercel:
 
 - `DATABASE_URL` → cole em `.env.local`
 - `JWT_SECRET` → gere localmente (32+ caracteres) se vier vazio
@@ -97,14 +98,18 @@ npm run db:seed
 npm run dev
 ```
 
-**Produção online:** https://rmbv.vercel.app — login `Admin` / `rmbvadmin` (não depende do `.env` local).
+**Produção:** https://rmbv.vercel.app — login `Admin` / `rmbvadmin`
 
 ## Equipes (isolamento)
 
 - Cada **equipe** vê só seus clientes, teses e membros.
-- **Admin** vê tudo → menu **Administração** → criar equipes e ADV.
-- **ADV** → menu **Minha equipe** → cadastra **Gerente** e **Colaborador** + teses da equipe.
-- Após deploy, o `db:seed` cria **Equipe Padrão** e vincula dados antigos.
+- **Admin** → **Administração** → Equipes | Usuários | Importar CSV.
+- **ADV** → **Minha equipe** → Gerente/Colaborador + teses.
+
+## Identidade visual
+
+Paleta e tipografia: **[design.md](./design.md)**  
+Guia completo: **[docs/PASSO-A-PASSO.md](./docs/PASSO-A-PASSO.md)**
 
 ## Login padrão (após seed)
 

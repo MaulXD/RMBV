@@ -74,7 +74,7 @@ export default function LoginPage() {
             <Icon name="fileText" className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-lg font-semibold tracking-wide">RMBV System</h1>
+            <h1 className="font-display text-lg font-semibold tracking-wide">RMBV System</h1>
             <p className="text-sm text-muted">Entre com suas credenciais de acesso</p>
           </div>
         </div>

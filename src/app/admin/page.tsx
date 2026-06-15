@@ -106,7 +106,9 @@ export default function AdminPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2">
           <Icon name="shield" className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-semibold tracking-wide">Painel administrativo</h1>
+          <h1 className="font-display text-xl font-semibold tracking-wide">
+            Painel administrativo
+          </h1>
         </div>
         <p className="mt-1 text-sm text-muted">
           Equipes, usuários e importação — visão global do sistema

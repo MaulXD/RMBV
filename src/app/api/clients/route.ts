@@ -7,18 +7,17 @@ import {
 } from "@/lib/permissions";
 import { buildClientWhere, clientListInclude } from "@/lib/client-query";
 import { resolveTeseForClient } from "@/lib/tese-sync";
-import { extractionResultSchema } from "@/lib/extract-types";
+import { clientDataSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
 import { resolveTeamIdForCreate, TeamAccessError } from "@/lib/team-access";
 import { z } from "zod";
 
-const createClientSchema = extractionResultSchema.extend({
+const createClientSchema = clientDataSchema.extend({
   categoryId: z.string().uuid(),
   teseId: z.string().uuid().optional().nullable(),
   status: z
     .enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"])
     .optional(),
-  rawExtractText: z.string().optional().nullable(),
 });
 
 export const runtime = "nodejs";
@@ -63,7 +62,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { categoryId, status, rawExtractText, teseId, tese, ...data } = parsed.data;
+    const { categoryId, status, teseId, tese, ...data } = parsed.data;
 
     try {
       await assertCategoryPermission(user, categoryId, "canCreate");
@@ -92,7 +91,6 @@ export async function POST(request: Request) {
         ...teseData,
         teamId,
         status: status ?? "AGUARDANDO",
-        rawExtractText: rawExtractText ?? null,
         createdById: user.id,
         categories: { create: [{ categoryId }] },
       },
