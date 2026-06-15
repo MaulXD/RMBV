@@ -24,6 +24,7 @@ export const clientDataSchema = z.object({
   address1: optionalString,
   address2: optionalString,
   address3: optionalString,
+  rawExtractText: optionalString,
 });
 
 export type ClientDataInput = z.infer<typeof clientDataSchema>;

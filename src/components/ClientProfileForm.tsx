@@ -5,6 +5,7 @@ import type { ClientProfileData } from "@/lib/client-fields";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 import { ClientFormFields, type ClientFormFieldKey } from "./ClientFormFields";
 import { TeseSelect } from "./TeseSelect";
+import { ClientResearchTools } from "./ClientResearchTools";
 type Category = { id: string; name: string };
 
 export function ClientProfileForm({
@@ -147,6 +148,23 @@ export function ClientProfileForm({
           phoneActionsDisabled={phoneActionsDisabled}
         />
       </section>
+
+      {!readOnly && (
+        <ClientResearchTools
+          formValues={form}
+          clientId={client.id}
+          disabled={phoneActionsDisabled}
+          latestPhoneChecks={latestPhoneChecks}
+          onApplyPhone={(key, value) => setField(key as ClientFormFieldKey, value)}
+          onApplyAddress={(key, value) => setField(key as ClientFormFieldKey, value)}
+          onPhoneCheckRecorded={() => {
+            onPhoneCheckRecorded?.();
+            onHistoryRefresh?.();
+          }}
+          initialText={client.rawExtractText ?? ""}
+          onTextChange={(text) => setForm((prev) => ({ ...prev, rawExtractText: text }))}
+        />
+      )}
 
       {!readOnly && (
         <div className="flex justify-end">

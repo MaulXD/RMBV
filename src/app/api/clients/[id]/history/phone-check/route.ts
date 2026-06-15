@@ -34,6 +34,8 @@ function getClientPhoneValue(
 const phoneCheckSchema = z.object({
   phoneKey: z.string().refine(isPhoneFieldKey, "Telefone inválido"),
   result: z.enum(["VALIDO", "INVALIDO", "NAO_ATENDE"]),
+  phoneNumber: z.string().min(8).optional(),
+  applyToField: z.boolean().optional(),
 });
 
 export async function POST(
@@ -74,14 +76,25 @@ export async function POST(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const { phoneKey, result } = parsed.data;
-    const phoneNumber = getClientPhoneValue(existing, phoneKey);
+    const { phoneKey, result, phoneNumber: bodyPhone, applyToField } = parsed.data;
+    let phoneNumber = getClientPhoneValue(existing, phoneKey);
+
+    if (bodyPhone?.trim()) {
+      phoneNumber = bodyPhone.trim();
+    }
 
     if (!phoneNumber) {
       return NextResponse.json(
         { error: "Preencha o número antes de marcar a verificação" },
         { status: 400 }
       );
+    }
+
+    if (applyToField) {
+      await prisma.client.update({
+        where: { id },
+        data: { [phoneKey]: phoneNumber },
+      });
     }
 
     const row = await prisma.clientHistory.create({

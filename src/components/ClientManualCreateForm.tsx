@@ -13,6 +13,7 @@ import { TeseSelect } from "./TeseSelect";
 import { useTeseFilter } from "./TeseFilterProvider";
 import { SelectField } from "./ui/SelectField";
 import { Icon } from "./ui/Icon";
+import { ClientResearchTools } from "./ClientResearchTools";
 
 type Category = { id: string; name: string };
 type TeamOption = { id: string; name: string };
@@ -28,6 +29,7 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
   const [isAdmin, setIsAdmin] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [researchText, setResearchText] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -94,6 +96,7 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         body: JSON.stringify({
           ...formValuesToCreatePayload(form, { teseId: teseId || null }),
           categoryId,
+          ...(researchText.trim() ? { rawExtractText: researchText.trim() } : {}),
           ...(isAdmin && teamId ? { teamId } : {}),
         }),
       });
@@ -161,6 +164,13 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
 
         <ClientFormFields values={form} onChange={setField} requiredName />
       </section>
+
+      <ClientResearchTools
+        formValues={form}
+        onApplyPhone={(key, value) => setField(key as ClientFormFieldKey, value)}
+        onApplyAddress={(key, value) => setField(key as ClientFormFieldKey, value)}
+        onTextChange={setResearchText}
+      />
 
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-ghost" onClick={() => router.push("/dashboard")}>

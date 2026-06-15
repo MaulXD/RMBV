@@ -19,6 +19,7 @@ import {
   Briefcase,
   LogIn,
   FileDown,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ const icons = {
   briefcase: Briefcase,
   logIn: LogIn,
   fileDown: FileDown,
+  search: Search,
 } as const;
 
 export type IconName = keyof typeof icons;
