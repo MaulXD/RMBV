@@ -5,6 +5,7 @@ import { getReadableCategoryIds } from "./permissions";
 export type ClientListFilters = {
   status?: string | null;
   teseId?: string | null;
+  workflowStatus?: string | null;
 };
 
 export async function buildClientWhere(
@@ -25,10 +26,20 @@ export async function buildClientWhere(
         }
       : {}),
     ...(filters.teseId ? { teseId: filters.teseId } : {}),
+    ...(filters.workflowStatus
+      ? {
+          workflowStatus: filters.workflowStatus as
+            | "EM_ANDAMENTO"
+            | "FINALIZACAO_SOLICITADA"
+            | "FINALIZADO",
+        }
+      : {}),
   };
 }
 
 export const clientListInclude = {
   categories: { include: { category: { select: { id: true, name: true } } } },
   teseRef: { select: { id: true, name: true, color: true } },
+  finalizationRequestedBy: { select: { id: true, name: true, email: true } },
+  finalizedBy: { select: { id: true, name: true, email: true } },
 } as const;

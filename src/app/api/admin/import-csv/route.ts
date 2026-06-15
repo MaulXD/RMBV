@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
 import { parseClientsCsv } from "@/lib/csv-import";
 import { resolveTeseForClient } from "@/lib/tese-sync";
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return withAuth(async (user) => {

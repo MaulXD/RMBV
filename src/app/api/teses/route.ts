@@ -10,6 +10,8 @@ const createSchema = z.object({
   sortOrder: z.number().int().optional(),
 });
 
+export const runtime = "nodejs";
+
 export async function GET() {
   return withAuth(async () => {
     const teses = await prisma.tese.findMany({

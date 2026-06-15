@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -9,8 +9,15 @@ generator client {
 
 enum Role {
   ADMIN
+  ADV
   GERENTE
   COLABORADOR
+}
+
+enum ClientWorkflowStatus {
+  EM_ANDAMENTO
+  FINALIZACAO_SOLICITADA
+  FINALIZADO
 }
 
 enum ClientStatus {
@@ -18,6 +25,17 @@ enum ClientStatus {
   LOCALIZADO
   SEM_SUCESSO
   TENTE_NOVAMENTE
+}
+
+enum ClientHistoryType {
+  STATUS_CHANGE
+  PHONE_CHECK
+}
+
+enum PhoneCheckResult {
+  VALIDO
+  INVALIDO
+  NAO_ATENDE
 }
 
 model User {
@@ -29,8 +47,11 @@ model User {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  clientsCreated       Client[]           @relation("CreatedBy")
-  documentsUploaded    ClientDocument[]   @relation("DocumentsUploaded")
+  clientsCreated              Client[]           @relation("CreatedBy")
+  documentsUploaded           ClientDocument[]   @relation("DocumentsUploaded")
+  finalizationRequests        Client[]           @relation("FinalizationRequested")
+  finalizationApprovals       Client[]           @relation("FinalizationApproved")
+  clientHistory               ClientHistory[]    @relation("HistoryAuthor")
 }
 
 model Tese {
@@ -88,14 +109,40 @@ model Client {
   address1       String?
   address2       String?
   address3       String?
-  status         ClientStatus     @default(AGUARDANDO)
-  rawExtractText String?
-  createdAt      DateTime         @default(now())
+  status                    ClientStatus           @default(AGUARDANDO)
+  workflowStatus            ClientWorkflowStatus   @default(EM_ANDAMENTO)
+  finalizationRequestedAt   DateTime?
+  finalizationRequestedById String?
+  finalizationRequestedBy   User?                  @relation("FinalizationRequested", fields: [finalizationRequestedById], references: [id])
+  finalizedAt               DateTime?
+  finalizedById             String?
+  finalizedBy               User?                  @relation("FinalizationApproved", fields: [finalizedById], references: [id])
+  rawExtractText            String?
+  createdAt                 DateTime               @default(now())
   updatedAt      DateTime         @updatedAt
   createdById    String
   createdBy      User             @relation("CreatedBy", fields: [createdById], references: [id])
   categories     ClientCategory[]
   documents      ClientDocument[]
+  history        ClientHistory[]
+}
+
+model ClientHistory {
+  id            String             @id @default(uuid())
+  clientId      String
+  client        Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type          ClientHistoryType
+  createdAt     DateTime           @default(now())
+  createdById   String
+  createdBy     User               @relation("HistoryAuthor", fields: [createdById], references: [id])
+  fromStatus    ClientStatus?
+  toStatus      ClientStatus?
+  note          String?
+  phoneKey      String?
+  phoneNumber   String?
+  phoneCheck    PhoneCheckResult?
+
+  @@index([clientId, createdAt])
 }
 
 model ClientDocument {

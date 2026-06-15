@@ -96,7 +96,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 }
 
 export async function authenticateUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+  });
   if (!user || !user.isActive) return null;
 
   const valid = await verifyPassword(password, user.passwordHash);

@@ -7,6 +7,7 @@ import {
   readClientDocument,
   deleteClientDocumentFile,
 } from "@/lib/document-storage";
+export const runtime = "nodejs";
 
 export async function GET(
   _request: Request,

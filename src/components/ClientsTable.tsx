@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { ClientStatus } from "@prisma/client";
+import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 import { StatusBadge } from "./StatusBadge";
+import { WorkflowBadge } from "./WorkflowBadge";
 
 type ClientRow = {
   id: string;
@@ -11,6 +12,7 @@ type ClientRow = {
   tese: string | null;
   cpf: string | null;
   status: ClientStatus;
+  workflowStatus: ClientWorkflowStatus;
   createdAt: string;
   primaryPhone: string | null;
   categories: { id: string; name: string }[];
@@ -49,6 +51,7 @@ export function ClientsTable({
             <th className="px-4 py-3 font-medium text-muted">Nome</th>
             <th className="px-4 py-3 font-medium text-muted">CPF</th>
             <th className="px-4 py-3 font-medium text-muted">Status</th>
+            <th className="px-4 py-3 font-medium text-muted">Finalização</th>
             <th className="px-4 py-3 font-medium text-muted">Categorias</th>
             <th className="px-4 py-3 font-medium text-muted">Telefone</th>
             <th className="px-4 py-3 font-medium text-muted"></th>
@@ -63,6 +66,9 @@ export function ClientsTable({
               <td className="px-4 py-3 text-muted">{client.cpf ?? "—"}</td>
               <td className="px-4 py-3">
                 <StatusBadge status={client.status} />
+              </td>
+              <td className="px-4 py-3">
+                <WorkflowBadge status={client.workflowStatus} />
               </td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">

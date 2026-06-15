@@ -11,7 +11,7 @@ type SessionUser = {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "GERENTE" | "COLABORADOR";
+  role: "ADMIN" | "ADV" | "GERENTE" | "COLABORADOR";
 };
 
 const baseNav = [
