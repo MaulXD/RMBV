@@ -191,8 +191,8 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {message && <p className="text-sm text-muted">{message}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
+      {message && <p className="alert alert-success">{message}</p>}
     </form>
   );
 }

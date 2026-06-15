@@ -51,16 +51,28 @@
   --color-platina-900: #18181b;
   --color-platina-950: #09090b;
 
+  --color-ambar-50: #fffbeb;
+  --color-ambar-100: #fef3c7;
+  --color-ambar-200: #fde68a;
+  --color-ambar-300: #fcd34d;
+  --color-ambar-400: #fbbf24;
+  --color-ambar-500: #f59e0b;
+  --color-ambar-600: #d97706;
+  --color-ambar-700: #b45309;
+  --color-ambar-800: #92400e;
+  --color-ambar-900: #78350f;
+  --color-ambar-950: #451a03;
+
   --color-surface: var(--color-platina-50);
   --color-surface-elevated: #ffffff;
   --color-foreground: var(--color-grafite-900);
   --color-muted: var(--color-titanio-500);
   --color-border: var(--color-aco-200);
-  --color-primary: var(--color-grafite-900);
-  --color-primary-foreground: var(--color-platina-50);
-  --color-accent: var(--color-aco-600);
+  --color-primary: var(--color-ambar-600);
+  --color-primary-foreground: var(--color-grafite-950);
+  --color-accent: var(--color-ambar-700);
 
-  --radius-ui: 4px;
+  --radius-ui: 10px;
 }
 
 .dark {
@@ -69,9 +81,9 @@
   --color-foreground: var(--color-platina-100);
   --color-muted: var(--color-titanio-400);
   --color-border: var(--color-grafite-700);
-  --color-primary: var(--color-platina-100);
+  --color-primary: var(--color-ambar-500);
   --color-primary-foreground: var(--color-grafite-950);
-  --color-accent: var(--color-aco-400);
+  --color-accent: var(--color-ambar-400);
 }
 
 @layer base {
@@ -91,26 +103,42 @@
 
 @layer utilities {
   .industrial-panel {
-    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated;
+    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated shadow-sm;
   }
 
   .industrial-input {
-    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent;
+    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ambar-200 dark:focus:ring-ambar-900/40;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors duration-150;
+    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors duration-150;
   }
 
   .btn-primary:hover {
-    @apply border-primary-foreground bg-primary-foreground text-primary;
+    @apply border-accent bg-accent text-primary-foreground;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-border bg-transparent px-3 py-2 text-sm text-foreground transition-colors hover:border-accent hover:text-accent;
+    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-border bg-transparent px-3 py-2.5 text-sm text-foreground transition-colors hover:border-accent hover:text-accent;
   }
 
   .terminal-textarea {
-    @apply min-h-[320px] w-full resize-y rounded-[var(--radius-ui)] border border-border bg-grafite-950 p-4 font-mono text-sm leading-relaxed text-platina-100 outline-none focus:border-aco-500;
+    @apply min-h-[320px] w-full resize-y rounded-[var(--radius-ui)] border border-border bg-surface p-4 font-mono text-sm leading-relaxed text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-ambar-200 dark:bg-grafite-950 dark:text-platina-100 dark:focus:ring-ambar-900/40;
+  }
+
+  .alert {
+    @apply rounded-[var(--radius-ui)] border px-3 py-2 text-sm;
+  }
+
+  .alert-error {
+    @apply border-red-600/40 bg-red-600/10 text-red-700 dark:text-red-300;
+  }
+
+  .alert-success {
+    @apply border-emerald-600/40 bg-emerald-600/10 text-emerald-800 dark:text-emerald-200;
+  }
+
+  .alert-warn {
+    @apply border-amber-600/40 bg-amber-600/10 text-amber-800 dark:text-amber-200;
   }
 }
