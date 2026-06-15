@@ -11,6 +11,7 @@ import {
   type ExtractedPhone,
   type ParsedResearch,
 } from "@/lib/text-intelligence";
+import { parseFullResearchText } from "@/lib/extraction-proposal";
 import { PHONE_FIELD_KEYS } from "@/lib/client-fields";
 import { PhoneCheckButtons } from "./PhoneCheckButtons";
 import { Icon } from "./ui/Icon";
@@ -337,8 +338,11 @@ export function ClientResearchParser({
   disabled?: boolean;
 }) {
   const [parsed, setParsed] = useState<ParsedResearch | null>(null);
+  const [scalars, setScalars] = useState<ReturnType<typeof parseFullResearchText>["scalars"] | null>(
+    null
+  );
   const [filter, setFilter] = useState<DataCategory | "todos">("todos");
-  const [tab, setTab] = useState<"phones" | "addresses">("phones");
+  const [tab, setTab] = useState<"dados" | "phones" | "addresses">("dados");
 
   const filtered = useMemo(() => {
     if (!parsed) return null;
@@ -350,8 +354,28 @@ export function ClientResearchParser({
     };
   }, [parsed, filter]);
 
+  const scalarEntries = useMemo(() => {
+    if (!scalars) return [];
+    return (
+      [
+        ["Nome", scalars.name],
+        ["CPF", scalars.cpf],
+        ["Data de nascimento", scalars.birthDate],
+        ["Óbito", scalars.obito],
+        ["Data óbito", scalars.deathDate],
+        ["COD", scalars.cod],
+      ] as const
+    ).filter(([, value]) => value);
+  }, [scalars]);
+
   function analyze() {
-    setParsed(parseResearchText(text));
+    const full = parseFullResearchText(text);
+    setParsed(full);
+    setScalars(full.scalars);
+    const hasScalars = Boolean(
+      full.scalars.cpf || full.scalars.name || full.scalars.birthDate || full.scalars.cod
+    );
+    setTab(hasScalars ? "dados" : full.phones.length > 0 ? "phones" : "addresses");
   }
 
   return (
@@ -363,6 +387,7 @@ export function ClientResearchParser({
         </button>
         {parsed && (
           <span className="text-center text-xs text-muted sm:text-right">
+            {scalarEntries.length > 0 ? `${scalarEntries.length} dado(s) · ` : ""}
             {parsed.phones.length} telefone(s) · {parsed.addresses.length} endereço(s)
           </span>
         )}
@@ -391,7 +416,16 @@ export function ClientResearchParser({
             ))}
           </div>
 
-          <div className="inline-flex rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-1">
+          <div className="inline-flex flex-wrap rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-1">
+            <button
+              type="button"
+              className={`rounded-[8px] px-4 py-1.5 text-xs font-medium ${
+                tab === "dados" ? "bg-primary/15 text-primary" : "text-muted"
+              }`}
+              onClick={() => setTab("dados")}
+            >
+              Dados ({scalarEntries.length})
+            </button>
             <button
               type="button"
               className={`rounded-[8px] px-4 py-1.5 text-xs font-medium ${
@@ -412,18 +446,41 @@ export function ClientResearchParser({
             </button>
           </div>
 
-          <ResultSection
-            title={filter === "todos" ? "resultado" : CATEGORY_LABELS[filter as DataCategory]}
-            items={filtered}
-            type={tab}
-            formValues={formValues}
-            clientId={clientId}
-            disabled={disabled}
-            latestPhoneChecks={latestPhoneChecks}
-            onApplyPhone={onApplyPhone}
-            onApplyAddress={onApplyAddress}
-            onPhoneCheckRecorded={onPhoneCheckRecorded}
-          />
+          {tab === "dados" ? (
+            scalarEntries.length > 0 ? (
+              <dl className="grid gap-2 sm:grid-cols-2">
+                {scalarEntries.map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-[var(--radius-ui)] border border-border/60 bg-surface/50 px-3 py-2"
+                  >
+                    <dt className="text-[10px] font-semibold tracking-wider text-muted uppercase">
+                      {label}
+                    </dt>
+                    <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-muted">
+                Nenhum CPF, nome ou data identificado. Verifique se o rótulo (ex.: CPF, DATA DE
+                NASCIMENTO) está no texto — pode estar na linha acima do valor.
+              </p>
+            )
+          ) : (
+            <ResultSection
+              title={filter === "todos" ? "resultado" : CATEGORY_LABELS[filter as DataCategory]}
+              items={filtered}
+              type={tab}
+              formValues={formValues}
+              clientId={clientId}
+              disabled={disabled}
+              latestPhoneChecks={latestPhoneChecks}
+              onApplyPhone={onApplyPhone}
+              onApplyAddress={onApplyAddress}
+              onPhoneCheckRecorded={onPhoneCheckRecorded}
+            />
+          )}
         </div>
       )}
     </div>

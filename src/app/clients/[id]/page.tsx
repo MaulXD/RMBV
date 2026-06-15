@@ -35,6 +35,7 @@ export default function ClientDetailPage() {
   >({});
   const [activeTab, setActiveTab] = useState<ClientProfileTab>("perfil");
   const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
+  const [overwrittenFields, setOverwrittenFields] = useState<Set<string>>(new Set());
   const loadClient = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}`);
     const data = await res.json();
@@ -137,8 +138,9 @@ export default function ClientDetailPage() {
       latestPhoneChecks={latestPhoneChecks}
       onUpdated={setClient}
       onPhoneCheckRecorded={refreshHistory}
-      onExtractComplete={(fields) => {
+      onExtractComplete={(fields, overwritten) => {
         setHighlightedFields(new Set(fields));
+        setOverwrittenFields(new Set(overwritten));
         setActiveTab("revisao");
       }}
     />
@@ -150,6 +152,7 @@ export default function ClientDetailPage() {
       disabled={isFinalized}
       latestPhoneChecks={latestPhoneChecks}
       highlightedFields={highlightedFields}
+      overwrittenFields={overwrittenFields}
       onUpdated={setClient}
       onPhoneCheckRecorded={refreshHistory}
     />
