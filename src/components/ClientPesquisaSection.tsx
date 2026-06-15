@@ -31,7 +31,7 @@ export function ClientPesquisaSection({
   onApplyPhone: (phoneKey: string, value: string) => void;
   onApplyAddress: (addressKey: string, value: string) => void;
   onPhoneCheckRecorded?: () => void;
-  onExtractAndApply?: () => Promise<{ filledCount: number } | null>;
+  onExtractAndApply?: () => Promise<{ filledCount: number; message?: string } | null>;
   disabled?: boolean;
   saving?: boolean;
   extracting?: boolean;
@@ -44,9 +44,10 @@ export function ClientPesquisaSection({
     const result = await onExtractAndApply();
     if (result) {
       setExtractMsg(
-        result.filledCount > 0
-          ? `${result.filledCount} campo(s) preenchido(s) e salvo(s). Revise na aba Revisão.`
-          : "Nenhum campo novo encontrado para preencher."
+        result.message ??
+          (result.filledCount > 0
+            ? `${result.filledCount} campo(s) atualizado(s) e salvo(s). Revise na aba Revisão e confirme.`
+            : "Nenhum campo novo encontrado para preencher.")
       );
     }
   }
@@ -135,7 +136,7 @@ export function ClientPesquisaSectionConnected({
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
   onUpdated: (client: ClientProfileData) => void;
   onPhoneCheckRecorded?: () => void;
-  onExtractComplete?: (filledFields: string[]) => void;
+  onExtractComplete?: (filledFields: string[], overwrittenFields: string[]) => void;
 }) {
   const [text, setText] = useState(client.pesquisa ?? "");
   const [saving, setSaving] = useState(false);
@@ -185,6 +186,14 @@ export function ClientPesquisaSectionConnected({
 
       const plan = buildExtractionApplyPlan(text, toClientSnapshot(client));
       if (Object.keys(plan.fields).length === 0 && plan.phoneChecks.length === 0) {
+        const found = Object.entries(plan.parsed.scalars).filter(([, v]) => v);
+        if (found.length > 0) {
+          return {
+            filledCount: 0,
+            message:
+              "Dados identificados no texto, mas iguais aos já cadastrados. Use «Ver detalhes da extração» para conferir.",
+          };
+        }
         return { filledCount: 0 };
       }
 
@@ -201,8 +210,15 @@ export function ClientPesquisaSectionConnected({
 
       onUpdated(data.client);
       onPhoneCheckRecorded?.();
-      onExtractComplete?.(plan.filledFields);
-      return { filledCount: plan.filledFields.length };
+      onExtractComplete?.(plan.filledFields, plan.overwrittenFields);
+      const overwrittenCount = plan.overwrittenFields.length;
+      return {
+        filledCount: plan.filledFields.length,
+        message:
+          overwrittenCount > 0
+            ? `${plan.filledFields.length} campo(s) atualizado(s) (${overwrittenCount} substituído(s)). Revise na aba Revisão antes de confirmar.`
+            : undefined,
+      };
     } finally {
       setExtracting(false);
     }

@@ -27,6 +27,7 @@ export function ClientExtractionReview({
   disabled,
   latestPhoneChecks,
   highlightedFields,
+  overwrittenFields,
   onUpdated,
   onPhoneCheckRecorded,
 }: {
@@ -34,6 +35,7 @@ export function ClientExtractionReview({
   disabled?: boolean;
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
   highlightedFields?: Set<string>;
+  overwrittenFields?: Set<string>;
   onUpdated: (client: ClientProfileData) => void;
   onPhoneCheckRecorded?: () => void;
 }) {
@@ -94,7 +96,8 @@ export function ClientExtractionReview({
         <div>
           <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Revisão</h3>
           <p className="mt-1 text-sm text-muted">
-            Confirme ou ajuste os dados extraídos da pesquisa antes de finalizar o cadastro.
+            Confirme ou ajuste os dados extraídos — campos substituídos precisam ser revisados antes de
+            confirmar.
           </p>
         </div>
 
@@ -109,7 +112,7 @@ export function ClientExtractionReview({
                   {label}
                   {highlightedFields?.has(key) && (
                     <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
-                      extraído
+                      {overwrittenFields?.has(key) ? "substituído" : "extraído"}
                     </span>
                   )}
                 </label>
@@ -135,7 +138,7 @@ export function ClientExtractionReview({
                   {label}
                   {highlightedFields?.has(key) && (
                     <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
-                      extraído
+                      {overwrittenFields?.has(key) ? "substituído" : "extraído"}
                     </span>
                   )}
                 </label>
@@ -164,7 +167,7 @@ export function ClientExtractionReview({
                     {phone.label}
                     {highlightedFields?.has(phone.key) && (
                       <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
-                        extraído
+                        {overwrittenFields?.has(phone.key) ? "substituído" : "extraído"}
                       </span>
                     )}
                   </label>
