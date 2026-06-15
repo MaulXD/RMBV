@@ -11,11 +11,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const teseId = searchParams.get("teseId");
+    const idsParam = searchParams.get("ids");
 
     const where = await buildClientWhere(user, { status, teseId });
+    const ids = idsParam
+      ? idsParam.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
 
     const clients = await prisma.client.findMany({
-      where,
+      where: ids.length > 0 ? { ...where, id: { in: ids } } : where,
       orderBy: { name: "asc" },
       include: clientListInclude,
     });
