@@ -12,6 +12,8 @@ import { ClientFinalizationPanel } from "@/components/ClientFinalizationPanel";
 import { ClientProfileTabs } from "@/components/ClientProfileTabs";
 import { ClientHistoryTimeline } from "@/components/ClientHistoryTimeline";
 import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSection";
+import { ClientExtractionReview } from "@/components/ClientExtractionReview";
+import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
 import { latestPhoneChecksFromHistory, type ClientHistoryEntry } from "@/lib/client-history";
@@ -31,6 +33,8 @@ export default function ClientDetailPage() {
   const [latestPhoneChecks, setLatestPhoneChecks] = useState<
     Partial<Record<string, PhoneCheckResult>>
   >({});
+  const [activeTab, setActiveTab] = useState<ClientProfileTab>("perfil");
+  const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
   const loadClient = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}`);
     const data = await res.json();
@@ -133,6 +137,21 @@ export default function ClientDetailPage() {
       latestPhoneChecks={latestPhoneChecks}
       onUpdated={setClient}
       onPhoneCheckRecorded={refreshHistory}
+      onExtractComplete={(fields) => {
+        setHighlightedFields(new Set(fields));
+        setActiveTab("revisao");
+      }}
+    />
+  );
+
+  const revisaoContent = (
+    <ClientExtractionReview
+      client={client}
+      disabled={isFinalized}
+      latestPhoneChecks={latestPhoneChecks}
+      highlightedFields={highlightedFields}
+      onUpdated={setClient}
+      onPhoneCheckRecorded={refreshHistory}
     />
   );
 
@@ -167,8 +186,11 @@ export default function ClientDetailPage() {
         />
 
         <ClientProfileTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
           perfil={perfilContent}
           pesquisa={pesquisaContent}
+          revisao={revisaoContent}
           historico={
             <section className="industrial-panel p-4">
               <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">

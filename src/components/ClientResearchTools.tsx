@@ -357,14 +357,9 @@ export function ClientResearchParser({
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <button
-          type="button"
-          className="btn-primary w-full sm:w-auto"
-          disabled={disabled || !text.trim()}
-          onClick={analyze}
-        >
+        <button type="button" className="btn-primary" disabled={disabled || !text.trim()} onClick={analyze}>
           <Icon name="fileText" className="h-4 w-4" />
-          Extrair telefones e endereços
+          Ver detalhes da extração
         </button>
         {parsed && (
           <span className="text-center text-xs text-muted sm:text-right">
