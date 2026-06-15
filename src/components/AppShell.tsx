@@ -52,7 +52,7 @@ function NavLinks({
             className={`inline-flex items-center gap-2 rounded-[var(--radius-ui)] px-3 py-2 text-sm transition-colors ${
               active
                 ? "nav-link-active"
-                : "text-muted hover:bg-platina-200/70 hover:text-foreground dark:hover:bg-grafite-800/80"
+                : "text-muted hover:bg-white/60 hover:text-foreground dark:hover:bg-white/10"
             }`}
           >
             <Icon name={item.icon} className="h-4 w-4" />
@@ -93,6 +93,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (mq.matches) setMenuOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const nav: NavItem[] = [
     ...baseNav,
     ...(user?.role && user.role !== "ADMIN"
@@ -106,12 +115,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TeseFilterProvider>
       <div className="min-h-screen bg-surface">
-        <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated/95 backdrop-blur-sm">
+        <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                className="btn-ghost shrink-0 px-2.5 py-2 md:hidden"
+                className="btn-ghost inline-flex shrink-0 px-2.5 py-2 md:hidden"
                 onClick={() => setMenuOpen(true)}
                 aria-label="Abrir menu"
                 aria-expanded={menuOpen}
@@ -120,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
 
               <Link href="/dashboard" className="flex min-w-0 shrink-0 items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-primary/15 text-primary">
+                <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-white/70 text-primary dark:bg-primary/15">
                   <Icon name="fileText" className="h-4 w-4" />
                 </span>
                 <span className="hidden min-w-0 flex-col sm:flex">
@@ -159,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <>
             <button
               type="button"
-              className="fixed inset-0 z-50 bg-grafite-950/40 md:hidden"
+              className="fixed inset-0 z-50 bg-slate-900/40 md:hidden"
               aria-label="Fechar menu"
               onClick={() => setMenuOpen(false)}
             />

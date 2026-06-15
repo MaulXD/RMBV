@@ -70,7 +70,7 @@ export default function LoginPage() {
         className="industrial-panel w-full max-w-md space-y-4 p-8"
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-primary/15 text-primary">
+          <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-white/70 text-primary dark:bg-primary/15">
             <Icon name="fileText" className="h-5 w-5" />
           </span>
           <div>

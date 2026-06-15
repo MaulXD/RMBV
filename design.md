@@ -3,8 +3,9 @@
 ## 🎨 Paleta de Cores: Modo Claro
 *(Fundo suave, sem branco puro para garantir o conforto visual em longas jornadas de leitura)*
 
-*   **Fundo Principal:** `#F0F4F8` (Cinza-azulado bem suave, totalmente opaco e relaxante para os olhos)
-*   **Fundo de Elementos (Painéis/Cards):** `rgba(226, 232, 240, 0.6)` (Ideal para aplicar *backdrop-filter: blur* e criar o efeito *glassmorphism*)
+*   **Fundo Principal:** `#CFFEFF` (Ciano suave — conforto visual)
+*   **Fundo de Elementos (Painéis/Cards):** `rgba(255, 255, 255, 0.78)` com *backdrop-filter: blur*
+*   **Botões primários (modo claro):** `#0F766E` (teal) — evita neon cegante sobre o fundo claro
 *   **Texto Principal:** `#1E293B` (Azul-marinho quase preto, garante contraste e sobriedade)
 *   **Texto Secundário:** `#475569` (Cinza chumbo para metadados e informações de apoio)
 *   **Acento Principal (Neon):** `#00E5FF` (Ciano elétrico vibrante para botões primários e links)
