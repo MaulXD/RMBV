@@ -37,7 +37,7 @@ cd d:\Cursor\Database
 $env:DATABASE_URL="postgresql://..."
 $env:JWT_SECRET="sua-chave-secreta-longa"
 $env:ADMIN_EMAIL="admin@sistema.local"
-$env:ADMIN_PASSWORD="Admin@123"
+$env:ADMIN_PASSWORD="rmbvadmin"
 npm run db:push
 npm run db:seed
 ```
@@ -90,8 +90,8 @@ npm run dev
 
 ## Login padrão (após seed)
 
-| Papel | Email | Senha |
+| Papel | Login | Senha |
 |-------|--------|--------|
-| Admin | `admin@sistema.local` | `Admin@123` |
+| Admin | `Admin` (ou `admin@sistema.local`) | `rmbvadmin` |
 | ADV | `adv@sistema.local` | `Adv@123` |
 | Gerente | `gerente@sistema.local` | `Gerente@123` |

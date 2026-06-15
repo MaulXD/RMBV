@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ login, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -51,12 +51,13 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-muted">Email</label>
+          <label className="mb-1 block text-xs text-muted">Login</label>
           <input
-            type="email"
+            type="text"
             className="industrial-input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            placeholder="Admin"
             required
           />
         </div>
@@ -72,9 +73,7 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
+        {error && <p className="alert alert-error">{error}</p>}
 
         <button type="submit" className="btn-primary w-full" disabled={loading}>
           {loading ? "Entrando..." : "Entrar"}

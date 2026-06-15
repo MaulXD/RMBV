@@ -95,10 +95,38 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   };
 }
 
-export async function authenticateUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() },
-  });
+function normalizeLogin(login: string) {
+  return String(login ?? "").trim();
+}
+
+function isEmailLike(value: string) {
+  return value.includes("@");
+}
+
+export async function authenticateUser(login: string, password: string) {
+  const raw = normalizeLogin(login);
+  const normalized = raw.toLowerCase();
+
+  const adminAlias = process.env.ADMIN_NAME?.trim().toLowerCase() ?? "admin";
+  const adminEmail = (process.env.ADMIN_EMAIL ?? "admin@sistema.local")
+    .trim()
+    .toLowerCase();
+
+  const lookup =
+    normalized === adminAlias ? adminEmail : isEmailLike(normalized) ? normalized : raw;
+
+  const user = isEmailLike(String(lookup).toLowerCase())
+    ? await prisma.user.findUnique({
+        where: { email: String(lookup).trim().toLowerCase() },
+      })
+    : await prisma.user.findFirst({
+        where: {
+          OR: [
+            { name: { equals: String(lookup).trim() } },
+            { email: { equals: String(lookup).trim().toLowerCase() } },
+          ],
+        },
+      });
   if (!user || !user.isActive) return null;
 
   const valid = await verifyPassword(password, user.passwordHash);
