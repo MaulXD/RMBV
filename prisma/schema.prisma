@@ -140,7 +140,7 @@ model Client {
   finalizedAt               DateTime?
   finalizedById             String?
   finalizedBy               User?                  @relation("FinalizationApproved", fields: [finalizedById], references: [id])
-  rawExtractText            String?
+  pesquisa                  String?                @map("rawExtractText")
   createdAt                 DateTime               @default(now())
   updatedAt      DateTime         @updatedAt
   teamId         String?

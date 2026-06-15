@@ -13,7 +13,7 @@ import { TeseSelect } from "./TeseSelect";
 import { useTeseFilter } from "./TeseFilterProvider";
 import { SelectField } from "./ui/SelectField";
 import { Icon } from "./ui/Icon";
-import { ClientResearchTools } from "./ClientResearchTools";
+import { ClientPesquisaSection } from "./ClientPesquisaSection";
 
 type Category = { id: string; name: string };
 type TeamOption = { id: string; name: string };
@@ -96,7 +96,7 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         body: JSON.stringify({
           ...formValuesToCreatePayload(form, { teseId: teseId || null }),
           categoryId,
-          ...(researchText.trim() ? { rawExtractText: researchText.trim() } : {}),
+          ...(researchText.trim() ? { pesquisa: researchText.trim() } : {}),
           ...(isAdmin && teamId ? { teamId } : {}),
         }),
       });
@@ -165,11 +165,12 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         <ClientFormFields values={form} onChange={setField} requiredName />
       </section>
 
-      <ClientResearchTools
+      <ClientPesquisaSection
+        value={researchText}
+        onChange={setResearchText}
         formValues={form}
         onApplyPhone={(key, value) => setField(key as ClientFormFieldKey, value)}
         onApplyAddress={(key, value) => setField(key as ClientFormFieldKey, value)}
-        onTextChange={setResearchText}
       />
 
       <div className="flex justify-end gap-2">

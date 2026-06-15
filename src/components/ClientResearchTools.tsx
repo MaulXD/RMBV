@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PhoneCheckResult } from "@prisma/client";
 import {
   parseResearchText,
@@ -317,7 +317,8 @@ function ResultSection({
   );
 }
 
-export function ClientResearchTools({
+export function ClientResearchParser({
+  text,
   formValues,
   onApplyPhone,
   onApplyAddress,
@@ -325,10 +326,8 @@ export function ClientResearchTools({
   latestPhoneChecks,
   onPhoneCheckRecorded,
   disabled,
-  initialText,
-  onTextChange,
-  compact,
 }: {
+  text: string;
   formValues: FormValues;
   onApplyPhone: (phoneKey: string, value: string) => void;
   onApplyAddress: (addressKey: string, value: string) => void;
@@ -336,11 +335,7 @@ export function ClientResearchTools({
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
   onPhoneCheckRecorded?: () => void;
   disabled?: boolean;
-  initialText?: string;
-  onTextChange?: (text: string) => void;
-  compact?: boolean;
 }) {
-  const [text, setText] = useState(initialText ?? "");
   const [parsed, setParsed] = useState<ParsedResearch | null>(null);
   const [filter, setFilter] = useState<DataCategory | "todos">("todos");
   const [tab, setTab] = useState<"phones" | "addresses">("phones");
@@ -355,39 +350,16 @@ export function ClientResearchTools({
     };
   }, [parsed, filter]);
 
-  function handleTextChange(value: string) {
-    setText(value);
-    onTextChange?.(value);
-  }
-
   function analyze() {
     setParsed(parseResearchText(text));
   }
 
   return (
-    <section className="industrial-panel space-y-4 p-4">
-      <div>
-        <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">
-          Ferramentas de pesquisa
-        </h3>
-        <p className="mt-1 text-sm text-muted">
-          Cole o resultado da pesquisa. O sistema identifica telefones e endereços e separa dados do
-          autor do cliente.
-        </p>
-      </div>
-
-      <textarea
-        className={`industrial-input w-full resize-y font-mono text-sm ${compact ? "min-h-[140px]" : "min-h-[200px]"}`}
-        placeholder="Cole aqui texto de consultas, processos, cadastros..."
-        value={text}
-        disabled={disabled}
-        onChange={(e) => handleTextChange(e.target.value)}
-      />
-
+    <div className="space-y-4 border-t border-border/50 pt-4">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn-primary" disabled={disabled || !text.trim()} onClick={analyze}>
           <Icon name="fileText" className="h-4 w-4" />
-          Analisar texto
+          Extrair telefones e endereços
         </button>
         {parsed && (
           <span className="text-xs text-muted">
@@ -398,7 +370,7 @@ export function ClientResearchTools({
 
       {parsed && filtered && (
         <>
-          <div className="flex flex-wrap gap-2 border-t border-border/60 pt-4">
+          <div className="flex flex-wrap gap-2">
             {(["todos", "cliente", "autor", "outros"] as const).map((key) => (
               <button
                 key={key}
@@ -454,6 +426,72 @@ export function ClientResearchTools({
           />
         </>
       )}
+    </div>
+  );
+}
+
+/** Página avulsa / sandbox — inclui textarea próprio */
+export function ClientResearchTools({
+  formValues,
+  onApplyPhone,
+  onApplyAddress,
+  clientId,
+  latestPhoneChecks,
+  onPhoneCheckRecorded,
+  disabled,
+  initialText,
+  onTextChange,
+  compact,
+}: {
+  formValues: FormValues;
+  onApplyPhone: (phoneKey: string, value: string) => void;
+  onApplyAddress: (addressKey: string, value: string) => void;
+  clientId?: string;
+  latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
+  onPhoneCheckRecorded?: () => void;
+  disabled?: boolean;
+  initialText?: string;
+  onTextChange?: (text: string) => void;
+  compact?: boolean;
+}) {
+  const [text, setText] = useState(initialText ?? "");
+
+  useEffect(() => {
+    setText(initialText ?? "");
+  }, [initialText]);
+
+  return (
+    <section className="industrial-panel space-y-4 p-4">
+      <div>
+        <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">
+          Ferramentas de pesquisa
+        </h3>
+        <p className="mt-1 text-sm text-muted">
+          Área de testes. No dia a dia, use o campo Pesquisa dentro de cada cliente.
+        </p>
+      </div>
+
+      <textarea
+        className={`industrial-input w-full resize-y font-mono text-sm ${compact ? "min-h-[140px]" : "min-h-[200px]"}`}
+        placeholder="Cole aqui texto de consultas, processos, cadastros..."
+        value={text}
+        disabled={disabled}
+        onChange={(e) => {
+          setText(e.target.value);
+          onTextChange?.(e.target.value);
+        }}
+      />
+
+      <ClientResearchParser
+        text={text}
+        formValues={formValues}
+        onApplyPhone={onApplyPhone}
+        onApplyAddress={onApplyAddress}
+        clientId={clientId}
+        latestPhoneChecks={latestPhoneChecks}
+        onPhoneCheckRecorded={onPhoneCheckRecorded}
+        disabled={disabled}
+      />
     </section>
   );
 }

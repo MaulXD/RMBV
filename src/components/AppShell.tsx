@@ -21,7 +21,6 @@ type NavItem = { href: string; label: string; icon: IconName };
 
 const baseNav: NavItem[] = [
   { href: "/dashboard", label: "Clientes", icon: "dashboard" },
-  { href: "/pesquisa", label: "Pesquisa", icon: "search" },
   { href: "/clients/new", label: "Novo cliente", icon: "userPlus" },
   { href: "/reports", label: "Relatórios", icon: "reports" },
 ];

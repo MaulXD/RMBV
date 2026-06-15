@@ -11,7 +11,7 @@ import { ClientDocuments } from "@/components/ClientDocuments";
 import { ClientFinalizationPanel } from "@/components/ClientFinalizationPanel";
 import { ClientProfileTabs } from "@/components/ClientProfileTabs";
 import { ClientHistoryTimeline } from "@/components/ClientHistoryTimeline";
-import { ClientResearchToolsConnected } from "@/components/ClientResearchToolsConnected";
+import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSection";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
 import { latestPhoneChecksFromHistory, type ClientHistoryEntry } from "@/lib/client-history";
@@ -122,15 +122,14 @@ export default function ClientDetailPage() {
           phoneActionsDisabled={isFinalized}
         />
       )}
+      <ClientPesquisaSectionConnected
+        client={client}
+        disabled={isFinalized}
+        latestPhoneChecks={latestPhoneChecks}
+        onUpdated={setClient}
+        onPhoneCheckRecorded={refreshHistory}
+      />
       <ClientDocuments clientId={client.id} isAdmin={isAdmin} />
-      {!editMode && !isFinalized && (
-        <ClientResearchToolsConnected
-          client={client}
-          latestPhoneChecks={latestPhoneChecks}
-          onUpdated={setClient}
-          onPhoneCheckRecorded={refreshHistory}
-        />
-      )}
     </>
   );
 

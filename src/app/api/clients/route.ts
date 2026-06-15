@@ -16,7 +16,7 @@ const createClientSchema = clientDataSchema.extend({
   categoryId: z.string().uuid(),
   teamId: z.string().uuid().optional().nullable(),
   teseId: z.string().uuid().optional().nullable(),
-  rawExtractText: z.string().optional().nullable(),
+  pesquisa: z.string().optional().nullable(),
   status: z
     .enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"])
     .optional(),
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { categoryId, status, teamId: bodyTeamId, teseId, tese, rawExtractText, ...data } = parsed.data;
+    const { categoryId, status, teamId: bodyTeamId, teseId, tese, pesquisa, ...data } = parsed.data;
 
     try {
       await assertCategoryPermission(user, categoryId, "canCreate");
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
         ...data,
         ...teseData,
         teamId,
-        rawExtractText: rawExtractText ?? null,
+        pesquisa: pesquisa ?? null,
         status: status ?? "AGUARDANDO",
         createdById: user.id,
         categories: { create: [{ categoryId }] },
