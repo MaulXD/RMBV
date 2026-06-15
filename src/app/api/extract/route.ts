@@ -27,7 +27,10 @@ export async function POST(request: Request) {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Falha na extração com IA";
-      const status = message.includes("OPENAI") ? 503 : 500;
+      const status =
+        message.includes("OPENAI") || message.includes("Extração com IA indisponível")
+          ? 503
+          : 500;
       return NextResponse.json({ error: message }, { status });
     }
   });

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { extractionResultSchema, type ExtractionResult } from "./extract-types";
 import { CSV_HEADERS } from "./client-fields";
+import { isOpenAiConfigured, openAiMissingError } from "./openai-env";
 
 const SYSTEM_PROMPT = `Você extrai dados estruturados de textos brutos sobre clientes.
 Responda APENAS com JSON válido, sem markdown, usando exatamente estas chaves:
@@ -20,12 +21,11 @@ Campos do modelo: ${CSV_HEADERS.join(", ")}.
 "name" é obrigatório (campo NOME). Use string vazia ou null para campos desconhecidos.`;
 
 export async function extractClientDataFromText(rawText: string): Promise<ExtractionResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || apiKey === "sk-...") {
-    throw new Error("OPENAI_API_KEY não configurada no .env");
+  if (!isOpenAiConfigured()) {
+    throw new Error(openAiMissingError());
   }
 
-  const client = new OpenAI({ apiKey });
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY!.trim() });
 
   const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",

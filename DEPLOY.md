@@ -20,7 +20,7 @@ Opcionais:
 
 | Variável | Descrição |
 |----------|-----------|
-| `OPENAI_API_KEY` | Extração com IA |
+| `OPENAI_API_KEY` | **Extração com IA** — sem ela o botão "Extrair com IA" fica desabilitado |
 | `BLOB_READ_WRITE_TOKEN` | Upload de documentos (Vercel Blob) |
 | `ADV_*`, `GERENTE_*` | Usuários extras no seed |
 
