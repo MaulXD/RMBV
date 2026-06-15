@@ -2,29 +2,48 @@
 
 import { useState } from "react";
 
-export type ClientProfileTab = "perfil" | "pesquisa" | "historico";
+export type ClientProfileTab = "perfil" | "pesquisa" | "revisao" | "historico";
 
 export function ClientProfileTabs({
   perfil,
   pesquisa,
+  revisao,
   historico,
+  activeTab: controlledTab,
+  onTabChange,
   defaultTab = "perfil",
 }: {
   perfil: React.ReactNode;
   pesquisa: React.ReactNode;
+  revisao: React.ReactNode;
   historico: React.ReactNode;
+  activeTab?: ClientProfileTab;
+  onTabChange?: (tab: ClientProfileTab) => void;
   defaultTab?: ClientProfileTab;
 }) {
-  const [tab, setTab] = useState<ClientProfileTab>(defaultTab);
+  const [internalTab, setInternalTab] = useState<ClientProfileTab>(defaultTab);
+  const tab = controlledTab ?? internalTab;
+
+  function setTab(next: ClientProfileTab) {
+    if (onTabChange) onTabChange(next);
+    else setInternalTab(next);
+  }
 
   const tabs: { id: ClientProfileTab; label: string }[] = [
     { id: "perfil", label: "Perfil" },
     { id: "pesquisa", label: "Pesquisa" },
+    { id: "revisao", label: "Revisão" },
     { id: "historico", label: "Histórico" },
   ];
 
   const panel =
-    tab === "perfil" ? perfil : tab === "pesquisa" ? pesquisa : historico;
+    tab === "perfil"
+      ? perfil
+      : tab === "pesquisa"
+        ? pesquisa
+        : tab === "revisao"
+          ? revisao
+          : historico;
 
   return (
     <div className="space-y-0">

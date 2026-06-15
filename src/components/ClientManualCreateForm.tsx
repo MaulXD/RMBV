@@ -14,6 +14,7 @@ import { useTeseFilter } from "./TeseFilterProvider";
 import { SelectField } from "./ui/SelectField";
 import { Icon } from "./ui/Icon";
 import { ClientPesquisaSection } from "./ClientPesquisaSection";
+import { buildExtractionApplyPlan, toClientSnapshot } from "@/lib/extraction-proposal";
 
 type Category = { id: string; name: string };
 type TeamOption = { id: string; name: string };
@@ -168,9 +169,14 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
       <ClientPesquisaSection
         value={researchText}
         onChange={setResearchText}
-        formValues={form}
+        formValues={toClientSnapshot(form)}
         onApplyPhone={(key, value) => setField(key as ClientFormFieldKey, value)}
         onApplyAddress={(key, value) => setField(key as ClientFormFieldKey, value)}
+        onExtractAndApply={async () => {
+          const plan = buildExtractionApplyPlan(researchText, toClientSnapshot(form));
+          setForm((prev) => ({ ...prev, ...plan.fields }));
+          return { filledCount: plan.filledFields.length };
+        }}
       />
 
       <div className="flex justify-end gap-2">

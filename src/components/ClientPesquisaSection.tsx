@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { PhoneCheckResult } from "@prisma/client";
 import type { ClientProfileData } from "@/lib/client-fields";
-import { ClientResearchParser, type ResearchSlotValues } from "./ClientResearchTools";
+import { ClientResearchParser } from "./ClientResearchTools";
+import { buildExtractionApplyPlan, toClientSnapshot, type ClientSnapshot } from "@/lib/extraction-proposal";
+import { Icon } from "./ui/Icon";
 
 export function ClientPesquisaSection({
   value,
@@ -15,21 +17,40 @@ export function ClientPesquisaSection({
   onApplyPhone,
   onApplyAddress,
   onPhoneCheckRecorded,
+  onExtractAndApply,
   disabled,
   saving,
+  extracting,
 }: {
   value: string;
   onChange: (text: string) => void;
   readOnly?: boolean;
-  formValues: ResearchSlotValues;
+  formValues: ClientSnapshot;
   clientId?: string;
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
   onApplyPhone: (phoneKey: string, value: string) => void;
   onApplyAddress: (addressKey: string, value: string) => void;
   onPhoneCheckRecorded?: () => void;
+  onExtractAndApply?: () => Promise<{ filledCount: number } | null>;
   disabled?: boolean;
   saving?: boolean;
+  extracting?: boolean;
 }) {
+  const [extractMsg, setExtractMsg] = useState<string | null>(null);
+
+  async function handleExtractAll() {
+    if (!onExtractAndApply) return;
+    setExtractMsg(null);
+    const result = await onExtractAndApply();
+    if (result) {
+      setExtractMsg(
+        result.filledCount > 0
+          ? `${result.filledCount} campo(s) preenchido(s) e salvo(s). Revise na aba Revisão.`
+          : "Nenhum campo novo encontrado para preencher."
+      );
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <section className="industrial-panel p-4 sm:p-5">
@@ -37,7 +58,8 @@ export function ClientPesquisaSection({
           <div className="min-w-0">
             <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Pesquisa</h3>
             <p className="mt-1 max-w-2xl text-sm text-muted">
-              Cole textos de consultas, processos e cadastros. O conteúdo é salvo neste cliente.
+              Cole textos de consultas, processos e cadastros. Use a extração para preencher todos os
+              campos automaticamente.
             </p>
           </div>
           {!readOnly && (
@@ -58,10 +80,32 @@ export function ClientPesquisaSection({
       </section>
 
       {!readOnly && (
-        <section className="industrial-panel p-4 sm:p-5">
-          <h4 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
-            Extração
-          </h4>
+        <section className="industrial-panel space-y-4 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div>
+              <h4 className="text-xs font-semibold tracking-widest text-muted uppercase">
+                Extração automática
+              </h4>
+              <p className="mt-1 text-sm text-muted">
+                Identifica CPF, nome, datas, telefones e endereços — preenche, marca telefones como
+                válidos e salva.
+              </p>
+            </div>
+            {clientId && onExtractAndApply && (
+              <button
+                type="button"
+                className="btn-primary w-full shrink-0 sm:w-auto"
+                disabled={disabled || extracting || !value.trim()}
+                onClick={() => void handleExtractAll()}
+              >
+                <Icon name="fileText" className="h-4 w-4" />
+                {extracting ? "Extraindo..." : "Extrair e preencher tudo"}
+              </button>
+            )}
+          </div>
+
+          {extractMsg && <p className="alert alert-success">{extractMsg}</p>}
+
           <ClientResearchParser
             text={value}
             formValues={formValues}
@@ -84,15 +128,18 @@ export function ClientPesquisaSectionConnected({
   latestPhoneChecks,
   onUpdated,
   onPhoneCheckRecorded,
+  onExtractComplete,
 }: {
   client: ClientProfileData;
   disabled?: boolean;
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
   onUpdated: (client: ClientProfileData) => void;
   onPhoneCheckRecorded?: () => void;
+  onExtractComplete?: (filledFields: string[]) => void;
 }) {
   const [text, setText] = useState(client.pesquisa ?? "");
   const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -127,8 +174,38 @@ export function ClientPesquisaSectionConnected({
     }, 1200);
   }
 
-  async function applyField(field: string, value: string) {
-    await patchField(field, value);
+  async function extractAndApply() {
+    if (disabled || !text.trim()) return null;
+
+    setExtracting(true);
+    try {
+      if (text !== (client.pesquisa ?? "")) {
+        await patchField("pesquisa", text);
+      }
+
+      const plan = buildExtractionApplyPlan(text, toClientSnapshot(client));
+      if (Object.keys(plan.fields).length === 0 && plan.phoneChecks.length === 0) {
+        return { filledCount: 0 };
+      }
+
+      const res = await fetch(`/api/clients/${client.id}/apply-extraction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: plan.fields,
+          phoneChecks: plan.phoneChecks,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha na extração");
+
+      onUpdated(data.client);
+      onPhoneCheckRecorded?.();
+      onExtractComplete?.(plan.filledFields);
+      return { filledCount: plan.filledFields.length };
+    } finally {
+      setExtracting(false);
+    }
   }
 
   return (
@@ -137,15 +214,16 @@ export function ClientPesquisaSectionConnected({
       onChange={handleChange}
       readOnly={!!disabled}
       saving={saving}
-      formValues={client}
+      extracting={extracting}
+      formValues={toClientSnapshot(client)}
       clientId={client.id}
       latestPhoneChecks={latestPhoneChecks}
       disabled={disabled}
       onApplyPhone={(key, value) => {
-        void applyField(key, value);
+        void patchField(key, value);
       }}
       onApplyAddress={(key, value) => {
-        void applyField(key, value);
+        void patchField(key, value);
       }}
       onPhoneCheckRecorded={() => {
         onPhoneCheckRecorded?.();
@@ -155,6 +233,7 @@ export function ClientPesquisaSectionConnected({
             if (d.client) onUpdated(d.client);
           });
       }}
+      onExtractAndApply={extractAndApply}
     />
   );
 }
