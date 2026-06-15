@@ -8,6 +8,7 @@ type ClientRow = {
   id: string;
   name: string;
   cod: string | null;
+  tese: string | null;
   cpf: string | null;
   status: ClientStatus;
   createdAt: string;
@@ -44,6 +45,7 @@ export function ClientsTable({
         <thead>
           <tr className="border-b border-border bg-aco-50 dark:bg-grafite-800">
             <th className="px-4 py-3 font-medium text-muted">COD</th>
+            <th className="px-4 py-3 font-medium text-muted">Tese</th>
             <th className="px-4 py-3 font-medium text-muted">Nome</th>
             <th className="px-4 py-3 font-medium text-muted">CPF</th>
             <th className="px-4 py-3 font-medium text-muted">Status</th>
@@ -56,6 +58,7 @@ export function ClientsTable({
           {clients.map((client) => (
             <tr key={client.id} className="border-b border-border last:border-0">
               <td className="px-4 py-3 text-muted">{client.cod ?? "—"}</td>
+              <td className="px-4 py-3 text-muted">{client.tese ?? "—"}</td>
               <td className="px-4 py-3 font-medium">{client.name}</td>
               <td className="px-4 py-3 text-muted">{client.cpf ?? "—"}</td>
               <td className="px-4 py-3">

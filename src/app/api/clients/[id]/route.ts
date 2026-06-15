@@ -3,30 +3,13 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import {
   assertCategoryPermission,
-  getReadableCategoryIds,
   PermissionDeniedError,
 } from "@/lib/permissions";
+import { clientListInclude } from "@/lib/client-query";
+import { getClientIfAllowed } from "@/lib/client-access";
+import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientUpdateSchema } from "@/lib/extract-types";
 import { formatClientForApi } from "@/lib/client-fields";
-
-const clientInclude = {
-  categories: { include: { category: { select: { id: true, name: true } } } },
-} as const;
-
-import type { SessionUser } from "@/lib/auth";
-
-async function getClientIfAllowed(id: string, user: SessionUser) {
-  const readableIds = await getReadableCategoryIds(user);
-
-  return prisma.client.findFirst({
-    where: {
-      id,
-      categories: { some: { categoryId: { in: readableIds } } },
-    },
-    include: clientInclude,
-  });
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -72,11 +55,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const { categoryId: newCategoryId, ...data } = parsed.data;
+    const { categoryId: newCategoryId, teseId, tese, ...data } = parsed.data;
+    const teseData = await resolveTeseForClient({ teseId, tese });
 
     await prisma.client.update({
       where: { id },
-      data,
+      data: { ...data, ...teseData },
     });
 
     if (newCategoryId && newCategoryId !== categoryId) {
@@ -89,7 +73,7 @@ export async function PATCH(
 
     const refreshed = await prisma.client.findUnique({
       where: { id },
-      include: clientInclude,
+      include: clientListInclude,
     });
 
     return NextResponse.json({ client: formatClientForApi(refreshed!) });

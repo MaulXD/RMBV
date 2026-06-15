@@ -29,7 +29,18 @@ model User {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  clientsCreated Client[] @relation("CreatedBy")
+  clientsCreated       Client[]           @relation("CreatedBy")
+  documentsUploaded    ClientDocument[]   @relation("DocumentsUploaded")
+}
+
+model Tese {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  clients   Client[]
 }
 
 model Category {
@@ -56,6 +67,8 @@ model Permission {
 model Client {
   id             String           @id @default(uuid())
   cod            String?
+  teseId         String?
+  teseRef        Tese?            @relation(fields: [teseId], references: [id], onDelete: SetNull)
   tese           String?
   name           String
   cpf            String?
@@ -82,6 +95,22 @@ model Client {
   createdById    String
   createdBy      User             @relation("CreatedBy", fields: [createdById], references: [id])
   categories     ClientCategory[]
+  documents      ClientDocument[]
+}
+
+model ClientDocument {
+  id           String   @id @default(uuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  storedName   String
+  originalName String
+  mimeType     String
+  size         Int
+  uploadedById String
+  uploadedBy   User     @relation("DocumentsUploaded", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([clientId])
 }
 
 model ClientCategory {

@@ -3,46 +3,35 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import {
   assertCategoryPermission,
-  getReadableCategoryIds,
   PermissionDeniedError,
 } from "@/lib/permissions";
+import { buildClientWhere, clientListInclude } from "@/lib/client-query";
+import { resolveTeseForClient } from "@/lib/tese-sync";
 import { extractionResultSchema } from "@/lib/extract-types";
 import { formatClientForApi } from "@/lib/client-fields";
 import { z } from "zod";
 
 const createClientSchema = extractionResultSchema.extend({
   categoryId: z.string().uuid(),
+  teseId: z.string().uuid().optional().nullable(),
   status: z
     .enum(["AGUARDANDO", "LOCALIZADO", "SEM_SUCESSO", "TENTE_NOVAMENTE"])
     .optional(),
+  rawExtractText: z.string().optional().nullable(),
 });
-
-const clientInclude = {
-  categories: { include: { category: { select: { id: true, name: true } } } },
-} as const;
 
 export async function GET(request: Request) {
   return withAuth(async (user) => {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const teseId = searchParams.get("teseId");
 
-    const readableIds = await getReadableCategoryIds(user);
+    const where = await buildClientWhere(user, { status, teseId });
 
     const clients = await prisma.client.findMany({
-      where: {
-        categories: { some: { categoryId: { in: readableIds } } },
-        ...(status
-          ? {
-              status: status as
-                | "AGUARDANDO"
-                | "LOCALIZADO"
-                | "SEM_SUCESSO"
-                | "TENTE_NOVAMENTE",
-            }
-          : {}),
-      },
+      where,
       orderBy: { updatedAt: "desc" },
-      include: clientInclude,
+      include: clientListInclude,
     });
 
     const rows = clients.map((client) => {
@@ -69,7 +58,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { categoryId, status, ...data } = parsed.data;
+    const { categoryId, status, rawExtractText, teseId, tese, ...data } = parsed.data;
 
     try {
       await assertCategoryPermission(user, categoryId, "canCreate");
@@ -80,14 +69,18 @@ export async function POST(request: Request) {
       throw err;
     }
 
+    const teseData = await resolveTeseForClient({ teseId, tese });
+
     const client = await prisma.client.create({
       data: {
         ...data,
+        ...teseData,
         status: status ?? "AGUARDANDO",
+        rawExtractText: rawExtractText ?? null,
         createdById: user.id,
         categories: { create: [{ categoryId }] },
       },
-      include: clientInclude,
+      include: clientListInclude,
     });
 
     return NextResponse.json({ client: formatClientForApi(client) }, { status: 201 });

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
 type Stats = {
@@ -9,27 +10,41 @@ type Stats = {
   byStatus: { status: string; label: string; count: number }[];
 };
 
-export default function ReportsPage() {
+function ReportsContent() {
+  const { activeTeseId, activeTese } = useTeseFilter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
 
-  useEffect(() => {
-    fetch("/api/reports/stats")
+  const loadStats = useCallback(() => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (activeTeseId) params.set("teseId", activeTeseId);
+    const qs = params.toString() ? `?${params}` : "";
+    fetch(`/api/reports/stats${qs}`)
       .then((r) => r.json())
       .then((d) => setStats(d));
-  }, []);
+  }, [statusFilter, activeTeseId]);
 
-  function handleExport() {
-    const qs = statusFilter ? `?status=${statusFilter}` : "";
-    window.location.href = `/api/reports/export${qs}`;
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  function exportUrl(format: "csv" | "pdf") {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (activeTeseId) params.set("teseId", activeTeseId);
+    const qs = params.toString() ? `?${params}` : "";
+    return format === "csv" ? `/api/reports/export${qs}` : `/api/reports/pdf${qs}`;
   }
 
   return (
-    <AppShell>
+    <>
       <div className="mb-6">
         <h1 className="text-xl font-semibold tracking-wide">Relatórios</h1>
         <p className="mt-1 text-sm text-muted">
-          Resumo por status e exportação CSV no formato do modelo
+          {activeTese
+            ? `Dados filtrados pela tese: ${activeTese.name}`
+            : "Resumo geral — use os botões de tese acima para filtrar"}
         </p>
       </div>
 
@@ -51,7 +66,7 @@ export default function ReportsPage() {
       <section className="industrial-panel max-w-lg space-y-4 p-6">
         <h2 className="text-sm font-medium">Exportar dados</h2>
         <p className="text-xs text-muted">
-          Gera CSV com COD, TESE, NOME, CPF, telefones, endereços e STATUS.
+          Exportações respeitam a tese ativa e o filtro de status abaixo.
         </p>
 
         <div>
@@ -70,10 +85,23 @@ export default function ReportsPage() {
           </select>
         </div>
 
-        <button type="button" className="btn-primary" onClick={handleExport}>
-          Baixar CSV
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <a href={exportUrl("csv")} className="btn-ghost">
+            Baixar CSV
+          </a>
+          <a href={exportUrl("pdf")} className="btn-primary" target="_blank" rel="noreferrer">
+            Relatório PDF
+          </a>
+        </div>
       </section>
+    </>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <AppShell>
+      <ReportsContent />
     </AppShell>
   );
 }

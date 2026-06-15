@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gestão Industrial",
-  description: "Sistema de gestão de clientes com RBAC e extração inteligente",
+  title: "RMBV System",
+  description: "RMBV System — gestão de clientes com RBAC, teses, documentação e relatórios",
 };
 
 const themeInitScript = `

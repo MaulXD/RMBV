@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
 import { parseClientsCsv } from "@/lib/csv-import";
+import { resolveTeseForClient } from "@/lib/tese-sync";
 
 export async function POST(request: Request) {
   return withAuth(async (user) => {
@@ -39,9 +40,12 @@ export async function POST(request: Request) {
 
     let imported = 0;
     for (const row of rows) {
+      const { tese, ...rest } = row;
+      const teseData = await resolveTeseForClient({ tese });
       await prisma.client.create({
         data: {
-          ...row,
+          ...rest,
+          ...teseData,
           status: "AGUARDANDO",
           createdById: user.id,
           categories: { create: [{ categoryId }] },

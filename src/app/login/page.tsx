@@ -40,8 +40,8 @@ export default function LoginPage() {
         className="industrial-panel w-full max-w-md space-y-4 p-8"
       >
         <div>
-          <h1 className="text-lg font-semibold tracking-wide">Acesso ao sistema</h1>
-          <p className="mt-1 text-sm text-muted">Entre com suas credenciais</p>
+          <h1 className="text-lg font-semibold tracking-wide">RMBV System</h1>
+          <p className="mt-1 text-sm text-muted">Entre com suas credenciais de acesso</p>
         </div>
 
         <div>
