@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { usesBlobStorage } from "@/lib/document-storage";
 import { isOpenAiConfigured } from "@/lib/openai-env";
+import { resolveDatabaseUrl } from "@/lib/database-url";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const dbUrlRaw = process.env.DATABASE_URL;
-  const dbUrl = dbUrlRaw?.trim() ?? "";
+  const dbUrlRaw = resolveDatabaseUrl();
+  const dbUrl = dbUrlRaw ?? "";
   const checks: Record<string, string> = {
     JWT_SECRET: process.env.JWT_SECRET ? "ok" : "missing",
-    DATABASE_URL: dbUrlRaw === undefined
+    DATABASE_URL: !dbUrlRaw
       ? "missing"
       : !dbUrl
         ? "empty — reconecte Neon ou cole URL no painel"

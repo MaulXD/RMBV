@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "env:setup-local": "node scripts/setup-local-env.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

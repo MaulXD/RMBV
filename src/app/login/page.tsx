@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
@@ -10,6 +10,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [setupHint, setSetupHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) return;
+        const db = data.checks?.DATABASE_URL;
+        const jwt = data.checks?.JWT_SECRET;
+        if (db && db !== "ok") {
+          setSetupHint(
+            "Banco local não configurado. Cole DATABASE_URL do Neon/Vercel em `.env.local`, defina JWT_SECRET e reinicie `npm run dev`."
+          );
+        } else if (jwt === "missing") {
+          setSetupHint(
+            "JWT_SECRET ausente no `.env.local`. Gere uma string longa (32+ caracteres) e reinicie `npm run dev`."
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +46,9 @@ export default function LoginPage() {
       if (!res.ok) {
         const hint =
           res.status === 503
-            ? "\n\nDica: em produção configure DATABASE_URL (PostgreSQL) e JWT_SECRET, depois rode o seed."
+            ? process.env.NODE_ENV === "development"
+              ? "\n\nDica local: `npx vercel env pull .env.local` e reinicie `npm run dev`."
+              : "\n\nDica: configure DATABASE_URL (PostgreSQL) e JWT_SECRET na Vercel e rode o seed."
             : "";
         throw new Error((data.error ?? "Falha no login") + hint);
       }
@@ -49,6 +72,8 @@ export default function LoginPage() {
           <h1 className="text-lg font-semibold tracking-wide">RMBV System</h1>
           <p className="mt-1 text-sm text-muted">Entre com suas credenciais de acesso</p>
         </div>
+
+        {setupHint && <p className="alert alert-warn">{setupHint}</p>}
 
         <div>
           <label className="mb-1 block text-xs text-muted">Login</label>

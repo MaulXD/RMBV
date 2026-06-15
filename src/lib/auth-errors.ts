@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { hasDatabaseUrl } from "./database-url";
 
 export function getAuthErrorMessage(err: unknown): { message: string; status: number } {
   if (err instanceof Prisma.PrismaClientInitializationError) {
@@ -25,7 +26,10 @@ export function getAuthErrorMessage(err: unknown): { message: string; status: nu
     }
     return {
       status: 503,
-      message: "Não foi possível conectar ao banco de dados. Verifique DATABASE_URL.",
+      message:
+        process.env.NODE_ENV === "production"
+          ? "Não foi possível conectar ao banco de dados. Verifique DATABASE_URL na Vercel."
+          : "Não foi possível conectar ao banco. No PC: rode `npx vercel env pull .env.local` e reinicie `npm run dev`.",
     };
   }
 
@@ -52,7 +56,7 @@ export function assertAuthEnv() {
   if (!process.env.JWT_SECRET?.trim()) {
     throw new Error("JWT_SECRET não configurado");
   }
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!hasDatabaseUrl()) {
     throw new Error("DATABASE_URL não configurado");
   }
 }
