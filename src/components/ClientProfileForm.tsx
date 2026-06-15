@@ -90,7 +90,7 @@ export function ClientProfileForm({
 
   return (
     <div className="space-y-6">
-      <section className="industrial-panel space-y-4 p-4">
+      <section className="industrial-panel space-y-4 p-4 sm:p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <TeseSelect
             value={teseId}
@@ -146,18 +146,27 @@ export function ClientProfileForm({
           }}
           phoneActionsDisabled={phoneActionsDisabled}
         />
+
+        {!readOnly && (
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border/60 pt-4">
+            {error && <p className="alert alert-error mr-auto min-w-0 flex-1">{error}</p>}
+            {message && !error && (
+              <p className="alert alert-success mr-auto min-w-0 flex-1">{message}</p>
+            )}
+            <button
+              type="button"
+              className="btn-primary shrink-0"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? "Salvando..." : "Salvar alterações"}
+            </button>
+          </div>
+        )}
       </section>
 
-      {!readOnly && (
-        <div className="flex justify-end">
-          <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Salvando..." : "Salvar alterações"}
-          </button>
-        </div>
-      )}
-
-      {error && <p className="alert alert-error">{error}</p>}
-      {message && <p className="alert alert-success">{message}</p>}
+      {readOnly && error && <p className="alert alert-error">{error}</p>}
+      {readOnly && message && <p className="alert alert-success">{message}</p>}
     </div>
   );
 }

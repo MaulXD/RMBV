@@ -355,30 +355,35 @@ export function ClientResearchParser({
   }
 
   return (
-    <div className="space-y-4 border-t border-border/50 pt-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="btn-primary" disabled={disabled || !text.trim()} onClick={analyze}>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <button
+          type="button"
+          className="btn-primary w-full sm:w-auto"
+          disabled={disabled || !text.trim()}
+          onClick={analyze}
+        >
           <Icon name="fileText" className="h-4 w-4" />
           Extrair telefones e endereços
         </button>
         {parsed && (
-          <span className="text-xs text-muted">
+          <span className="text-center text-xs text-muted sm:text-right">
             {parsed.phones.length} telefone(s) · {parsed.addresses.length} endereço(s)
           </span>
         )}
       </div>
 
       {parsed && filtered && (
-        <>
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-4 border-t border-border/50 pt-5">
+          <div className="flex flex-wrap gap-1.5">
             {(["todos", "cliente", "autor", "outros"] as const).map((key) => (
               <button
                 key={key}
                 type="button"
-                className={`rounded-[var(--radius-ui)] border px-3 py-1.5 text-xs transition-colors ${
+                className={`rounded-[var(--radius-ui)] px-3 py-1.5 text-xs font-medium transition-colors ${
                   filter === key
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted hover:text-foreground"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-elevated text-muted hover:text-foreground"
                 }`}
                 onClick={() => setFilter(key)}
               >
@@ -391,10 +396,10 @@ export function ClientResearchParser({
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="inline-flex rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-1">
             <button
               type="button"
-              className={`rounded-[var(--radius-ui)] px-3 py-1.5 text-xs ${
+              className={`rounded-[8px] px-4 py-1.5 text-xs font-medium ${
                 tab === "phones" ? "bg-primary/15 text-primary" : "text-muted"
               }`}
               onClick={() => setTab("phones")}
@@ -403,7 +408,7 @@ export function ClientResearchParser({
             </button>
             <button
               type="button"
-              className={`rounded-[var(--radius-ui)] px-3 py-1.5 text-xs ${
+              className={`rounded-[8px] px-4 py-1.5 text-xs font-medium ${
                 tab === "addresses" ? "bg-primary/15 text-primary" : "text-muted"
               }`}
               onClick={() => setTab("addresses")}
@@ -424,7 +429,7 @@ export function ClientResearchParser({
             onApplyAddress={onApplyAddress}
             onPhoneCheckRecorded={onPhoneCheckRecorded}
           />
-        </>
+        </div>
       )}
     </div>
   );

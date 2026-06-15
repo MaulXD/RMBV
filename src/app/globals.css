@@ -224,4 +224,27 @@
   .dark .btn-icon-active-warn {
     color: #fbbf24;
   }
+
+  .pesquisa-textarea {
+    @apply w-full resize-y rounded-[var(--radius-ui)] border px-4 py-3 font-mono text-sm leading-relaxed text-foreground outline-none transition-[border-color,box-shadow];
+    min-height: 280px;
+    max-height: 520px;
+    border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
+    background: color-mix(in srgb, var(--color-surface-elevated) 95%, #000000);
+  }
+
+  .dark .pesquisa-textarea {
+    background: color-mix(in srgb, #000000 40%, var(--color-surface-elevated));
+  }
+
+  .pesquisa-textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  .pesquisa-textarea:disabled,
+  .pesquisa-textarea:read-only {
+    opacity: 0.85;
+    cursor: default;
+  }
 }

@@ -31,40 +31,50 @@ export function ClientPesquisaSection({
   saving?: boolean;
 }) {
   return (
-    <section className="industrial-panel space-y-4 p-4">
-      <div>
-        <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Pesquisa</h3>
-        <p className="mt-1 text-sm text-muted">
-          Cole aqui os textos de consultas, processos e cadastros para extrair telefones e endereços.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <section className="industrial-panel p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Pesquisa</h3>
+            <p className="mt-1 max-w-2xl text-sm text-muted">
+              Cole textos de consultas, processos e cadastros. O conteúdo é salvo neste cliente.
+            </p>
+          </div>
+          {!readOnly && (
+            <span className="shrink-0 text-xs text-muted">
+              {saving ? "Salvando..." : "Salvo automaticamente"}
+            </span>
+          )}
+        </div>
 
-      <textarea
-        className="industrial-input min-h-[220px] w-full resize-y font-mono text-sm"
-        placeholder="Cole o resultado da pesquisa neste cliente..."
-        value={value}
-        readOnly={readOnly}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      />
-
-      {saving && (
-        <p className="text-xs text-muted">Salvando pesquisa...</p>
-      )}
+        <textarea
+          className="pesquisa-textarea"
+          placeholder="Cole o resultado da pesquisa neste cliente..."
+          value={value}
+          readOnly={readOnly}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </section>
 
       {!readOnly && (
-        <ClientResearchParser
-          text={value}
-          formValues={formValues}
-          clientId={clientId}
-          latestPhoneChecks={latestPhoneChecks}
-          onApplyPhone={onApplyPhone}
-          onApplyAddress={onApplyAddress}
-          onPhoneCheckRecorded={onPhoneCheckRecorded}
-          disabled={disabled}
-        />
+        <section className="industrial-panel p-4 sm:p-5">
+          <h4 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+            Extração
+          </h4>
+          <ClientResearchParser
+            text={value}
+            formValues={formValues}
+            clientId={clientId}
+            latestPhoneChecks={latestPhoneChecks}
+            onApplyPhone={onApplyPhone}
+            onApplyAddress={onApplyAddress}
+            onPhoneCheckRecorded={onPhoneCheckRecorded}
+            disabled={disabled}
+          />
+        </section>
       )}
-    </section>
+    </div>
   );
 }
 

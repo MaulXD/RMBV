@@ -99,7 +99,7 @@ export default function ClientDetailPage() {
   const canRequest = client.workflowStatus === "EM_ANDAMENTO";
 
   const perfilContent = (
-    <>
+    <div className="flex flex-col gap-6">
       {editMode && !isFinalized ? (
         <ClientProfileForm
           key={client.updatedAt}
@@ -122,15 +122,18 @@ export default function ClientDetailPage() {
           phoneActionsDisabled={isFinalized}
         />
       )}
-      <ClientPesquisaSectionConnected
-        client={client}
-        disabled={isFinalized}
-        latestPhoneChecks={latestPhoneChecks}
-        onUpdated={setClient}
-        onPhoneCheckRecorded={refreshHistory}
-      />
       <ClientDocuments clientId={client.id} isAdmin={isAdmin} />
-    </>
+    </div>
+  );
+
+  const pesquisaContent = (
+    <ClientPesquisaSectionConnected
+      client={client}
+      disabled={isFinalized}
+      latestPhoneChecks={latestPhoneChecks}
+      onUpdated={setClient}
+      onPhoneCheckRecorded={refreshHistory}
+    />
   );
 
   return (
@@ -165,6 +168,7 @@ export default function ClientDetailPage() {
 
         <ClientProfileTabs
           perfil={perfilContent}
+          pesquisa={pesquisaContent}
           historico={
             <section className="industrial-panel p-4">
               <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
