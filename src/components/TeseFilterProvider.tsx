@@ -13,6 +13,7 @@ import {
 export type TeseItem = {
   id: string;
   name: string;
+  teamId?: string | null;
   color: string | null;
   sortOrder: number;
   _count?: { clients: number };

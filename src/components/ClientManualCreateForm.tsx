@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   STATUS_OPTIONS,
@@ -15,18 +15,58 @@ import { SelectField } from "./ui/SelectField";
 import { Icon } from "./ui/Icon";
 
 type Category = { id: string; name: string };
+type TeamOption = { id: string; name: string };
 
 export function ClientManualCreateForm({ categories }: { categories: Category[] }) {
   const router = useRouter();
-  const { activeTeseId } = useTeseFilter();
+  const { activeTeseId, teses } = useTeseFilter();
   const [form, setForm] = useState<ClientFormValues>(createEmptyClientForm);
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [teseId, setTeseId] = useState(activeTeseId ?? "");
+  const [teamId, setTeamId] = useState("");
+  const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        const admin = d.user?.role === "ADMIN";
+        setIsAdmin(admin);
+        if (admin) {
+          return fetch("/api/teams")
+            .then((r) => r.json())
+            .then((data) => {
+              const list = (data.teams ?? []).map((t: TeamOption) => ({
+                id: t.id,
+                name: t.name,
+              }));
+              setTeams(list);
+              if (list[0]) setTeamId(list[0].id);
+            });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin || !teseId) return;
+    const tese = teses.find((t) => t.id === teseId);
+    if (tese?.teamId) setTeamId(tese.teamId);
+  }, [isAdmin, teseId, teses]);
+
   function setField(key: ClientFormFieldKey, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleTeamChange(nextTeamId: string) {
+    setTeamId(nextTeamId);
+    const current = teses.find((t) => t.id === teseId);
+    if (current?.teamId && current.teamId !== nextTeamId) {
+      setTeseId("");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,6 +77,10 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
     }
     if (!categoryId) {
       setError("Selecione uma categoria.");
+      return;
+    }
+    if (isAdmin && !teamId) {
+      setError("Selecione a equipe.");
       return;
     }
 
@@ -50,6 +94,7 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         body: JSON.stringify({
           ...formValuesToCreatePayload(form, { teseId: teseId || null }),
           categoryId,
+          ...(isAdmin && teamId ? { teamId } : {}),
         }),
       });
       const data = await res.json();
@@ -66,7 +111,29 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="industrial-panel space-y-4 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <TeseSelect value={teseId} onChange={setTeseId} />
+          {isAdmin && (
+            <SelectField
+              label="Equipe *"
+              value={teamId}
+              onChange={handleTeamChange}
+              required
+            >
+              {teams.length === 0 ? (
+                <option value="">Nenhuma equipe — crie em Administração</option>
+              ) : (
+                teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))
+              )}
+            </SelectField>
+          )}
+          <TeseSelect
+            value={teseId}
+            onChange={setTeseId}
+            teamIdFilter={isAdmin && teamId ? teamId : undefined}
+          />
           <SelectField label="Categoria *" value={categoryId} onChange={setCategoryId} required>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -99,7 +166,7 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         <button type="button" className="btn-ghost" onClick={() => router.push("/dashboard")}>
           Cancelar
         </button>
-        <button type="submit" className="btn-primary" disabled={saving}>
+        <button type="submit" className="btn-primary" disabled={saving || (isAdmin && teams.length === 0)}>
           <Icon name="userPlus" className="h-4 w-4" />
           {saving ? "Cadastrando..." : "Cadastrar cliente"}
         </button>
