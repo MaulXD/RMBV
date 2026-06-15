@@ -62,7 +62,7 @@ export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
                 </button>
               ))
             )}
-            <Link href="/admin#teses" className="btn-ghost text-xs">
+            <Link href="/equipe#teses" className="btn-ghost text-xs">
               Gerenciar teses
             </Link>
           </div>

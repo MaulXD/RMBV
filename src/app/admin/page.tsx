@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { CSV_HEADERS } from "@/lib/client-fields";
 import { TeseManager } from "@/components/TeseManager";
+import { TeamAdminPanel } from "@/components/TeamAdminPanel";
 
 type Category = { id: string; name: string };
 
@@ -13,6 +14,8 @@ export default function AdminPage() {
   const [user, setUser] = useState<{ role: string } | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -35,6 +38,13 @@ export default function AdminPage() {
         setCategories(cats);
         if (cats[0]) setCategoryId(cats[0].id);
       });
+    fetch("/api/teams")
+      .then((r) => r.json())
+      .then((d) => {
+        const list = d.teams ?? [];
+        setTeams(list);
+        if (list[0]) setTeamId(list[0].id);
+      });
   }, [router]);
 
   async function handleUpload(e: React.FormEvent) {
@@ -48,6 +58,7 @@ export default function AdminPage() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("categoryId", categoryId);
+    formData.append("teamId", teamId);
 
     try {
       const res = await fetch("/api/admin/import-csv", {
@@ -98,6 +109,22 @@ export default function AdminPage() {
 
         <form onSubmit={handleUpload} className="space-y-4">
           <div>
+            <label className="mb-1 block text-xs text-muted">Equipe dos importados</label>
+            <select
+              className="industrial-input"
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              required
+            >
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="mb-1 block text-xs text-muted">Categoria dos importados</label>
             <select
               className="industrial-input"
@@ -133,8 +160,8 @@ export default function AdminPage() {
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </section>
 
-      <div className="mt-8">
-        <TeseManager />
+      <div className="mt-8 space-y-8">
+        <TeamAdminPanel />
       </div>
     </AppShell>
   );

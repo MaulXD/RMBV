@@ -12,6 +12,8 @@ type SessionUser = {
   email: string;
   name: string;
   role: "ADMIN" | "ADV" | "GERENTE" | "COLABORADOR";
+  teamId: string | null;
+  teamName: string | null;
 };
 
 const baseNav = [
@@ -115,6 +117,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const nav = [
     ...baseNav,
+    ...(user?.role && user.role !== "ADMIN"
+      ? [{ href: "/equipe", label: "Minha equipe" }]
+      : []),
     ...(user?.role === "ADMIN" ? [{ href: "/admin", label: "Administração" }] : []),
   ];
 
@@ -139,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   RMBV
                 </span>
                 <span className="truncate text-sm font-semibold text-foreground">
-                  {user?.name ?? "Sistema"}
+                  {user?.teamName ?? user?.name ?? "Sistema"}
                 </span>
               </Link>
 

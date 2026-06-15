@@ -89,7 +89,16 @@ export default function ClientDetailPage() {
   }
 
   const isFinalized = client.workflowStatus === "FINALIZADO";
-  const canFinalize = userRole ? canFinalizeClients({ id: "", email: "", name: "", role: userRole }) : false;
+  const canFinalize = userRole
+    ? canFinalizeClients({
+        id: "",
+        email: "",
+        name: "",
+        role: userRole,
+        teamId: null,
+        teamName: null,
+      })
+    : false;
   const canRequest = client.workflowStatus === "EM_ANDAMENTO";
 
   const perfilContent = (

@@ -12,7 +12,7 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { name: adminName, passwordHash },
+    update: { name: adminName, passwordHash, teamId: null },
     create: {
       name: adminName,
       email: adminEmail,
@@ -20,6 +20,22 @@ async function main() {
       role: Role.ADMIN,
       isActive: true,
     },
+  });
+
+  const defaultTeam = await prisma.team.upsert({
+    where: { name: "Equipe Padrão" },
+    update: { isActive: true },
+    create: { name: "Equipe Padrão" },
+  });
+
+  await prisma.client.updateMany({
+    where: { teamId: null },
+    data: { teamId: defaultTeam.id },
+  });
+
+  await prisma.tese.updateMany({
+    where: { teamId: null },
+    data: { teamId: defaultTeam.id },
   });
 
   const categories = [
@@ -123,11 +139,19 @@ async function main() {
   ];
 
   for (const t of defaultTeses) {
-    await prisma.tese.upsert({
-      where: { name: t.name },
-      update: { color: t.color, sortOrder: t.sortOrder },
-      create: t,
+    const existing = await prisma.tese.findFirst({
+      where: { name: t.name, teamId: defaultTeam.id },
     });
+    if (existing) {
+      await prisma.tese.update({
+        where: { id: existing.id },
+        data: { color: t.color, sortOrder: t.sortOrder, teamId: defaultTeam.id },
+      });
+    } else {
+      await prisma.tese.create({
+        data: { ...t, teamId: defaultTeam.id },
+      });
+    }
   }
 
   const clients = await prisma.client.findMany({
@@ -149,31 +173,39 @@ async function main() {
   const advPassword = await bcrypt.hash(process.env.ADV_PASSWORD ?? "Adv@123", 12);
   const adv = await prisma.user.upsert({
     where: { email: process.env.ADV_EMAIL ?? "adv@sistema.local" },
-    update: { role: Role.ADV },
+    update: { role: Role.ADV, teamId: defaultTeam.id },
     create: {
       name: process.env.ADV_NAME ?? "ADV",
       email: process.env.ADV_EMAIL ?? "adv@sistema.local",
       passwordHash: advPassword,
       role: Role.ADV,
+      teamId: defaultTeam.id,
       isActive: true,
     },
+  });
+
+  await prisma.team.update({
+    where: { id: defaultTeam.id },
+    data: { ownerId: adv.id },
   });
 
   const gerentePassword = await bcrypt.hash(process.env.GERENTE_PASSWORD ?? "Gerente@123", 12);
   const gerente = await prisma.user.upsert({
     where: { email: process.env.GERENTE_EMAIL ?? "gerente@sistema.local" },
-    update: { role: Role.GERENTE },
+    update: { role: Role.GERENTE, teamId: defaultTeam.id },
     create: {
       name: process.env.GERENTE_NAME ?? "Gerente",
       email: process.env.GERENTE_EMAIL ?? "gerente@sistema.local",
       passwordHash: gerentePassword,
       role: Role.GERENTE,
+      teamId: defaultTeam.id,
       isActive: true,
     },
   });
 
   console.log(`Seed concluído.
   Admin: ${admin.email}
+  Equipe padrão: ${defaultTeam.name}
   ADV: ${adv.email}
   Gerente: ${gerente.email}`);
 }

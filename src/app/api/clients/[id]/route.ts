@@ -73,7 +73,11 @@ export async function PATCH(
       status: newStatus,
       ...data
     } = parsed.data;
-    const teseData = await resolveTeseForClient({ teseId, tese });
+    const teseData = await resolveTeseForClient({
+      teseId,
+      tese,
+      teamId: existing.teamId ?? user.teamId,
+    });
 
     const statusChanging =
       newStatus !== undefined && newStatus !== existing.status;

@@ -1,0 +1,178 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { ROLE_LABELS } from "@/lib/roles";
+
+type Member = {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADV" | "GERENTE" | "COLABORADOR" | "ADMIN";
+  createdAt: string;
+};
+
+type TeamInfo = {
+  id: string;
+  name: string;
+  owner: { id: string; name: string; email: string } | null;
+};
+
+export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
+  const [team, setTeam] = useState<TeamInfo | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"GERENTE" | "COLABORADOR">("COLABORADOR");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/teams/members");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao carregar equipe");
+      setTeam(data.team);
+      setMembers(data.members ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/teams/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao cadastrar");
+      setName("");
+      setEmail("");
+      setPassword("");
+      const roleKey = data.member.role as keyof typeof ROLE_LABELS;
+      setMessage(`${ROLE_LABELS[roleKey]} cadastrado.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <p className="text-sm text-muted">Carregando equipe...</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {team && (
+        <section className="industrial-panel p-4">
+          <h2 className="text-lg font-semibold">{team.name}</h2>
+          {team.owner && (
+            <p className="mt-1 text-sm text-muted">
+              ADV responsável: {team.owner.name} ({team.owner.email})
+            </p>
+          )}
+        </section>
+      )}
+
+      <section className="industrial-panel p-4">
+        <h3 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+          Membros da equipe
+        </h3>
+        {members.length === 0 ? (
+          <p className="text-sm text-muted">Nenhum membro.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {members.map((m) => (
+              <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <div>
+                  <p className="font-medium">{m.name}</p>
+                  <p className="text-xs text-muted">{m.email}</p>
+                </div>
+                <span className="rounded-[var(--radius-ui)] border border-border px-2 py-0.5 text-xs">
+                  {ROLE_LABELS[m.role]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {canInvite && (
+        <section className="industrial-panel space-y-4 p-4">
+          <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">
+            Cadastrar gerente ou colaborador
+          </h3>
+          <form onSubmit={handleCreate} className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Nome</label>
+              <input
+                className="industrial-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Email (login)</label>
+              <input
+                type="email"
+                className="industrial-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Senha inicial</label>
+              <input
+                type="password"
+                className="industrial-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={6}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Papel</label>
+              <select
+                className="industrial-input"
+                value={role}
+                onChange={(e) => setRole(e.target.value as "GERENTE" | "COLABORADOR")}
+              >
+                <option value="GERENTE">Gerente</option>
+                <option value="COLABORADOR">Colaborador</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2 flex justify-end">
+              <button type="submit" className="btn-primary" disabled={saving}>
+                {saving ? "Cadastrando..." : "Adicionar à equipe"}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {error && <p className="alert alert-error">{error}</p>}
+      {message && <p className="alert alert-success">{message}</p>}
+    </div>
+  );
+}
