@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ROLE_LABELS } from "@/lib/roles";
+import { SelectField } from "./ui/SelectField";
+import { Icon } from "./ui/Icon";
 
 type Member = {
   id: string;
@@ -151,19 +153,17 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
                 required
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Papel</label>
-              <select
-                className="industrial-input"
-                value={role}
-                onChange={(e) => setRole(e.target.value as "GERENTE" | "COLABORADOR")}
-              >
-                <option value="GERENTE">Gerente</option>
-                <option value="COLABORADOR">Colaborador</option>
-              </select>
-            </div>
+            <SelectField
+              label="Papel"
+              value={role}
+              onChange={(v) => setRole(v as "GERENTE" | "COLABORADOR")}
+            >
+              <option value="GERENTE">Gerente</option>
+              <option value="COLABORADOR">Colaborador</option>
+            </SelectField>
             <div className="sm:col-span-2 flex justify-end">
               <button type="submit" className="btn-primary" disabled={saving}>
+                <Icon name="userPlus" className="h-4 w-4" />
                 {saving ? "Cadastrando..." : "Adicionar à equipe"}
               </button>
             </div>

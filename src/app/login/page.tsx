@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Icon } from "@/components/ui/Icon";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,9 +69,14 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="industrial-panel w-full max-w-md space-y-4 p-8"
       >
-        <div>
-          <h1 className="text-lg font-semibold tracking-wide">RMBV System</h1>
-          <p className="mt-1 text-sm text-muted">Entre com suas credenciais de acesso</p>
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-primary/15 text-primary">
+            <Icon name="fileText" className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-lg font-semibold tracking-wide">RMBV System</h1>
+            <p className="text-sm text-muted">Entre com suas credenciais de acesso</p>
+          </div>
         </div>
 
         {setupHint && <p className="alert alert-warn">{setupHint}</p>}
@@ -101,6 +107,7 @@ export default function LoginPage() {
         {error && <p className="alert alert-error">{error}</p>}
 
         <button type="submit" className="btn-primary w-full" disabled={loading}>
+          <Icon name="logIn" className="h-4 w-4" />
           {loading ? "Entrando..." : "Entrar"}
         </button>
       </form>

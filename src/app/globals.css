@@ -63,27 +63,29 @@
   --color-ambar-900: #78350f;
   --color-ambar-950: #451a03;
 
-  --color-surface: #e8eaed;
-  --color-surface-elevated: #f3f4f6;
-  --color-foreground: var(--color-grafite-800);
-  --color-muted: var(--color-titanio-600);
-  --color-border: #c8cdd4;
-  --color-primary: var(--color-ambar-600);
-  --color-primary-foreground: var(--color-grafite-950);
-  --color-accent: var(--color-ambar-700);
+  /* Modo claro — neutro suave, sem brilho forte */
+  --color-surface: #eeeff1;
+  --color-surface-elevated: #f7f7f8;
+  --color-foreground: #2c2d31;
+  --color-muted: #64676e;
+  --color-border: #d8dbe0;
+  --color-primary: #c98a0a;
+  --color-primary-foreground: #1c1917;
+  --color-accent: #b45309;
 
   --radius-ui: 10px;
 }
 
 .dark {
-  --color-surface: var(--color-grafite-950);
-  --color-surface-elevated: var(--color-grafite-900);
-  --color-foreground: var(--color-platina-100);
-  --color-muted: var(--color-titanio-400);
-  --color-border: var(--color-grafite-700);
-  --color-primary: var(--color-ambar-500);
-  --color-primary-foreground: var(--color-grafite-950);
-  --color-accent: var(--color-ambar-400);
+  /* Modo escuro — cinza azulado, menos “preto puro” */
+  --color-surface: #16171a;
+  --color-surface-elevated: #1f2126;
+  --color-foreground: #e8eaed;
+  --color-muted: #9aa0a8;
+  --color-border: #2e3238;
+  --color-primary: #e5a020;
+  --color-primary-foreground: #1a1508;
+  --color-accent: #f0b429;
 }
 
 @layer base {
@@ -99,31 +101,35 @@
     @apply bg-surface text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  select {
+    @apply cursor-pointer;
+  }
 }
 
 @layer utilities {
   .industrial-panel {
-    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated shadow-sm dark:shadow-sm;
+    @apply rounded-[var(--radius-ui)] border border-border bg-surface-elevated shadow-sm;
   }
 
   .industrial-input {
-    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ambar-200/80 dark:bg-grafite-900 dark:focus:ring-ambar-900/40;
+    @apply w-full rounded-[var(--radius-ui)] border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-ambar-200/50 dark:bg-[#25272c] dark:focus:ring-ambar-500/25;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors duration-150 dark:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors duration-150;
   }
 
   .btn-primary:hover {
-    @apply border-accent bg-accent text-primary-foreground;
+    @apply border-accent bg-accent;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-ui)] border border-border bg-transparent px-3 py-2.5 text-sm text-foreground transition-colors hover:border-accent hover:text-accent;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border border-border bg-surface-elevated/60 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-accent/60 hover:bg-surface-elevated;
   }
 
   .terminal-textarea {
-    @apply min-h-[320px] w-full resize-y rounded-[var(--radius-ui)] border border-border bg-surface p-4 font-mono text-sm leading-relaxed text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-ambar-200 dark:bg-grafite-950 dark:text-platina-100 dark:focus:ring-ambar-900/40;
+    @apply min-h-[280px] w-full resize-y rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-4 font-mono text-sm leading-relaxed text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-ambar-200/50 dark:bg-[#1c1e22] dark:focus:ring-ambar-500/25;
   }
 
   .alert {
@@ -131,14 +137,18 @@
   }
 
   .alert-error {
-    @apply border-red-600/40 bg-red-600/10 text-red-700 dark:text-red-300;
+    @apply border-red-500/30 bg-red-500/8 text-red-800 dark:text-red-300;
   }
 
   .alert-success {
-    @apply border-emerald-600/40 bg-emerald-600/10 text-emerald-800 dark:text-emerald-200;
+    @apply border-emerald-500/30 bg-emerald-500/8 text-emerald-900 dark:text-emerald-200;
   }
 
   .alert-warn {
-    @apply border-amber-600/40 bg-amber-600/10 text-amber-800 dark:text-amber-200;
+    @apply border-amber-500/30 bg-amber-500/8 text-amber-900 dark:text-amber-200;
+  }
+
+  .nav-link-active {
+    @apply bg-ambar-100/90 font-medium text-ambar-900 dark:bg-ambar-950/50 dark:text-ambar-100;
   }
 }

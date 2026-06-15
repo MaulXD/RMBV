@@ -8,12 +8,41 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const createTeamSchema = z.object({
-  name: z.string().min(2).max(120),
-  ownerName: z.string().min(2).optional(),
-  ownerEmail: z.string().email().optional(),
-  ownerPassword: z.string().min(6).optional(),
-});
+const createTeamSchema = z
+  .object({
+    name: z.string().min(2, "Nome da equipe muito curto").max(120),
+    ownerName: z.string().optional(),
+    ownerEmail: z.string().optional(),
+    ownerPassword: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasAny = !!(data.ownerName?.trim() || data.ownerEmail?.trim() || data.ownerPassword);
+    const hasAll = !!(data.ownerName?.trim() && data.ownerEmail?.trim() && data.ownerPassword);
+    if (hasAny && !hasAll) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para criar o ADV, preencha nome, email e senha.",
+        path: ["ownerEmail"],
+      });
+    }
+    if (data.ownerEmail && !z.string().email().safeParse(data.ownerEmail).success) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Email do ADV inválido", path: ["ownerEmail"] });
+    }
+    if (data.ownerPassword && data.ownerPassword.length < 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Senha do ADV: mínimo 6 caracteres",
+        path: ["ownerPassword"],
+      });
+    }
+    if (data.ownerName && data.ownerName.trim().length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Nome do ADV muito curto",
+        path: ["ownerName"],
+      });
+    }
+  });
 
 export async function GET() {
   return withAuth(async (user) => {
@@ -53,7 +82,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = createTeamSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+      return NextResponse.json(
+        { error: parsed.error.errors[0]?.message ?? "Dados inválidos" },
+        { status: 400 }
+      );
     }
 
     const { name, ownerName, ownerEmail, ownerPassword } = parsed.data;
@@ -92,8 +124,22 @@ export async function POST(request: Request) {
       });
 
       return NextResponse.json({ team }, { status: 201 });
-    } catch {
-      return NextResponse.json({ error: "Equipe já existe ou email do ADV em uso" }, { status: 409 });
+    } catch (err) {
+      console.error("[teams POST]", err);
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("Team") || msg.includes("team")) {
+        return NextResponse.json(
+          {
+            error:
+              "Tabela de equipes não existe no banco. Rode deploy com db push + seed ou contate suporte.",
+          },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Equipe já existe ou email do ADV em uso" },
+        { status: 409 }
+      );
     }
   });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "./ui/Icon";
 
 export function CopyButton({
   value,
@@ -30,11 +31,17 @@ export function CopyButton({
       onClick={handleCopy}
       disabled={!value.trim()}
       className={`btn-ghost shrink-0 disabled:opacity-40 ${
-        compact ? "h-8 min-w-8 px-2 py-1 text-[11px]" : "px-2 py-2 text-xs"
+        compact ? "h-8 min-w-8 px-2 py-1" : "px-2.5 py-2"
       }`}
       title={label}
+      aria-label={label}
     >
-      {copied ? "✓" : compact ? "⧉" : "Copiar"}
+      {copied ? (
+        <Icon name="check" className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <Icon name="copy" className="h-4 w-4" />
+      )}
+      {!compact && <span className="text-xs">{copied ? "Copiado" : "Copiar"}</span>}
     </button>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTeseFilter } from "./TeseFilterProvider";
+import { Icon } from "./ui/Icon";
 
 export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
   showPdfButton?: boolean;
@@ -62,12 +63,14 @@ export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
                 </button>
               ))
             )}
-            <Link href="/equipe#teses" className="btn-ghost text-xs">
+            <Link href="/equipe#teses" className="btn-ghost gap-1.5 text-xs">
+              <Icon name="briefcase" className="h-3.5 w-3.5" />
               Gerenciar teses
             </Link>
           </div>
           {showPdfButton && (
-            <a href={pdfUrl()} className="btn-primary text-xs" target="_blank" rel="noreferrer">
+            <a href={pdfUrl()} className="btn-primary gap-1.5 text-xs" target="_blank" rel="noreferrer">
+              <Icon name="fileDown" className="h-3.5 w-3.5" />
               Relatório PDF
               {activeTese ? ` — ${activeTese.name}` : ""}
             </a>
