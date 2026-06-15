@@ -30,9 +30,11 @@ export function CopyButton({
       type="button"
       onClick={handleCopy}
       disabled={!value.trim()}
-      className={`btn-ghost shrink-0 disabled:opacity-40 ${
-        compact ? "h-8 min-w-8 px-2 py-1" : "px-2.5 py-2"
-      }`}
+      className={
+        compact
+          ? "btn-icon disabled:cursor-not-allowed"
+          : "btn-ghost shrink-0 disabled:opacity-40 px-2.5 py-2"
+      }
       title={label}
       aria-label={label}
     >

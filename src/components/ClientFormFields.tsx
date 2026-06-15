@@ -113,7 +113,7 @@ export function ClientFormFields({
             const label = `TELEFONE ${index + 1}`;
 
             return (
-              <div key={key} className="rounded-[var(--radius-ui)] border border-border/60 bg-surface/50 p-3">
+              <div key={key} className="field-card">
                 <label className="mb-1.5 block text-xs text-muted">{label}</label>
                 <input
                   className="industrial-input"
@@ -122,7 +122,7 @@ export function ClientFormFields({
                   onChange={(e) => onChange(key as ClientFormFieldKey, e.target.value)}
                   placeholder="(00) 00000-0000"
                 />
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <div className="action-toolbar">
                   <CopyButton value={value} label={`Copiar ${label}`} compact />
                   {clientId && (
                     <PhoneCheckButtons

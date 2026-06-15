@@ -80,13 +80,10 @@ export function ClientProfileView({
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {filledPhones.map((phone) => (
-              <div
-                key={phone.key}
-                className="rounded-[var(--radius-ui)] border border-border/60 bg-surface/50 p-3"
-              >
+              <div key={phone.key} className="field-card">
                 <p className="text-xs text-muted">{phone.label}</p>
                 <p className="mt-1 text-sm font-medium break-words">{phone.value}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <div className="action-toolbar">
                   <CopyButton value={phone.value} label={`Copiar ${phone.label}`} compact />
                   <PhoneCheckButtons
                     clientId={client.id}

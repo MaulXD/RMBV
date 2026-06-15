@@ -67,19 +67,19 @@ const OPTIONS: {
   {
     result: "VALIDO",
     label: "Número válido",
-    activeClass: "border-emerald-600 bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+    activeClass: "btn-icon-active-valid",
     Icon: CheckIcon,
   },
   {
     result: "INVALIDO",
     label: "Número inválido",
-    activeClass: "border-red-600 bg-red-600/15 text-red-700 dark:text-red-400",
+    activeClass: "btn-icon-active-invalid",
     Icon: InvalidIcon,
   },
   {
     result: "NAO_ATENDE",
     label: "Ninguém atende",
-    activeClass: "border-amber-600 bg-amber-600/15 text-amber-700 dark:text-amber-400",
+    activeClass: "btn-icon-active-warn",
     Icon: NoAnswerIcon,
   },
 ];
@@ -125,9 +125,9 @@ export function PhoneCheckButtons({
   const noNumber = !phoneValue.trim();
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-0.5">
+    <div className="flex shrink-0 flex-col items-start gap-1">
       {error && (
-        <span className="max-w-[12rem] text-right text-[10px] text-red-600 dark:text-red-400">
+        <span className="max-w-[12rem] text-[10px] text-red-600 dark:text-red-400">
           {error}
         </span>
       )}

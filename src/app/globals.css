@@ -168,4 +168,60 @@
     color: var(--color-primary);
     border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
   }
+
+  .field-card {
+    @apply rounded-[var(--radius-ui)] p-3;
+    border: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+    background: color-mix(in srgb, var(--color-surface-elevated) 96%, #ffffff);
+  }
+
+  .dark .field-card {
+    background: color-mix(in srgb, var(--color-surface-elevated) 88%, #000000);
+    border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
+  }
+
+  .action-toolbar {
+    @apply mt-3 flex flex-wrap items-center gap-1 rounded-[10px] p-1;
+    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+    background: color-mix(in srgb, var(--color-border) 10%, var(--color-surface-elevated));
+  }
+
+  .dark .action-toolbar {
+    background: color-mix(in srgb, #000000 35%, var(--color-surface-elevated));
+    border-color: color-mix(in srgb, var(--color-border) 55%, transparent);
+  }
+
+  .btn-icon {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border-0 transition-colors duration-150;
+    background: transparent;
+    color: var(--color-muted);
+  }
+
+  .btn-icon:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    color: var(--color-foreground);
+  }
+
+  .btn-icon:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  .btn-icon-active-valid {
+    background: color-mix(in srgb, var(--color-success) 18%, transparent);
+    color: var(--color-success);
+  }
+
+  .btn-icon-active-invalid {
+    background: color-mix(in srgb, var(--color-danger) 18%, transparent);
+    color: var(--color-danger);
+  }
+
+  .btn-icon-active-warn {
+    background: color-mix(in srgb, #d97706 18%, transparent);
+    color: #d97706;
+  }
+
+  .dark .btn-icon-active-warn {
+    color: #fbbf24;
+  }
 }

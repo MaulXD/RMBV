@@ -99,7 +99,7 @@ function PhoneRow({
   }
 
   return (
-    <div className="rounded-[var(--radius-ui)] border border-border/70 bg-white/50 p-3 dark:bg-white/5">
+    <div className="field-card">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold tracking-wide">{phone.value}</p>
@@ -143,9 +143,9 @@ function PhoneRow({
       </div>
 
       {clientId && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border/50 pt-2">
-          <span className="text-[10px] font-semibold tracking-widest text-muted uppercase">
-            Marcar verificação
+        <div className="action-toolbar">
+          <span className="px-1 text-[10px] font-semibold tracking-widest text-muted uppercase">
+            Verificar
           </span>
           {assignedSlot ? (
             <PhoneCheckButtons
@@ -222,7 +222,7 @@ function AddressRow({
   const nextSlot = nextEmptyAddressSlot(formValues);
 
   return (
-    <div className="rounded-[var(--radius-ui)] border border-border/70 bg-white/50 p-3 dark:bg-white/5">
+    <div className="field-card">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="min-w-0 flex-1 text-sm break-words">{address.value}</p>
         <CategoryBadge category={address.category} />
