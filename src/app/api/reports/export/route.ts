@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     });
 
     const exportRows = clients.map((c) => clientToExportRow(formatClientForApi(c)));
-    const csv = clientsToCsv(exportRows);
+    const csv = `\uFEFF${clientsToCsv(exportRows)}`;
 
     return new NextResponse(csv, {
       headers: {

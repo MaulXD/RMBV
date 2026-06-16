@@ -10,6 +10,8 @@ import { getClientIfAllowed } from "@/lib/client-access";
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientUpdateSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
+import { findClientDuplicates } from "@/lib/client-duplicates";
+import { teamScopeWhere } from "@/lib/team-access";
 import type { ClientStatus } from "@prisma/client";
 export const runtime = "nodejs";
 
@@ -78,6 +80,25 @@ export async function PATCH(
       tese,
       teamId: existing.teamId ?? user.teamId,
     });
+
+    const nextCpf = data.cpf !== undefined ? data.cpf : existing.cpf;
+    const nextTeseId =
+      teseData.teseId !== undefined ? teseData.teseId : existing.teseId;
+    const dupes = await findClientDuplicates({
+      cpf: nextCpf,
+      teseId: nextTeseId,
+      excludeClientId: id,
+      teamScope: teamScopeWhere(user),
+    });
+    if (dupes.sameAction.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Já existe outro cliente com este CPF nesta mesma ação (tese).",
+          duplicates: dupes,
+        },
+        { status: 409 }
+      );
+    }
 
     const statusChanging =
       newStatus !== undefined && newStatus !== existing.status;

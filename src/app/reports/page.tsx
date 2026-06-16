@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { ReportsGoalsPanel } from "@/components/ReportsGoalsPanel";
+import { ReportsTimelineChart } from "@/components/ReportsTimelineChart";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
@@ -9,6 +11,16 @@ type Stats = {
   total: number;
   byStatus: { status: string; label: string; count: number }[];
 };
+
+type TimelinePoint = {
+  monthKey: string;
+  label: string;
+  created: number;
+  finalized: number;
+  localized: number;
+};
+
+type Member = { id: string; name: string; role: string };
 
 const METRIC_STYLES: Record<
   string,
@@ -44,7 +56,63 @@ const METRIC_STYLES: Record<
 function ReportsContent() {
   const { activeTeseId, activeTese } = useTeseFilter();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [teamId, setTeamId] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState("");
+
+  const isAdmin = userRole === "ADMIN";
+  const canManageGoals = userRole === "ADMIN" || userRole === "ADV" || userRole === "GERENTE";
+  const effectiveTeamId = teamId;
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        setUserRole(d.user?.role ?? null);
+        if (d.user?.teamId) setTeamId(d.user.teamId);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/teams")
+      .then((r) => r.json())
+      .then((d) => {
+        const list = (d.teams ?? []).map((t: { id: string; name: string }) => ({
+          id: t.id,
+          name: t.name,
+        }));
+        setTeams(list);
+        if (list[0] && !teamId) setTeamId(list[0].id);
+      });
+  }, [isAdmin, teamId]);
+
+  const loadMembers = useCallback(async () => {
+    if (!effectiveTeamId) return;
+    if (isAdmin) {
+      const res = await fetch(`/api/admin/users?teamId=${effectiveTeamId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setMembers(
+          (data.users ?? []).map((u: Member) => ({
+            id: u.id,
+            name: u.name,
+            role: u.role,
+          }))
+        );
+      }
+      return;
+    }
+    const res = await fetch("/api/teams/members");
+    const data = await res.json();
+    if (res.ok) {
+      setMembers(data.members ?? []);
+    }
+  }, [effectiveTeamId, isAdmin]);
 
   const loadStats = useCallback(() => {
     const params = new URLSearchParams();
@@ -56,15 +124,35 @@ function ReportsContent() {
       .then((d) => setStats(d));
   }, [statusFilter, activeTeseId]);
 
+  const loadTimeline = useCallback(() => {
+    const params = new URLSearchParams({ months: "12" });
+    if (activeTeseId) params.set("teseId", activeTeseId);
+    if (isAdmin && teamId) params.set("teamId", teamId);
+    if (assigneeFilter) params.set("assigneeId", assigneeFilter);
+    fetch(`/api/reports/timeline?${params}`)
+      .then((r) => r.json())
+      .then((d) => setTimeline(d.timeline ?? []));
+  }, [activeTeseId, isAdmin, teamId, assigneeFilter]);
+
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
-  function exportUrl(format: "csv" | "pdf") {
+  useEffect(() => {
+    loadTimeline();
+  }, [loadTimeline]);
+
+  useEffect(() => {
+    void loadMembers();
+  }, [loadMembers]);
+
+  function exportUrl(kind: "clients" | "tasks", format: "csv" | "pdf") {
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
     if (activeTeseId) params.set("teseId", activeTeseId);
+    if (isAdmin && teamId) params.set("teamId", teamId);
     const qs = params.toString() ? `?${params}` : "";
+    if (kind === "tasks") return `/api/reports/export-tasks${qs}`;
     return format === "csv" ? `/api/reports/export${qs}` : `/api/reports/pdf${qs}`;
   }
 
@@ -81,10 +169,62 @@ function ReportsContent() {
         </p>
       </div>
 
+      {(isAdmin || members.length > 0) && (
+        <section className="panel-solid mb-6 flex flex-wrap items-end gap-3 p-4">
+          {isAdmin && teams.length > 0 && (
+            <div className="min-w-[180px]">
+              <label className="mb-1 block text-xs text-muted">Equipe</label>
+              <select
+                className="industrial-input"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+              >
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="min-w-[180px]">
+            <label className="mb-1 block text-xs text-muted">Filtrar por membro</label>
+            <select
+              className="industrial-input"
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+      )}
+
+      {timeline.length > 0 && (
+        <div className="mb-6">
+          <ReportsTimelineChart timeline={timeline} />
+        </div>
+      )}
+
+      {effectiveTeamId && (
+        <div className="mb-6">
+          <ReportsGoalsPanel
+            teamId={effectiveTeamId}
+            canManage={canManageGoals}
+            members={members}
+          />
+        </div>
+      )}
+
       {stats && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <div
-            className={`industrial-panel flex flex-col gap-2 p-5 ${
+            className={`panel-solid flex flex-col gap-2 p-5 ${
               METRIC_STYLES.total.accentBorder
                 ? "border-primary/30 bg-gradient-to-br from-surface-elevated to-primary/5"
                 : ""
@@ -102,7 +242,7 @@ function ReportsContent() {
             const style = METRIC_STYLES[item.status] ?? METRIC_STYLES.AGUARDANDO;
             const pct = total > 0 ? (item.count / total) * 100 : 0;
             return (
-              <div key={item.status} className="industrial-panel flex flex-col gap-2 p-5">
+              <div key={item.status} className="panel-solid flex flex-col gap-2 p-5">
                 <span className="text-[11px] font-semibold tracking-widest text-muted uppercase">
                   {item.label}
                 </span>
@@ -121,10 +261,10 @@ function ReportsContent() {
         </div>
       )}
 
-      <section className="industrial-panel max-w-lg space-y-4 p-5">
+      <section className="panel-solid max-w-lg space-y-4 p-5">
         <h2 className="font-semibold text-foreground">Exportar dados</h2>
         <p className="text-sm text-muted">
-          Exportações respeitam a tese ativa e o filtro de status abaixo.
+          Exportações respeitam a tese ativa, equipe e filtros abaixo. CSV abre no Excel.
         </p>
 
         <div>
@@ -144,10 +284,13 @@ function ReportsContent() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <a href={exportUrl("csv")} className="btn-ghost">
-            Baixar CSV
+          <a href={exportUrl("clients", "csv")} className="btn-ghost">
+            Clientes (Excel/CSV)
           </a>
-          <a href={exportUrl("pdf")} className="btn-primary" target="_blank" rel="noreferrer">
+          <a href={exportUrl("tasks", "csv")} className="btn-ghost">
+            Tarefas (Excel/CSV)
+          </a>
+          <a href={exportUrl("clients", "pdf")} className="btn-primary" target="_blank" rel="noreferrer">
             Relatório PDF
           </a>
         </div>

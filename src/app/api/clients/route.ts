@@ -14,6 +14,8 @@ import {
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientDataSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
+import { findClientDuplicates } from "@/lib/client-duplicates";
+import { teamScopeWhere } from "@/lib/team-access";
 import { isAdminUser, resolveTeamIdForCreate, TeamAccessError } from "@/lib/team-access";
 import { z } from "zod";
 
@@ -124,6 +126,21 @@ export async function POST(request: Request) {
 
     const teseData = await resolveTeseForClient({ teseId, tese, teamId });
 
+    const dupes = await findClientDuplicates({
+      cpf: data.cpf,
+      teseId: teseData.teseId ?? teseId,
+      teamScope: teamScopeWhere(user),
+    });
+    if (dupes.sameAction.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Já existe um cliente com este CPF nesta mesma ação (tese).",
+          duplicates: dupes,
+        },
+        { status: 409 }
+      );
+    }
+
     const client = await prisma.client.create({
       data: {
         ...data,
@@ -137,6 +154,12 @@ export async function POST(request: Request) {
       include: clientListInclude,
     });
 
-    return NextResponse.json({ client: formatClientForApi(client) }, { status: 201 });
+    return NextResponse.json(
+      {
+        client: formatClientForApi(client),
+        otherActions: dupes.otherActions,
+      },
+      { status: 201 }
+    );
   });
 }

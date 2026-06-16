@@ -11,6 +11,8 @@ import { ClientDocuments } from "@/components/ClientDocuments";
 import { ClientFinalizationPanel } from "@/components/ClientFinalizationPanel";
 import { ClientProfileTabs } from "@/components/ClientProfileTabs";
 import { ClientHistoryTimeline } from "@/components/ClientHistoryTimeline";
+import { ClientHistoryComposer } from "@/components/ClientHistoryComposer";
+import { ClientDuplicateBanner } from "@/components/ClientDuplicateBanner";
 import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSection";
 import { ClientExtractionReview } from "@/components/ClientExtractionReview";
 import { ClientTasksSection } from "@/components/ClientTasksSection";
@@ -196,12 +198,25 @@ export default function ClientDetailPage() {
           pesquisa={pesquisaContent}
           revisao={revisaoContent}
           historico={
-            <section className="industrial-panel p-4">
-              <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
-                Linha do tempo
-              </h2>
-              <ClientHistoryTimeline clientId={client.id} refreshKey={historyRefreshKey} />
-            </section>
+            <div className="space-y-4">
+              <ClientDuplicateBanner
+                clientId={client.id}
+                cpf={client.cpf}
+                teseId={client.teseId}
+              />
+              <ClientHistoryComposer
+                clientId={client.id}
+                teamId={client.teamId}
+                disabled={isFinalized}
+                onSaved={refreshHistory}
+              />
+              <section className="panel-solid p-4">
+                <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+                  Linha do tempo
+                </h2>
+                <ClientHistoryTimeline clientId={client.id} refreshKey={historyRefreshKey} />
+              </section>
+            </div>
           }
           tarefas={<ClientTasksSection client={client} />}
         />

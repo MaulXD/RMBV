@@ -14,6 +14,7 @@ import { useTeseFilter } from "./TeseFilterProvider";
 import { SelectField } from "./ui/SelectField";
 import { Icon } from "./ui/Icon";
 import { ClientPesquisaSection } from "./ClientPesquisaSection";
+import { ClientDuplicateBanner } from "./ClientDuplicateBanner";
 import { buildExtractionApplyPlan, toClientSnapshot } from "@/lib/extraction-proposal";
 
 type Category = { id: string; name: string };
@@ -164,6 +165,8 @@ export function ClientManualCreateForm({ categories }: { categories: Category[] 
         </div>
 
         <ClientFormFields values={form} onChange={setField} requiredName />
+
+        <ClientDuplicateBanner cpf={form.cpf} teseId={teseId || null} />
       </section>
 
       <ClientPesquisaSection

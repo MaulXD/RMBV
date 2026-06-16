@@ -5,6 +5,7 @@ import type { PhoneCheckResult } from "@prisma/client";
 import {
   historyEntryTitle,
   PHONE_CHECK_LABELS,
+  communicationTypeLabel,
   statusLabel,
   type ClientHistoryEntry,
 } from "@/lib/client-history";
@@ -73,7 +74,7 @@ export function ClientHistoryTimeline({
   if (entries.length === 0) {
     return (
       <p className="text-sm text-muted">
-        Nenhum registro ainda. Mudanças de status e verificações de telefone aparecem aqui.
+        Nenhum registro ainda. Comunicações, mudanças de status e verificações de telefone aparecem aqui.
       </p>
     );
   }
@@ -98,14 +99,15 @@ export function ClientHistoryTimeline({
                 </div>
               </div>
 
-              <article className="industrial-panel min-w-0 flex-1 overflow-hidden p-0">
+              <article className="panel-solid min-w-0 flex-1 overflow-hidden p-0">
                 <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/10 px-3 py-2">
                   <div>
                     <p className="text-sm font-medium">{entry.createdBy.name}</p>
                     <p className="text-xs text-muted">{formatWhen(entry.createdAt)}</p>
                   </div>
                   <span className="text-xs font-semibold tracking-wide text-muted uppercase">
-                    {entry.type === "STATUS_CHANGE" ? "Status" : "Telefone"}
+                    {communicationTypeLabel(entry.type) ??
+                      (entry.type === "STATUS_CHANGE" ? "Status" : "Telefone")}
                   </span>
                 </header>
 

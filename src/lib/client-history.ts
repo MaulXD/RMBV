@@ -11,6 +11,19 @@ export const PHONE_CHECK_LABELS: Record<PhoneCheckResult, string> = {
   NAO_ATENDE: "Ninguém atende",
 };
 
+export const COMMUNICATION_LABELS: Record<"CALL" | "WHATSAPP" | "NOTE", string> = {
+  CALL: "Ligação",
+  WHATSAPP: "WhatsApp",
+  NOTE: "Nota livre",
+};
+
+export function communicationTypeLabel(type: ClientHistoryType): string | null {
+  if (type === "CALL" || type === "WHATSAPP" || type === "NOTE") {
+    return COMMUNICATION_LABELS[type];
+  }
+  return null;
+}
+
 export const PHONE_KEY_REGEX = /^phone(10|[1-9])$/;
 
 export function isPhoneFieldKey(key: string): boolean {
@@ -74,6 +87,8 @@ export function latestPhoneChecksFromHistory(
 }
 
 export function historyEntryTitle(entry: ClientHistoryEntry): string {
+  const comm = communicationTypeLabel(entry.type);
+  if (comm) return comm;
   if (entry.type === "STATUS_CHANGE" && entry.toStatus) {
     const from = entry.fromStatus ? statusLabel(entry.fromStatus) : "—";
     const to = statusLabel(entry.toStatus);
