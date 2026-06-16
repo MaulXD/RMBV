@@ -29,14 +29,17 @@ const baseNav: NavItem[] = [
 function NavLinks({
   nav,
   pathname,
+  kanbanOverdueCount,
 }: {
   nav: NavItem[];
   pathname: string;
+  kanbanOverdueCount: number;
 }) {
   return (
     <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {nav.map((item) => {
         const active = pathname.startsWith(item.href);
+        const showOverdueBadge = item.href === "/kanban" && kanbanOverdueCount > 0;
         return (
           <Link
             key={item.href}
@@ -49,6 +52,14 @@ function NavLinks({
           >
             <Icon name={item.icon} className="h-4 w-4" />
             <span className="whitespace-nowrap">{item.label}</span>
+            {showOverdueBadge && (
+              <span
+                className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                title={`${kanbanOverdueCount} tarefa(s) atrasada(s)`}
+              >
+                {kanbanOverdueCount > 99 ? "99+" : kanbanOverdueCount}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -60,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
 
   const showTesePdf =
     pathname.startsWith("/dashboard") ||
@@ -72,6 +84,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then((d) => setUser(d.user ?? null))
       .catch(() => setUser(null));
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setKanbanOverdueCount(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAlerts = () => {
+      fetch("/api/tasks/alerts")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled) setKanbanOverdueCount(d.counts?.overdue ?? 0);
+        })
+        .catch(() => {
+          if (!cancelled) setKanbanOverdueCount(0);
+        });
+    };
+
+    loadAlerts();
+    const interval = setInterval(loadAlerts, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [user, pathname]);
 
   const nav: NavItem[] = [
     ...baseNav,
@@ -121,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <NavLinks nav={nav} pathname={pathname} />
+            <NavLinks nav={nav} pathname={pathname} kanbanOverdueCount={kanbanOverdueCount} />
           </div>
         </header>
 

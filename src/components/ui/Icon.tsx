@@ -21,6 +21,7 @@ import {
   LogIn,
   FileDown,
   Search,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +48,7 @@ const icons = {
   logIn: LogIn,
   fileDown: FileDown,
   search: Search,
+  alert: AlertTriangle,
 } as const;
 
 export type IconName = keyof typeof icons;

@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import type { SessionUser } from "@/lib/auth";
-import { isAdminUser } from "@/lib/team-access";
-import { assertColumnBelongsToTeam } from "@/lib/kanban-columns";
+import { getTaskIfAllowed } from "@/lib/task-access";
+import { assertColumnBelongsToTeam, getKanbanColumnsForTeam } from "@/lib/kanban-columns";
+import { recordTaskFieldChanges } from "@/lib/task-history";
 import { formatTaskForApi, taskListInclude } from "@/lib/task-query";
 
 export const runtime = "nodejs";
@@ -19,16 +19,29 @@ const updateTaskSchema = z.object({
   sortOrder: z.number().int().min(0).optional(),
 });
 
-async function getTaskIfAllowed(id: string, user: SessionUser) {
-  const task = await prisma.task.findUnique({
-    where: { id },
-    include: taskListInclude,
-  });
-  if (!task) return null;
-  if (!isAdminUser(user) && task.teamId !== user.teamId) {
-    return null;
-  }
-  return task;
+async function buildNameMaps(teamId: string, clientIds: string[], assigneeIds: string[]) {
+  const columns = await getKanbanColumnsForTeam(teamId);
+  const columnNames = new Map(columns.map((c) => [c.id, c.name]));
+
+  const assignees =
+    assigneeIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: assigneeIds }, teamId },
+          select: { id: true, name: true },
+        })
+      : [];
+  const assigneeNames = new Map(assignees.map((u) => [u.id, u.name]));
+
+  const clients =
+    clientIds.length > 0
+      ? await prisma.client.findMany({
+          where: { id: { in: clientIds }, teamId },
+          select: { id: true, name: true },
+        })
+      : [];
+  const clientNames = new Map(clients.map((c) => [c.id, c.name]));
+
+  return { columnNames, assigneeNames, clientNames };
 }
 
 export async function PATCH(
@@ -87,22 +100,68 @@ export async function PATCH(
       sortOrder = (maxSort._max.sortOrder ?? -1) + 1;
     }
 
-    const task = await prisma.task.update({
-      where: { id },
-      data: {
-        ...(parsed.data.title !== undefined ? { title: parsed.data.title.trim() } : {}),
-        ...(parsed.data.description !== undefined
-          ? { description: parsed.data.description?.trim() || null }
-          : {}),
-        ...(parsed.data.columnId !== undefined ? { columnId: parsed.data.columnId } : {}),
-        ...(parsed.data.dueAt !== undefined
-          ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
-          : {}),
-        ...(parsed.data.clientId !== undefined ? { clientId: parsed.data.clientId } : {}),
-        ...(parsed.data.assigneeId !== undefined ? { assigneeId: parsed.data.assigneeId } : {}),
-        ...(sortOrder !== undefined ? { sortOrder } : {}),
-      },
-      include: taskListInclude,
+    const nextDueAt =
+      parsed.data.dueAt !== undefined
+        ? parsed.data.dueAt
+          ? new Date(parsed.data.dueAt)
+          : null
+        : existing.dueAt;
+
+    const afterSnapshot = {
+      title: parsed.data.title !== undefined ? parsed.data.title.trim() : existing.title,
+      columnId: nextColumnId,
+      assigneeId:
+        parsed.data.assigneeId !== undefined ? parsed.data.assigneeId : existing.assigneeId,
+      clientId: parsed.data.clientId !== undefined ? parsed.data.clientId : existing.clientId,
+      dueAt: nextDueAt,
+    };
+
+    const beforeSnapshot = {
+      title: existing.title,
+      columnId: existing.columnId,
+      assigneeId: existing.assigneeId,
+      clientId: existing.clientId,
+      dueAt: existing.dueAt,
+    };
+
+    const clientIds = [beforeSnapshot.clientId, afterSnapshot.clientId].filter(Boolean) as string[];
+    const assigneeIds = [beforeSnapshot.assigneeId, afterSnapshot.assigneeId].filter(
+      Boolean
+    ) as string[];
+    const { columnNames, assigneeNames, clientNames } = await buildNameMaps(
+      existing.teamId,
+      clientIds,
+      assigneeIds
+    );
+
+    const task = await prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: {
+          ...(parsed.data.title !== undefined ? { title: parsed.data.title.trim() } : {}),
+          ...(parsed.data.description !== undefined
+            ? { description: parsed.data.description?.trim() || null }
+            : {}),
+          ...(parsed.data.columnId !== undefined ? { columnId: parsed.data.columnId } : {}),
+          ...(parsed.data.dueAt !== undefined ? { dueAt: nextDueAt } : {}),
+          ...(parsed.data.clientId !== undefined ? { clientId: parsed.data.clientId } : {}),
+          ...(parsed.data.assigneeId !== undefined ? { assigneeId: parsed.data.assigneeId } : {}),
+          ...(sortOrder !== undefined ? { sortOrder } : {}),
+        },
+        include: taskListInclude,
+      });
+
+      await recordTaskFieldChanges(tx, {
+        taskId: id,
+        createdById: user.id,
+        before: beforeSnapshot,
+        after: afterSnapshot,
+        columnNames,
+        assigneeNames,
+        clientNames,
+      });
+
+      return updated;
     });
 
     return NextResponse.json({ task: formatTaskForApi(task) });
