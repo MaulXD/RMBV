@@ -136,7 +136,7 @@ export function KanbanBoard({
         return (
           <section
             key={column.id}
-            className={`industrial-panel flex min-h-[320px] w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-t-2 p-0 ${
+            className={`panel-solid flex min-h-[320px] w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-t-2 p-0 ${
               topClass
             } ${isDrop ? "border-primary ring-2 ring-primary/20" : ""}`}
             style={borderStyle}

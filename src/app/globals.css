@@ -68,6 +68,12 @@
     -webkit-backdrop-filter: blur(10px);
   }
 
+  .panel-solid {
+    @apply rounded-[var(--radius-ui)] shadow-sm;
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+    background: var(--color-surface-elevated);
+  }
+
   .industrial-input {
     @apply w-full rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
     border-color: color-mix(in srgb, var(--color-border) 90%, transparent);

@@ -34,7 +34,7 @@ export function KanbanAlertsBanner({
               <li key={task.id}>
                 <button
                   type="button"
-                  className="flex w-full flex-wrap items-center justify-between gap-2 rounded-[var(--radius-ui)] border border-red-500/30 bg-surface/80 px-3 py-2 text-left text-sm transition-colors hover:bg-red-500/10"
+                  className="flex w-full flex-wrap items-center justify-between gap-2 rounded-[var(--radius-ui)] border border-red-500/30 bg-surface-elevated px-3 py-2 text-left text-sm transition-colors hover:bg-red-500/10"
                   onClick={() => onOpenTask(task)}
                 >
                   <span className="font-medium">{task.title}</span>
@@ -61,7 +61,7 @@ export function KanbanAlertsBanner({
               <li key={task.id}>
                 <button
                   type="button"
-                  className="flex w-full flex-wrap items-center justify-between gap-2 rounded-[var(--radius-ui)] border border-amber-500/30 bg-surface/80 px-3 py-2 text-left text-sm transition-colors hover:bg-amber-500/10"
+                  className="flex w-full flex-wrap items-center justify-between gap-2 rounded-[var(--radius-ui)] border border-amber-500/30 bg-surface-elevated px-3 py-2 text-left text-sm transition-colors hover:bg-amber-500/10"
                   onClick={() => onOpenTask(task)}
                 >
                   <span className="font-medium">{task.title}</span>
