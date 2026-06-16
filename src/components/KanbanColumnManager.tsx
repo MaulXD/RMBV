@@ -28,7 +28,7 @@ function ColumnRow({
   }, [column.name]);
 
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-[var(--radius-ui)] border border-border/60 bg-surface/50 p-3">
+    <li className="flex flex-wrap items-center gap-2 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-3">
       <input
         className="industrial-input min-w-[140px] flex-1"
         value={name}
@@ -175,7 +175,7 @@ export function KanbanColumnManager({
   }
 
   return (
-    <section className="industrial-panel space-y-4 p-4">
+    <section className="panel-solid space-y-4 p-4">
       <div>
         <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">
           Colunas do kanban

@@ -289,7 +289,7 @@ function KanbanContent() {
         </div>
       </div>
 
-      <section className="industrial-panel mb-4 flex flex-wrap items-end gap-3 p-4">
+      <section className="panel-solid mb-4 flex flex-wrap items-end gap-3 p-4">
         {isAdmin && (
           <div className="min-w-[200px] flex-1 sm:flex-none">
             <label className="mb-1 block text-xs text-muted">Equipe</label>
@@ -375,13 +375,13 @@ function KanbanContent() {
       )}
 
       {!teamId ? (
-        <div className="industrial-panel p-8 text-center text-sm text-muted">
+        <div className="panel-solid p-8 text-center text-sm text-muted">
           {isAdmin ? "Selecione uma equipe para ver o kanban." : "Você não está vinculado a uma equipe."}
         </div>
       ) : loading ? (
-        <div className="industrial-panel p-8 text-center text-sm text-muted">Carregando tarefas...</div>
+        <div className="panel-solid p-8 text-center text-sm text-muted">Carregando tarefas...</div>
       ) : columns.length === 0 ? (
-        <div className="industrial-panel p-8 text-center text-sm text-muted">Nenhuma coluna configurada.</div>
+        <div className="panel-solid p-8 text-center text-sm text-muted">Nenhuma coluna configurada.</div>
       ) : (
         <KanbanBoard
           columns={columns}

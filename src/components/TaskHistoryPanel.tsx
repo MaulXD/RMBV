@@ -67,7 +67,7 @@ export function TaskHistoryPanel({
   }
 
   return (
-    <section className="flex min-h-0 flex-col rounded-[var(--radius-ui)] border border-border/60 bg-surface/40">
+    <section className="flex min-h-0 flex-col rounded-[var(--radius-ui)] border border-border bg-surface-elevated">
       <header className="border-b border-border/60 px-4 py-3">
         <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Histórico</h3>
       </header>
@@ -100,7 +100,7 @@ export function TaskHistoryPanel({
                 className={`rounded-[var(--radius-ui)] border px-3 py-2 text-sm ${
                   entry.type === "COMMENT"
                     ? "border-primary/25 bg-primary/5"
-                    : "border-border/50 bg-surface/60"
+                    : "border-border bg-surface"
                 }`}
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">

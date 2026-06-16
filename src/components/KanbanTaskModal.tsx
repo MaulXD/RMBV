@@ -130,9 +130,9 @@ export function KanbanTaskModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
       <div
-        className={`industrial-panel max-h-[90vh] w-full overflow-y-auto p-5 ${
+        className={`panel-solid max-h-[90vh] w-full overflow-y-auto p-5 ${
           task ? "max-w-4xl" : "max-w-lg"
         }`}
       >
