@@ -8,6 +8,7 @@ import {
 import { getClientIfAllowed } from "@/lib/client-access";
 import { formatClientForApi } from "@/lib/client-fields";
 import { clientListInclude } from "@/lib/client-query";
+import { syncClientTasksOnFinalizationRequest } from "@/lib/task-finalization-sync";
 export const runtime = "nodejs";
 
 export async function POST(
@@ -56,9 +57,19 @@ export async function POST(
       include: clientListInclude,
     });
 
+    const { moved } = await syncClientTasksOnFinalizationRequest(
+      id,
+      client.teamId,
+      user.id
+    );
+
     return NextResponse.json({
       client: formatClientForApi(updated),
-      message: "Solicitação de finalização enviada.",
+      message:
+        moved > 0
+          ? `Solicitação enviada. ${moved} tarefa(s) movida(s) para Aguardando no kanban.`
+          : "Solicitação de finalização enviada.",
+      tasksMoved: moved,
     });
   });
 }
