@@ -66,10 +66,13 @@ export function ClientFormFields({
   return (
     <>
       {nonPhoneGroups.map((group) => (
-        <fieldset key={group.title} className="space-y-3">
-          <legend className="text-xs font-semibold tracking-widest text-muted uppercase">
-            {group.title}
-          </legend>
+        <fieldset key={group.title} className="space-y-4">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-[11px] font-bold tracking-[0.1em] text-primary uppercase">
+              {group.title}
+            </span>
+            <div className="h-px flex-1 bg-primary/20" />
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {group.fields.map((field) => {
               const value = String(values[field.key as ClientFormFieldKey] ?? "");
@@ -98,9 +101,12 @@ export function ClientFormFields({
 
       <fieldset className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <legend className="text-xs font-semibold tracking-widest text-muted uppercase">
-            Telefones
-          </legend>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="text-[11px] font-bold tracking-[0.1em] text-primary uppercase">
+              Telefones
+            </span>
+            <div className="h-px flex-1 bg-primary/20" />
+          </div>
           {!readOnly && phoneSlots < 10 && (
             <button type="button" className="btn-ghost text-xs" onClick={addPhoneSlot}>
               + Adicionar telefone

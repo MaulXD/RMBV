@@ -62,24 +62,31 @@ const OPTIONS: {
   result: PhoneCheckResult;
   label: string;
   activeClass: string;
+  hoverClass: string;
   Icon: () => React.JSX.Element;
 }[] = [
   {
     result: "VALIDO",
     label: "Número válido",
     activeClass: "btn-icon-active-valid",
+    hoverClass:
+      "hover:border-emerald-500/50 hover:bg-emerald-500/[0.08] hover:text-emerald-600 dark:hover:text-emerald-400",
     Icon: CheckIcon,
   },
   {
     result: "INVALIDO",
     label: "Número inválido",
     activeClass: "btn-icon-active-invalid",
+    hoverClass:
+      "hover:border-red-500/50 hover:bg-red-500/[0.08] hover:text-red-600 dark:hover:text-red-400",
     Icon: InvalidIcon,
   },
   {
     result: "NAO_ATENDE",
     label: "Ninguém atende",
     activeClass: "btn-icon-active-warn",
+    hoverClass:
+      "hover:border-amber-500/50 hover:bg-amber-500/[0.08] hover:text-amber-700 dark:hover:text-amber-400",
     Icon: NoAnswerIcon,
   },
 ];
@@ -132,13 +139,14 @@ export function PhoneCheckButtons({
         </span>
       )}
       <div className="flex gap-0.5">
-      {OPTIONS.map(({ result, label, activeClass, Icon }) => (
+      {OPTIONS.map(({ result, label, activeClass, hoverClass, Icon }) => (
         <IconTooltipButton
           key={result}
           label={label}
           disabled={disabled || noNumber || loading !== null}
           active={currentResult === result}
           activeClassName={activeClass}
+          hoverClassName={hoverClass}
           onClick={() => record(result)}
         >
           {loading === result ? (

@@ -32,7 +32,7 @@ export function CopyButton({
       disabled={!value.trim()}
       className={
         compact
-          ? "btn-icon disabled:cursor-not-allowed"
+          ? "btn-icon-bordered hover:border-cyan-500/50 hover:bg-cyan-500/[0.08] hover:text-cyan-600 dark:hover:text-cyan-400 disabled:cursor-not-allowed"
           : "btn-ghost shrink-0 disabled:opacity-40 px-2.5 py-2"
       }
       title={label}

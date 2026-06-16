@@ -6,6 +6,7 @@ export function IconTooltipButton({
   disabled,
   active,
   activeClassName,
+  hoverClassName,
   children,
 }: {
   label: string;
@@ -13,6 +14,7 @@ export function IconTooltipButton({
   disabled?: boolean;
   active?: boolean;
   activeClassName?: string;
+  hoverClassName?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -22,7 +24,7 @@ export function IconTooltipButton({
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        className={`btn-icon ${active ? activeClassName ?? "btn-icon-active-valid" : ""}`}
+        className={`btn-icon-bordered ${hoverClassName ?? ""} ${active ? activeClassName ?? "btn-icon-active-valid" : ""}`}
       >
         {children}
       </button>

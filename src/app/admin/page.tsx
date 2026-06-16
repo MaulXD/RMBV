@@ -115,16 +115,16 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-1">
+      <div className="-mb-px mb-6 flex flex-wrap gap-0 overflow-x-auto border-b border-border">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`inline-flex items-center gap-2 rounded-t-[var(--radius-ui)] px-4 py-2.5 text-sm transition-colors ${
+            className={`-mb-px inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               tab === t.id
-                ? "nav-link-active border border-b-0 border-border"
-                : "text-muted hover:text-foreground"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted hover:border-border hover:text-foreground"
             }`}
           >
             <Icon name={t.icon} className="h-4 w-4" />

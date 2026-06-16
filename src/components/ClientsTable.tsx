@@ -37,8 +37,51 @@ export function ClientsTable({
 }) {
   if (loading) {
     return (
-      <div className="industrial-panel p-8 text-center text-sm text-muted">
-        Carregando clientes...
+      <div className="industrial-panel overflow-x-auto">
+        <table className="w-full min-w-[900px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {selectable && <th className="w-10 px-3 py-2" />}
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">COD</th>
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Tese</th>
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Nome</th>
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">CPF</th>
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Status</th>
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Finalização</th>
+              <th className="px-4 py-2" colSpan={3} />
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <tr key={i} className="border-b border-border">
+                {selectable && (
+                  <td className="px-3 py-2">
+                    <div className="skeleton h-4 w-4 rounded" />
+                  </td>
+                )}
+                <td className="px-4 py-2">
+                  <div className="skeleton h-4 w-12 rounded" />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="skeleton h-4 w-16 rounded" />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="skeleton h-4 w-40 rounded" />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="skeleton h-4 w-28 rounded" />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="skeleton h-5 w-20 rounded-full" />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="skeleton h-5 w-24 rounded-full" />
+                </td>
+                <td className="px-4 py-2" colSpan={3} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -61,9 +104,9 @@ export function ClientsTable({
     <div className="industrial-panel overflow-x-auto">
       <table className="w-full min-w-[900px] text-left text-sm">
         <thead>
-          <tr className="border-b border-border bg-aco-100/80 dark:bg-grafite-800">
+          <tr className="border-b border-border bg-surface-elevated/50">
             {selectable && (
-              <th className="w-10 px-3 py-3">
+              <th className="w-10 px-3 py-2">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-border accent-primary"
@@ -73,15 +116,31 @@ export function ClientsTable({
                 />
               </th>
             )}
-            <th className="px-4 py-3 font-medium text-muted">COD</th>
-            <th className="px-4 py-3 font-medium text-muted">Tese</th>
-            <th className="px-4 py-3 font-medium text-muted">Nome</th>
-            <th className="px-4 py-3 font-medium text-muted">CPF</th>
-            <th className="px-4 py-3 font-medium text-muted">Status</th>
-            <th className="px-4 py-3 font-medium text-muted">Finalização</th>
-            <th className="px-4 py-3 font-medium text-muted">Categorias</th>
-            <th className="px-4 py-3 font-medium text-muted">Telefone</th>
-            <th className="px-4 py-3 font-medium text-muted"></th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              COD
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Tese
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Nome
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              CPF
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Status
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Finalização
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Categorias
+            </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Telefone
+            </th>
+            <th className="px-4 py-2" />
           </tr>
         </thead>
         <tbody>
@@ -90,12 +149,12 @@ export function ClientsTable({
             return (
               <tr
                 key={client.id}
-                className={`border-b border-border last:border-0 ${
+                className={`group border-b border-border transition-colors last:border-0 hover:bg-primary/[0.03] ${
                   selected ? "bg-primary/10" : ""
                 }`}
               >
                 {selectable && (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-border accent-primary"
@@ -105,17 +164,17 @@ export function ClientsTable({
                     />
                   </td>
                 )}
-                <td className="px-4 py-3 text-muted">{client.cod ?? "—"}</td>
-                <td className="px-4 py-3 text-muted">{client.tese ?? "—"}</td>
-                <td className="px-4 py-3 font-medium">{client.name}</td>
-                <td className="px-4 py-3 text-muted">{client.cpf ?? "—"}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2 text-sm text-muted">{client.cod ?? "—"}</td>
+                <td className="px-4 py-2 text-sm text-muted">{client.tese ?? "—"}</td>
+                <td className="px-4 py-2 text-sm font-semibold text-foreground">{client.name}</td>
+                <td className="px-4 py-2 text-sm text-muted">{client.cpf ?? "—"}</td>
+                <td className="px-4 py-2">
                   <StatusBadge status={client.status} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2">
                   <WorkflowBadge status={client.workflowStatus} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2">
                   <div className="flex flex-wrap gap-1">
                     {client.categories.map((cat) => (
                       <span
@@ -127,9 +186,12 @@ export function ClientsTable({
                     ))}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted">{client.primaryPhone ?? "—"}</td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/clients/${client.id}`} className="btn-ghost text-xs">
+                <td className="px-4 py-2 text-sm text-muted">{client.primaryPhone ?? "—"}</td>
+                <td className="px-4 py-2 text-right">
+                  <Link
+                    href={`/clients/${client.id}`}
+                    className="inline-flex rounded-lg border border-border px-3 py-1 text-xs text-muted opacity-0 transition-opacity hover:border-primary hover:bg-primary/[0.08] hover:text-primary group-hover:opacity-100"
+                  >
                     Abrir
                   </Link>
                 </td>
