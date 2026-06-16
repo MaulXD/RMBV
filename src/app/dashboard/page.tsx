@@ -1,14 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { ClientsTable } from "@/components/ClientsTable";
 import { ClientBulkActionsBar } from "@/components/ClientBulkActionsBar";
+import { ClientsListPagination } from "@/components/ClientsListPagination";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
+import {
+  DEFAULT_CLIENT_PAGE_SIZE,
+  type ClientPageSize,
+} from "@/lib/client-pagination";
 import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 import { WORKFLOW_OPTIONS } from "@/lib/client-fields";
+import { Icon } from "@/components/ui/Icon";
 
 type ClientRow = {
   id: string;
@@ -30,8 +36,15 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [workflowFilter, setWorkflowFilter] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<ClientPageSize>(DEFAULT_CLIENT_PAGE_SIZE);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -40,14 +53,22 @@ function DashboardContent() {
       if (statusFilter) params.set("status", statusFilter);
       if (activeTeseId) params.set("teseId", activeTeseId);
       if (workflowFilter) params.set("workflowStatus", workflowFilter);
-      const qs = params.toString() ? `?${params}` : "";
-      const res = await fetch(`/api/clients${qs}`);
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      params.set("page", String(page));
+      params.set("pageSize", String(pageSize));
+
+      const res = await fetch(`/api/clients?${params}`);
       const data = await res.json();
-      if (res.ok) setClients(data.clients ?? []);
+      if (res.ok) {
+        setClients(data.clients ?? []);
+        setTotal(data.total ?? 0);
+        setTotalPages(data.totalPages ?? 1);
+        if (data.page && data.page !== page) setPage(data.page);
+      }
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, workflowFilter, activeTeseId]);
+  }, [statusFilter, workflowFilter, activeTeseId, searchQuery, page, pageSize]);
 
   useEffect(() => {
     loadClients();
@@ -65,7 +86,22 @@ function DashboardContent() {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [activeTeseId, statusFilter, workflowFilter]);
+  }, [activeTeseId, statusFilter, workflowFilter, searchQuery, page, pageSize]);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, []);
+
+  function handleSearchChange(value: string) {
+    setSearchInput(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setSearchQuery(value);
+      setPage(1);
+    }, 400);
+  }
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -108,7 +144,10 @@ function DashboardContent() {
           <select
             className="industrial-input w-auto min-w-[180px]"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
           >
             <option value="">Todos os status</option>
             {STATUS_OPTIONS.map((s) => (
@@ -120,7 +159,10 @@ function DashboardContent() {
           <select
             className="industrial-input w-auto min-w-[200px]"
             value={workflowFilter}
-            onChange={(e) => setWorkflowFilter(e.target.value)}
+            onChange={(e) => {
+              setWorkflowFilter(e.target.value);
+              setPage(1);
+            }}
           >
             <option value="">Todas finalizações</option>
             {WORKFLOW_OPTIONS.map((s) => (
@@ -137,6 +179,30 @@ function DashboardContent() {
           </button>
         </div>
       </div>
+
+      <section className="industrial-panel mb-4 p-4">
+        <label className="block text-xs font-semibold tracking-widest text-muted uppercase">
+          Pesquisar clientes
+          {activeTese ? ` — ${activeTese.name}` : ""}
+        </label>
+        <div className="relative mt-2">
+          <Icon
+            name="search"
+            className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
+          />
+          <input
+            type="search"
+            className="industrial-input w-full pl-10"
+            placeholder="Nome, COD, CPF, telefone..."
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          Busca dentro da tese selecionada. Sem tese ativa, busca em todos os clientes visíveis.
+        </p>
+      </section>
+
       {isAdmin && (
         <ClientBulkActionsBar
           selectedCount={selectedIds.size}
@@ -150,11 +216,31 @@ function DashboardContent() {
       <ClientsTable
         clients={clients}
         loading={loading}
+        emptyMessage={
+          searchQuery.trim()
+            ? "Nenhum cliente encontrado para esta busca."
+            : "Nenhum cliente cadastrado."
+        }
         selectable={isAdmin}
         selectedIds={selectedIds}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
       />
+
+      <div className="mt-4">
+        <ClientsListPagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          totalPages={totalPages}
+          disabled={loading}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
+      </div>
     </>
   );
 }

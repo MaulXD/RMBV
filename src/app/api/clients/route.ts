@@ -6,6 +6,11 @@ import {
   PermissionDeniedError,
 } from "@/lib/permissions";
 import { buildClientWhere, clientListInclude } from "@/lib/client-query";
+import {
+  DEFAULT_CLIENT_PAGE_SIZE,
+  normalizeClientPage,
+  normalizeClientPageSize,
+} from "@/lib/client-pagination";
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientDataSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
@@ -31,16 +36,33 @@ export async function GET(request: Request) {
     const teseId = searchParams.get("teseId");
     const workflowStatus = searchParams.get("workflowStatus");
     const teamId = searchParams.get("teamId");
+    const search = searchParams.get("search");
+    const page = normalizeClientPage(searchParams.get("page"));
+    const pageSize = normalizeClientPageSize(
+      searchParams.get("pageSize") ?? DEFAULT_CLIENT_PAGE_SIZE
+    );
 
-    const where = await buildClientWhere(user, { status, teseId, workflowStatus, teamId });
+    const where = await buildClientWhere(user, {
+      status,
+      teseId,
+      workflowStatus,
+      teamId,
+      search,
+    });
+
+    const total = await prisma.client.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(page, totalPages);
 
     const clients = await prisma.client.findMany({
       where,
       orderBy: { updatedAt: "desc" },
+      skip: (safePage - 1) * pageSize,
+      take: pageSize,
       include: clientListInclude,
     });
 
-    const rows = clients.map((client) => {
+    const formattedRows = clients.map((client) => {
       const formatted = formatClientForApi(client);
       return {
         ...formatted,
@@ -48,7 +70,13 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ clients: rows });
+    return NextResponse.json({
+      clients: formattedRows,
+      total,
+      page: safePage,
+      pageSize,
+      totalPages,
+    });
   });
 }
 
