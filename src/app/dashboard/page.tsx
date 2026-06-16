@@ -128,7 +128,7 @@ function DashboardContent() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-semibold tracking-wide">
             Painel de clientes
@@ -137,71 +137,63 @@ function DashboardContent() {
             {teamLabel && <span className="block">Equipe: {teamLabel}</span>}
             {activeTese
               ? `Tese: ${activeTese.name}`
-              : "Todas as teses — selecione uma acima"}
+              : "Todas as teses — selecione uma no topo"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            className="industrial-input w-auto min-w-[180px]"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">Todos os status</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="industrial-input w-auto min-w-[200px]"
-            value={workflowFilter}
-            onChange={(e) => {
-              setWorkflowFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">Todas finalizações</option>
-            {WORKFLOW_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <Link href="/clients/new" className="btn-primary">
-            Cadastro manual
-          </Link>
-          <button type="button" className="btn-ghost" onClick={loadClients}>
-            Atualizar
-          </button>
-        </div>
+        <Link href="/clients/new" className="btn-primary">
+          <Icon name="userPlus" className="h-4 w-4" />
+          Cadastro manual
+        </Link>
       </div>
 
-      <section className="industrial-panel mb-4 p-4">
-        <label className="block text-xs font-semibold tracking-widest text-muted uppercase">
-          Pesquisar clientes
-          {activeTese ? ` — ${activeTese.name}` : ""}
-        </label>
-        <div className="relative mt-2">
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-3">
+        <select
+          className="industrial-input w-auto min-w-[160px]"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Todos os status</option>
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="industrial-input w-auto min-w-[160px]"
+          value={workflowFilter}
+          onChange={(e) => {
+            setWorkflowFilter(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Todas finalizações</option>
+          {WORKFLOW_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        <div className="relative min-w-[200px] flex-1">
           <Icon
             name="search"
             className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
           />
           <input
             type="search"
-            className="industrial-input w-full pl-10"
+            className="industrial-input w-full pl-9"
             placeholder="Nome, COD, CPF, telefone..."
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
-        <p className="mt-2 text-xs text-muted">
-          Busca dentro da tese selecionada. Sem tese ativa, busca em todos os clientes visíveis.
-        </p>
-      </section>
+        <button type="button" className="btn-ghost shrink-0" onClick={loadClients}>
+          Atualizar
+        </button>
+      </div>
 
       {isAdmin && (
         <ClientBulkActionsBar
@@ -227,20 +219,18 @@ function DashboardContent() {
         onToggleSelectAll={toggleSelectAll}
       />
 
-      <div className="mt-4">
-        <ClientsListPagination
+      <ClientsListPagination
           page={page}
           pageSize={pageSize}
           total={total}
           totalPages={totalPages}
           disabled={loading}
           onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
-      </div>
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
     </>
   );
 }

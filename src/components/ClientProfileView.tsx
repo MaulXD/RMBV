@@ -51,19 +51,27 @@ export function ClientProfileView({
       </section>
 
       {nonPhoneGroups.map((group) => (
-        <section key={group.title} className="industrial-panel p-4">
-          <h3 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+        <section key={group.title} className="industrial-panel space-y-4 p-5">
+          <h3 className="flex items-center gap-2 border-b border-border pb-3 text-[11px] font-bold tracking-[0.1em] text-muted uppercase">
             {group.title}
           </h3>
-          <dl className="grid gap-3 sm:grid-cols-2">
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-4">
             {group.fields.map((field) => {
               const value = client[field.key as keyof ClientProfileData];
               const text = value ? String(value) : "";
 
               return (
-                <div key={field.key}>
-                  <dt className="text-xs text-muted">{field.label}</dt>
-                  <dd className="mt-0.5 text-sm font-medium break-words">{text || "—"}</dd>
+                <div key={field.key} className="flex flex-col gap-0.5">
+                  <dt className="text-[11px] font-medium tracking-wide text-muted/70 uppercase">
+                    {field.label}
+                  </dt>
+                  <dd
+                    className={`text-sm font-semibold break-words ${
+                      text ? "text-foreground" : "font-normal text-border italic"
+                    }`}
+                  >
+                    {text || "—"}
+                  </dd>
                 </div>
               );
             })}
@@ -71,8 +79,8 @@ export function ClientProfileView({
         </section>
       ))}
 
-      <section className="industrial-panel p-4">
-        <h3 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+      <section className="industrial-panel space-y-4 p-5">
+        <h3 className="flex items-center gap-2 border-b border-border pb-3 text-[11px] font-bold tracking-[0.1em] text-muted uppercase">
           Telefones
         </h3>
         {filledPhones.length === 0 ? (

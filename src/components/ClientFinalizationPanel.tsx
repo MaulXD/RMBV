@@ -40,68 +40,74 @@ export function ClientFinalizationPanel({
   const isPending = client.workflowStatus === "FINALIZACAO_SOLICITADA";
   const isOpen = client.workflowStatus === "EM_ANDAMENTO";
 
+  const bannerTone =
+    isFinalized
+      ? "border-emerald-500/20 bg-emerald-500/[0.04]"
+      : isPending
+        ? "border-amber-500/20 bg-amber-500/[0.04]"
+        : "border-border bg-surface-elevated/60";
+
   return (
-    <section className="industrial-panel space-y-4 p-4">
+    <section className={`mb-4 rounded-[var(--radius-ui)] border px-4 py-3 ${bannerTone}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">
-            Finalização do cliente
-          </h3>
-          <p className="mt-1 text-xs text-muted">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <span className="text-muted">
             Colaboradores solicitam · Gerente, ADV ou Admin aprovam
-          </p>
-        </div>
-        <WorkflowBadge status={client.workflowStatus} />
-      </div>
-
-      {client.finalizationRequestedAt && (
-        <p className="text-sm text-muted">
-          Solicitado por {client.finalizationRequestedBy?.name ?? "—"} em{" "}
-          {new Date(client.finalizationRequestedAt).toLocaleString("pt-BR")}
-        </p>
-      )}
-      {client.finalizedAt && (
-        <p className="text-sm text-muted">
-          Finalizado por {client.finalizedBy?.name ?? "—"} em{" "}
-          {new Date(client.finalizedAt).toLocaleString("pt-BR")}
-        </p>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        {canRequest && isOpen && (
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={loading}
-            onClick={() =>
-              callAction(`/api/clients/${client.id}/request-finalization`)
-            }
-          >
-            {loading ? "Enviando..." : "Solicitar finalização"}
-          </button>
-        )}
-        {canFinalize && isPending && (
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={loading}
-            onClick={() => callAction(`/api/clients/${client.id}/finalize`)}
-          >
-            {loading ? "Finalizando..." : "Aprovar e finalizar"}
-          </button>
-        )}
-        {isFinalized && (
-          <span className="text-sm text-muted">Cliente concluído — edição bloqueada.</span>
-        )}
-        {isPending && !canFinalize && (
-          <span className="text-sm text-muted">
-            Aguardando aprovação de Gerente, ADV ou Administrador.
           </span>
-        )}
+          {client.finalizationRequestedAt && (
+            <span className="text-muted">
+              Solicitado por{" "}
+              <strong className="text-foreground">
+                {client.finalizationRequestedBy?.name ?? "—"}
+              </strong>
+            </span>
+          )}
+          {client.finalizedAt && (
+            <span className="text-muted">
+              Finalizado por{" "}
+              <strong className="text-foreground">{client.finalizedBy?.name ?? "—"}</strong>
+            </span>
+          )}
+          {isFinalized && (
+            <span className="text-xs text-amber-700 dark:text-amber-400">Edição bloqueada</span>
+          )}
+        </div>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <WorkflowBadge status={client.workflowStatus} />
+          {canRequest && isOpen && (
+            <button
+              type="button"
+              className="btn-primary text-xs"
+              disabled={loading}
+              onClick={() =>
+                callAction(`/api/clients/${client.id}/request-finalization`)
+              }
+            >
+              {loading ? "Enviando..." : "Solicitar finalização"}
+            </button>
+          )}
+          {canFinalize && isPending && (
+            <button
+              type="button"
+              className="btn-primary text-xs"
+              disabled={loading}
+              onClick={() => callAction(`/api/clients/${client.id}/finalize`)}
+            >
+              {loading ? "Finalizando..." : "Aprovar e finalizar"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {message && <p className="text-sm text-muted">{message}</p>}
+      {isPending && !canFinalize && (
+        <p className="mt-2 text-xs text-muted">
+          Aguardando aprovação de Gerente, ADV ou Administrador.
+        </p>
+      )}
+
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {message && <p className="mt-2 text-sm text-muted">{message}</p>}
     </section>
   );
 }
