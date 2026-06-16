@@ -12,6 +12,7 @@ type UserRow = {
   name: string;
   email: string;
   role: "ADV" | "GERENTE" | "COLABORADOR";
+  isActive: boolean;
   team: { id: string; name: string } | null;
 };
 
@@ -21,13 +22,23 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    role: "COLABORADOR" as UserRow["role"],
+    teamId: "",
+    isActive: true,
+    password: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"ADV" | "GERENTE" | "COLABORADOR">("COLABORADOR");
   const [teamId, setTeamId] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (teams[0] && !teamId) setTeamId(teams[0].id);
@@ -53,13 +64,56 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
     load();
   }, [load]);
 
+  function startEdit(user: UserRow) {
+    setEditingId(user.id);
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      teamId: user.team?.id ?? "",
+      isActive: user.isActive,
+      password: "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = {
+        name: editForm.name,
+        email: editForm.email,
+        role: editForm.role,
+        teamId: editForm.teamId,
+        isActive: editForm.isActive,
+      };
+      if (editForm.password.trim()) body.password = editForm.password.trim();
+
+      const res = await fetch(`/api/admin/users/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao salvar");
+      setEditingId(null);
+      setMessage("Usuário atualizado.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!teamId) {
       setError("Selecione uma equipe.");
       return;
     }
-    setSaving(true);
+    setCreating(true);
     setError(null);
     setMessage(null);
     try {
@@ -82,7 +136,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
-      setSaving(false);
+      setCreating(false);
     }
   }
 
@@ -93,9 +147,6 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
           <Icon name="userPlus" className="h-5 w-5 text-primary" />
           <h2 className="text-sm font-semibold">Novo usuário</h2>
         </div>
-        <p className="text-xs text-muted">
-          Admin pode criar ADV, Gerente ou Colaborador em qualquer equipe.
-        </p>
 
         {teams.length === 0 ? (
           <p className="alert alert-warn">Crie uma equipe antes de cadastrar usuários.</p>
@@ -115,38 +166,19 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
             </SelectField>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Nome *</label>
-              <input
-                className="industrial-input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              <input className="industrial-input" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Email (login) *</label>
-              <input
-                type="email"
-                className="industrial-input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <label className="mb-1 block text-xs font-medium text-muted">Email *</label>
+              <input type="email" className="industrial-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted">Senha inicial *</label>
-              <input
-                type="password"
-                className="industrial-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
+              <input type="password" className="industrial-input" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
             </div>
             <div className="sm:col-span-2 flex justify-end">
-              <button type="submit" className="btn-primary" disabled={saving}>
-                <Icon name="plus" className="h-4 w-4" />
-                {saving ? "Salvando..." : "Criar usuário"}
+              <button type="submit" className="btn-primary" disabled={creating}>
+                {creating ? "Salvando..." : "Criar usuário"}
               </button>
             </div>
           </form>
@@ -155,16 +187,8 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
 
       <section className="industrial-panel p-4">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Icon name="users" className="h-5 w-5 text-muted" />
-            <h3 className="text-sm font-semibold">Usuários do sistema</h3>
-          </div>
-          <SelectField
-            label="Filtrar equipe"
-            value={filterTeamId}
-            onChange={setFilterTeamId}
-            className="min-w-[200px]"
-          >
+          <h3 className="text-sm font-semibold">Usuários do sistema</h3>
+          <SelectField label="Filtrar equipe" value={filterTeamId} onChange={setFilterTeamId} className="min-w-[200px]">
             <option value="">Todas</option>
             {teams.map((t) => (
               <option key={t.id} value={t.id}>
@@ -181,15 +205,51 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
         ) : (
           <ul className="divide-y divide-border">
             {users.map((u) => (
-              <li key={u.id} className="flex flex-wrap justify-between gap-2 py-3">
-                <div>
-                  <p className="font-medium">{u.name}</p>
-                  <p className="text-xs text-muted">{u.email}</p>
-                </div>
-                <div className="text-right text-xs text-muted">
-                  <p>{ROLE_LABELS[u.role]}</p>
-                  <p>{u.team?.name ?? "—"}</p>
-                </div>
+              <li key={u.id} className="py-3">
+                {editingId === u.id ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input className="industrial-input" value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} />
+                    <input className="industrial-input" type="email" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} />
+                    <select className="industrial-input" value={editForm.role} onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value as UserRow["role"] }))}>
+                      <option value="ADV">ADV</option>
+                      <option value="GERENTE">Gerente</option>
+                      <option value="COLABORADOR">Colaborador</option>
+                    </select>
+                    <select className="industrial-input" value={editForm.teamId} onChange={(e) => setEditForm((p) => ({ ...p, teamId: e.target.value }))}>
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <input className="industrial-input sm:col-span-2" type="password" placeholder="Nova senha (opcional)" value={editForm.password} onChange={(e) => setEditForm((p) => ({ ...p, password: e.target.value }))} />
+                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                      <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm((p) => ({ ...p, isActive: e.target.checked }))} />
+                      Usuário ativo
+                    </label>
+                    <div className="flex gap-2 sm:col-span-2">
+                      <button type="button" className="btn-primary" disabled={saving} onClick={() => void saveEdit()}>Salvar</button>
+                      <button type="button" className="btn-ghost" onClick={() => setEditingId(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium">
+                        {u.name}
+                        {!u.isActive && <span className="ml-2 text-xs text-red-500">(inativo)</span>}
+                      </p>
+                      <p className="text-xs text-muted">{u.email}</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-right text-xs text-muted">
+                      <div>
+                        <p>{ROLE_LABELS[u.role]}</p>
+                        <p>{u.team?.name ?? "—"}</p>
+                      </div>
+                      <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => startEdit(u)}>
+                        Editar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
