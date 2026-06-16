@@ -142,7 +142,7 @@ function DashboardContent() {
         </div>
         <Link href="/clients/new" className="btn-primary">
           <Icon name="userPlus" className="h-4 w-4" />
-          Cadastro manual
+          Novo cliente
         </Link>
       </div>
 
