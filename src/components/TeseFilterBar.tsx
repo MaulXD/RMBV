@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useTeseFilter } from "./TeseFilterProvider";
 import { Icon } from "./ui/Icon";
 
-export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
+export function TeseFilterBar({
+  showPdfButton = false,
+  statusFilter = "",
+}: {
   showPdfButton?: boolean;
   statusFilter?: string;
 }) {
@@ -22,54 +25,52 @@ export function TeseFilterBar({ showPdfButton = false, statusFilter = "" }: {
     <div className="border-b border-border bg-surface-elevated">
       <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold tracking-widest text-muted uppercase">
-              Tese ativa
-            </span>
-            <button
-              type="button"
-              onClick={() => setActiveTeseId(null)}
-              className={`rounded-[var(--radius-ui)] border px-3 py-1.5 text-xs transition-colors ${
-                activeTeseId === null
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-white/65 text-foreground hover:bg-white/85 dark:bg-transparent dark:text-muted dark:hover:text-foreground"
-              }`}
+          <div className="flex flex-wrap items-center gap-3">
+            <label
+              htmlFor="tese-ativa-select"
+              className="text-xs font-semibold tracking-widest text-muted uppercase"
             >
-              Todas
-            </button>
-            {loading ? (
-              <span className="text-xs text-muted">Carregando...</span>
-            ) : (
-              teses.map((tese) => (
-                <button
-                  key={tese.id}
-                  type="button"
-                  onClick={() => setActiveTeseId(tese.id)}
-                  className={`rounded-[var(--radius-ui)] border px-3 py-1.5 text-xs transition-colors ${
-                    activeTeseId === tese.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-white/65 text-foreground hover:bg-white/85 dark:bg-transparent dark:text-muted dark:hover:text-foreground"
-                  }`}
-                  style={
-                    activeTeseId !== tese.id && tese.color
-                      ? { borderColor: tese.color }
-                      : undefined
-                  }
-                >
-                  {tese.name}
-                  {tese._count != null && (
-                    <span className="ml-1 opacity-70">({tese._count.clients})</span>
-                  )}
-                </button>
-              ))
-            )}
+              Tese ativa
+            </label>
+
+            <div className="relative min-w-[220px] flex-1 sm:max-w-sm sm:flex-none">
+              <select
+                id="tese-ativa-select"
+                className="industrial-input w-full appearance-none pr-10"
+                value={activeTeseId ?? "all"}
+                disabled={loading}
+                onChange={(e) =>
+                  setActiveTeseId(e.target.value === "all" ? null : e.target.value)
+                }
+              >
+                <option value="all">
+                  {loading ? "Carregando teses..." : "Todas as teses"}
+                </option>
+                {teses.map((tese) => (
+                  <option key={tese.id} value={tese.id}>
+                    {tese.name}
+                    {tese._count != null ? ` (${tese._count.clients})` : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted">
+                <Icon name="chevronDown" className="h-4 w-4" />
+              </span>
+            </div>
+
             <Link href="/equipe#teses" className="btn-ghost gap-1.5 text-xs">
               <Icon name="briefcase" className="h-3.5 w-3.5" />
               Gerenciar teses
             </Link>
           </div>
+
           {showPdfButton && (
-            <a href={pdfUrl()} className="btn-primary gap-1.5 text-xs" target="_blank" rel="noreferrer">
+            <a
+              href={pdfUrl()}
+              className="btn-primary gap-1.5 text-xs"
+              target="_blank"
+              rel="noreferrer"
+            >
               <Icon name="fileDown" className="h-3.5 w-3.5" />
               Relatório PDF
               {activeTese ? ` — ${activeTese.name}` : ""}
