@@ -53,7 +53,7 @@ export function ClientProfileTabs({
   return (
     <div className="space-y-0">
       <div
-        className="-mb-px flex gap-0 overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mb-px scrollbar-none flex gap-0 overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tablist"
         aria-label="Seções do cliente"
       >

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { CSV_HEADERS } from "@/lib/client-fields";
 import { TeamAdminPanel } from "@/components/TeamAdminPanel";
@@ -103,19 +104,25 @@ export default function AdminPage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Icon name="shield" className="h-6 w-6 text-primary" />
-          <h1 className="font-display text-xl font-semibold tracking-wide">
-            Painel administrativo
-          </h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Icon name="shield" className="h-6 w-6 text-primary" />
+            <h1 className="font-display text-xl font-semibold tracking-wide">
+              Painel administrativo
+            </h1>
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            Equipes, usuários e importação — visão global do sistema
+          </p>
         </div>
-        <p className="mt-1 text-sm text-muted">
-          Equipes, usuários e importação — visão global do sistema
-        </p>
+        <Link href="/clients/new" className="btn-primary">
+          <Icon name="userPlus" className="h-4 w-4" />
+          Novo cliente
+        </Link>
       </div>
 
-      <div className="-mb-px mb-6 flex flex-wrap gap-0 overflow-x-auto border-b border-border">
+      <div className="-mb-px scrollbar-none mb-6 flex flex-wrap gap-0 overflow-x-auto border-b border-border">
         {tabs.map((t) => (
           <button
             key={t.id}

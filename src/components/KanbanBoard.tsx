@@ -124,7 +124,7 @@ export function KanbanBoard({
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   return (
-    <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
+    <div className="scrollbar-none -mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
       {columns.map((column) => {
         const tasks = tasksByColumn[column.id] ?? [];
         const isDrop = dropTarget === column.id;
