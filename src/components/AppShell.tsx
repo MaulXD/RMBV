@@ -21,6 +21,7 @@ type NavItem = { href: string; label: string; icon: IconName };
 
 const baseNav: NavItem[] = [
   { href: "/dashboard", label: "Clientes", icon: "dashboard" },
+  { href: "/kanban", label: "Kanban", icon: "kanban" },
   { href: "/clients/new", label: "Novo cliente", icon: "userPlus" },
   { href: "/reports", label: "Relatórios", icon: "reports" },
 ];
@@ -61,7 +62,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
 
   const showTesePdf =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/reports");
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/reports") ||
+    pathname.startsWith("/kanban");
 
   useEffect(() => {
     fetch("/api/auth/me")
