@@ -38,6 +38,13 @@ enum PhoneCheckResult {
   NAO_ATENDE
 }
 
+enum TaskHistoryType {
+  CREATED
+  COMMENT
+  COLUMN_CHANGE
+  FIELD_UPDATE
+}
+
 model Team {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -72,6 +79,7 @@ model User {
   clientHistory               ClientHistory[]    @relation("HistoryAuthor")
   tasksAssigned               Task[]             @relation("TaskAssignee")
   tasksCreated                Task[]             @relation("TaskCreator")
+  taskHistory                 TaskHistory[]      @relation("TaskHistoryAuthor")
 
   @@index([teamId])
 }
@@ -219,6 +227,7 @@ model Task {
   createdBy   User          @relation("TaskCreator", fields: [createdById], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  history     TaskHistory[]
 
   @@index([teamId, columnId, sortOrder])
   @@index([assigneeId])
@@ -239,4 +248,19 @@ model KanbanColumn {
 
   @@unique([teamId, name])
   @@index([teamId, sortOrder])
+}
+
+model TaskHistory {
+  id          String          @id @default(uuid())
+  taskId      String
+  task        Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type        TaskHistoryType
+  note        String?
+  fromLabel   String?
+  toLabel     String?
+  createdAt   DateTime        @default(now())
+  createdById String
+  createdBy   User            @relation("TaskHistoryAuthor", fields: [createdById], references: [id])
+
+  @@index([taskId, createdAt])
 }

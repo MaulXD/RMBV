@@ -17,4 +17,5 @@ export type TaskListItem = {
   client: { id: string; name: string; cod: string | null; teseId: string | null } | null;
   createdBy: { id: string; name: string };
   overdue: boolean;
+  dueSoon: boolean;
 };

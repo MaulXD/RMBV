@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { KanbanAlertsBanner } from "@/components/KanbanAlertsBanner";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
 import { KanbanTaskModal, type TaskFormValues } from "@/components/KanbanTaskModal";
@@ -13,6 +14,7 @@ import { Icon } from "@/components/ui/Icon";
 
 type Team = { id: string; name: string };
 type Member = { id: string; name: string; role: string };
+type SlaFilter = "all" | "overdue" | "due_soon";
 
 function dueAtToIso(date: string): string | null {
   if (!date) return null;
@@ -36,13 +38,17 @@ function KanbanContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [columns, setColumns] = useState<KanbanColumnItem[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [slaFilter, setSlaFilter] = useState<SlaFilter>("all");
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
+  const [alertOverdue, setAlertOverdue] = useState<TaskListItem[]>([]);
+  const [alertDueSoon, setAlertDueSoon] = useState<TaskListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
   const [defaultColumnId, setDefaultColumnId] = useState("");
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   const canManageColumns =
     userRole === "ADMIN" || userRole === "ADV" || userRole === "GERENTE";
@@ -88,6 +94,23 @@ function KanbanContent() {
     if (res.ok) setMembers(data.members ?? []);
   }, [teamId]);
 
+  const loadAlerts = useCallback(async () => {
+    if (!teamId) {
+      setAlertOverdue([]);
+      setAlertDueSoon([]);
+      return;
+    }
+    const params = new URLSearchParams({ teamId });
+    if (activeTeseId) params.set("teseId", activeTeseId);
+    if (assigneeFilter) params.set("assigneeId", assigneeFilter);
+    const res = await fetch(`/api/tasks/alerts?${params}`);
+    const data = await res.json();
+    if (res.ok) {
+      setAlertOverdue(data.overdue ?? []);
+      setAlertDueSoon(data.dueSoon ?? []);
+    }
+  }, [teamId, activeTeseId, assigneeFilter]);
+
   const loadTasks = useCallback(async () => {
     if (!teamId) {
       setTasks([]);
@@ -108,8 +131,8 @@ function KanbanContent() {
   }, [teamId, activeTeseId, assigneeFilter]);
 
   const refreshBoard = useCallback(async () => {
-    await Promise.all([loadColumns(), loadTasks()]);
-  }, [loadColumns, loadTasks]);
+    await Promise.all([loadColumns(), loadTasks(), loadAlerts()]);
+  }, [loadColumns, loadTasks, loadAlerts]);
 
   useEffect(() => {
     void loadMembers();
@@ -123,6 +146,10 @@ function KanbanContent() {
     void loadTasks();
   }, [loadTasks]);
 
+  useEffect(() => {
+    void loadAlerts();
+  }, [loadAlerts]);
+
   async function moveTask(taskId: string, columnId: string) {
     const task = tasks.find((t) => t.id === taskId);
     if (!task || task.columnId === columnId) return;
@@ -135,6 +162,7 @@ function KanbanContent() {
               ...t,
               columnId,
               overdue: targetColumn?.isDone ? false : t.overdue,
+              dueSoon: targetColumn?.isDone ? false : t.dueSoon,
             }
           : t
       )
@@ -149,6 +177,7 @@ function KanbanContent() {
     else {
       const data = await res.json();
       setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+      void loadAlerts();
     }
   }
 
@@ -181,9 +210,15 @@ function KanbanContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha ao salvar");
 
-      setModalOpen(false);
-      setEditingTask(null);
+      if (editingTask) {
+        setEditingTask(data.task);
+        setHistoryRefreshKey((k) => k + 1);
+      } else {
+        setModalOpen(false);
+        setEditingTask(null);
+      }
       await loadTasks();
+      await loadAlerts();
     } finally {
       setSaving(false);
     }
@@ -201,12 +236,20 @@ function KanbanContent() {
       setModalOpen(false);
       setEditingTask(null);
       await loadTasks();
+      await loadAlerts();
     } finally {
       setSaving(false);
     }
   }
 
-  const tasksByColumn = groupTasksByColumn(columns, tasks);
+  const filteredTasks =
+    slaFilter === "overdue"
+      ? tasks.filter((t) => t.overdue)
+      : slaFilter === "due_soon"
+        ? tasks.filter((t) => t.dueSoon)
+        : tasks;
+
+  const tasksByColumn = groupTasksByColumn(columns, filteredTasks);
   const firstColumnId = columns[0]?.id ?? "";
 
   return (
@@ -285,6 +328,20 @@ function KanbanContent() {
           </select>
         </div>
 
+        <div className="min-w-[200px] flex-1 sm:flex-none">
+          <label className="mb-1 block text-xs text-muted">Prazo</label>
+          <select
+            className="industrial-input w-full"
+            value={slaFilter}
+            disabled={!teamId}
+            onChange={(e) => setSlaFilter(e.target.value as SlaFilter)}
+          >
+            <option value="all">Todas</option>
+            <option value="overdue">Só atrasadas</option>
+            <option value="due_soon">Vencem em breve</option>
+          </select>
+        </div>
+
         <button
           type="button"
           className="btn-ghost"
@@ -304,6 +361,17 @@ function KanbanContent() {
             onUpdated={refreshBoard}
           />
         </div>
+      )}
+
+      {teamId && (alertOverdue.length > 0 || alertDueSoon.length > 0) && (
+        <KanbanAlertsBanner
+          overdue={alertOverdue}
+          dueSoon={alertDueSoon}
+          onOpenTask={(task) => {
+            setEditingTask(task);
+            setModalOpen(true);
+          }}
+        />
       )}
 
       {!teamId ? (
@@ -346,6 +414,7 @@ function KanbanContent() {
         }}
         onSave={saveTask}
         onDelete={editingTask ? deleteTask : undefined}
+        historyRefreshKey={historyRefreshKey}
       />
     </>
   );

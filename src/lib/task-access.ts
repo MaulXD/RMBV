@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import type { SessionUser } from "./auth";
+import { prisma } from "./prisma";
 import { isAdminUser, TeamAccessError, assertUserHasTeam } from "./team-access";
+import { taskListInclude } from "./task-query";
 
 export type TaskListFilters = {
   teamId?: string | null;
@@ -48,4 +50,14 @@ export function buildTaskWhere(
         }
       : {}),
   };
+}
+
+export async function getTaskIfAllowed(id: string, user: SessionUser) {
+  const task = await prisma.task.findUnique({
+    where: { id },
+    include: taskListInclude,
+  });
+  if (!task) return null;
+  if (!isAdminUser(user) && task.teamId !== user.teamId) return null;
+  return task;
 }

@@ -98,6 +98,7 @@ export const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
 export type ClientProfileData = {
   id: string;
   cod: string | null;
+  teamId: string | null;
   teseId: string | null;
   tese: string | null;
   name: string;
@@ -272,6 +273,7 @@ export function formatClientForApi(
   client: {
     id: string;
     cod: string | null;
+    teamId: string | null;
     teseId: string | null;
     tese: string | null;
     name: string;
@@ -308,6 +310,7 @@ export function formatClientForApi(
   return {
     id: client.id,
     cod: client.cod,
+    teamId: client.teamId,
     teseId: client.teseId,
     tese: client.teseRef?.name ?? client.tese,
     name: client.name,

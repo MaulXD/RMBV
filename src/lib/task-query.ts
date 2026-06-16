@@ -1,6 +1,7 @@
 import type { Task } from "@prisma/client";
 import type { KanbanColumnItem } from "./kanban-columns";
 import { formatKanbanColumn } from "./kanban-columns";
+import { enrichTaskSla } from "./task-sla";
 import type { TaskListItem } from "./task-fields";
 
 export const taskListInclude = {
@@ -19,10 +20,8 @@ type TaskWithRelations = Task & {
 
 export function formatTaskForApi(task: TaskWithRelations): TaskListItem {
   const column = formatKanbanColumn(task.column);
-  const overdue =
-    !column.isDone && !!task.dueAt && task.dueAt.getTime() < Date.now();
 
-  return {
+  return enrichTaskSla({
     id: task.id,
     title: task.title,
     description: task.description,
@@ -38,8 +37,9 @@ export function formatTaskForApi(task: TaskWithRelations): TaskListItem {
     assignee: task.assignee,
     client: task.client,
     createdBy: task.createdBy,
-    overdue,
-  };
+    overdue: false,
+    dueSoon: false,
+  });
 }
 
 export function groupTasksByColumn(

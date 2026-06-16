@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { TeamAccessError } from "@/lib/team-access";
 import { buildTaskWhere, resolveTaskTeamId } from "@/lib/task-access";
 import { assertColumnBelongsToTeam, getKanbanColumnsForTeam } from "@/lib/kanban-columns";
+import { recordTaskHistory } from "@/lib/task-history";
 import { formatTaskForApi, taskListInclude } from "@/lib/task-query";
 
 export const runtime = "nodejs";
@@ -96,19 +97,31 @@ export async function POST(request: Request) {
       _max: { sortOrder: true },
     });
 
-    const task = await prisma.task.create({
-      data: {
-        title: parsed.data.title.trim(),
-        description: parsed.data.description?.trim() || null,
-        columnId,
-        dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
-        teamId,
-        clientId: parsed.data.clientId ?? null,
-        assigneeId: parsed.data.assigneeId ?? null,
+    const task = await prisma.$transaction(async (tx) => {
+      const created = await tx.task.create({
+        data: {
+          title: parsed.data.title.trim(),
+          description: parsed.data.description?.trim() || null,
+          columnId,
+          dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+          teamId,
+          clientId: parsed.data.clientId ?? null,
+          assigneeId: parsed.data.assigneeId ?? null,
+          createdById: user.id,
+          sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+        },
+        include: taskListInclude,
+      });
+
+      const column = columns.find((c) => c.id === columnId);
+      await recordTaskHistory(tx, {
+        taskId: created.id,
         createdById: user.id,
-        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
-      },
-      include: taskListInclude,
+        type: "CREATED",
+        note: `Tarefa criada em "${column?.name ?? "coluna"}"`,
+      });
+
+      return created;
     });
 
     return NextResponse.json({ task: formatTaskForApi(task) }, { status: 201 });

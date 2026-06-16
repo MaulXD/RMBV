@@ -13,6 +13,7 @@ import { ClientProfileTabs } from "@/components/ClientProfileTabs";
 import { ClientHistoryTimeline } from "@/components/ClientHistoryTimeline";
 import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSection";
 import { ClientExtractionReview } from "@/components/ClientExtractionReview";
+import { ClientTasksSection } from "@/components/ClientTasksSection";
 import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
@@ -202,6 +203,7 @@ export default function ClientDetailPage() {
               <ClientHistoryTimeline clientId={client.id} refreshKey={historyRefreshKey} />
             </section>
           }
+          tarefas={<ClientTasksSection client={client} />}
         />
       </div>
     </AppShell>

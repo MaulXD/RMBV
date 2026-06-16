@@ -34,7 +34,13 @@ function KanbanCard({
       onDragEnd={onDragEnd}
       className={`field-card cursor-grab active:cursor-grabbing ${
         dragging ? "opacity-40" : ""
-      } ${task.overdue ? "border-red-500/50 bg-red-500/5" : ""}`}
+      } ${
+        task.overdue
+          ? "border-red-500/50 bg-red-500/5"
+          : task.dueSoon
+            ? "border-amber-500/50 bg-amber-500/5"
+            : ""
+      }`}
     >
       <button type="button" className="w-full text-left" onClick={() => onEdit(task)}>
         <h4 className="text-sm font-medium leading-snug">{task.title}</h4>
@@ -56,9 +62,17 @@ function KanbanCard({
           )}
           {task.assignee && <p>Responsável: {task.assignee.name}</p>}
           {task.dueAt && (
-            <p className={task.overdue ? "font-medium text-red-600 dark:text-red-400" : ""}>
+            <p
+              className={
+                task.overdue
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : task.dueSoon
+                    ? "font-medium text-amber-700 dark:text-amber-400"
+                    : ""
+              }
+            >
               Prazo: {formatDueDate(task.dueAt)}
-              {task.overdue ? " (atrasado)" : ""}
+              {task.overdue ? " (atrasado)" : task.dueSoon ? " (em breve)" : ""}
             </p>
           )}
         </div>
