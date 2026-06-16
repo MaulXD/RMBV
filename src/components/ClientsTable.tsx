@@ -21,6 +21,7 @@ type ClientRow = {
 export function ClientsTable({
   clients,
   loading,
+  emptyMessage = "Nenhum cliente cadastrado.",
   selectable = false,
   selectedIds,
   onToggleSelect,
@@ -28,6 +29,7 @@ export function ClientsTable({
 }: {
   clients: ClientRow[];
   loading?: boolean;
+  emptyMessage?: string;
   selectable?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
@@ -44,7 +46,7 @@ export function ClientsTable({
   if (clients.length === 0) {
     return (
       <div className="industrial-panel p-8 text-center text-sm text-muted">
-        Nenhum cliente cadastrado.
+        {emptyMessage}
       </div>
     );
   }

@@ -8,16 +8,48 @@ export type ClientListFilters = {
   teseId?: string | null;
   workflowStatus?: string | null;
   teamId?: string | null;
+  search?: string | null;
 };
+
+function buildClientSearchWhere(search: string): Prisma.ClientWhereInput {
+  const term = search.trim();
+  if (!term) return {};
+
+  const digits = term.replace(/\D/g, "");
+  const or: Prisma.ClientWhereInput[] = [
+    { name: { contains: term, mode: "insensitive" } },
+    { cod: { contains: term, mode: "insensitive" } },
+    { tese: { contains: term, mode: "insensitive" } },
+    { cpf: { contains: term, mode: "insensitive" } },
+    { phone1: { contains: term, mode: "insensitive" } },
+    { phone2: { contains: term, mode: "insensitive" } },
+    { phone3: { contains: term, mode: "insensitive" } },
+    { phone4: { contains: term, mode: "insensitive" } },
+    { phone5: { contains: term, mode: "insensitive" } },
+    { phone6: { contains: term, mode: "insensitive" } },
+    { phone7: { contains: term, mode: "insensitive" } },
+    { phone8: { contains: term, mode: "insensitive" } },
+    { phone9: { contains: term, mode: "insensitive" } },
+    { phone10: { contains: term, mode: "insensitive" } },
+  ];
+
+  if (digits.length >= 3) {
+    or.push({ cpf: { contains: digits } });
+  }
+
+  return { OR: or };
+}
 
 export async function buildClientWhere(
   user: SessionUser,
   filters: ClientListFilters
 ): Promise<Prisma.ClientWhereInput> {
   const readableIds = await getReadableCategoryIds(user);
+  const searchWhere = filters.search ? buildClientSearchWhere(filters.search) : {};
 
   return {
     ...teamScopeWhere(user),
+    ...searchWhere,
     categories: { some: { categoryId: { in: readableIds } } },
     ...(filters.teamId && user.role === "ADMIN" ? { teamId: filters.teamId } : {}),
     ...(filters.status
