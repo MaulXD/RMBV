@@ -16,6 +16,7 @@ import { ClientDuplicateBanner } from "@/components/ClientDuplicateBanner";
 import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSection";
 import { ClientExtractionReview } from "@/components/ClientExtractionReview";
 import { ClientTasksSection } from "@/components/ClientTasksSection";
+import { ClientChecklistSection } from "@/components/ChecklistTools";
 import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
@@ -131,6 +132,7 @@ export default function ClientDetailPage() {
         />
       )}
       <ClientDocuments clientId={client.id} isAdmin={isAdmin} />
+      <ClientChecklistSection clientId={client.id} disabled={isFinalized} />
     </div>
   );
 
