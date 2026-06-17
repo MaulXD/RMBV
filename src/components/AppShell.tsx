@@ -57,7 +57,7 @@ function NavLinks({
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-[var(--radius-ui)] px-2 py-1.5 text-sm transition-colors lg:gap-2 lg:px-3 lg:py-2 ${
               active
                 ? "nav-link-active"
-                : "text-muted hover:bg-white/60 hover:text-foreground dark:hover:bg-white/10"
+                : "border border-transparent text-muted hover:text-foreground"
             }`}
           >
             <Icon name={item.icon} className="h-4 w-4 shrink-0" />
@@ -144,9 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-40 overflow-hidden border-b border-border bg-surface-elevated/95 backdrop-blur-md">
           <div className="mx-auto flex h-[60px] max-w-7xl items-center gap-1.5 px-3 sm:gap-2 sm:px-6 lg:gap-3">
             <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-white/70 text-primary dark:bg-primary/15">
-                <Icon name="fileText" className="h-4 w-4" />
-              </span>
+              <Icon name="fileText" className="h-5 w-5 text-primary" />
               <span className="hidden min-w-0 flex-col md:flex">
                 <span className="text-[10px] font-semibold tracking-widest text-muted uppercase">
                   RMBV
@@ -161,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {showTeseControls && <TeseFilterBar showPdfButton embedded />}
 
-            <div className="flex shrink-0 items-center gap-0.5 border-l border-border/60 pl-1.5 sm:gap-1 sm:pl-2">
+            <div className="flex shrink-0 items-center gap-0.5 pl-1.5 sm:gap-1 sm:pl-2">
               <button
                 type="button"
                 onClick={toggleTheme}

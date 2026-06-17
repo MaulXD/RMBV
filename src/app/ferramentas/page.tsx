@@ -8,8 +8,9 @@ import { TeseChecklistTool } from "@/components/ChecklistTools";
 import { CpfCnpjValidatorTool } from "@/components/CpfCnpjValidatorTool";
 import { CsvConverterTool } from "@/components/CsvConverterTool";
 import { NoticeGeneratorTool } from "@/components/NoticeGeneratorTool";
+import { ToolPickerCard } from "@/components/ToolPickerCard";
 import { canAccessTools } from "@/lib/roles";
-import { Icon } from "@/components/ui/Icon";
+import { Icon, type IconName } from "@/components/ui/Icon";
 
 type ToolId =
   | "pdf-organizer"
@@ -18,31 +19,47 @@ type ToolId =
   | "csv-converter"
   | "notice-generator";
 
-const TOOLS: { id: ToolId; label: string; description: string }[] = [
+const TOOLS: {
+  id: ToolId;
+  label: string;
+  description: string;
+  icon: IconName;
+  accent: "primary" | "amber" | "emerald" | "sky" | "violet";
+}[] = [
   {
     id: "pdf-organizer",
     label: "Organizador de PDF",
-    description: "Juntar, Bates, marca d'água, redação, compressão, OCR e salvar no cliente.",
+    description: "Juntar, dividir, Bates, marca d'água, OCR e salvar no cliente.",
+    icon: "layers",
+    accent: "primary",
   },
   {
     id: "checklist",
     label: "Checklist por tese",
-    description: "Configure itens obrigatórios por tese para a equipe marcar no cliente.",
+    description: "Itens obrigatórios por tese para marcar no perfil do cliente.",
+    icon: "clipboardList",
+    accent: "amber",
   },
   {
     id: "cpf-cnpj",
     label: "Validador CPF/CNPJ",
-    description: "Valide documentos em lote no navegador.",
+    description: "Cole uma lista e valide documentos em lote no navegador.",
+    icon: "idCard",
+    accent: "emerald",
   },
   {
     id: "csv-converter",
     label: "Conversor CSV",
-    description: "Valide e converta planilhas no formato RMBV.",
+    description: "Formato RMBV, ponto-e-vírgula para Excel e validação de colunas.",
+    icon: "table",
+    accent: "sky",
   },
   {
     id: "notice-generator",
-    label: "Gerador ofício / WhatsApp",
-    description: "Preencha templates com dados do cliente.",
+    label: "Ofício / WhatsApp",
+    description: "Templates com nome, código, CPF e telefone do cliente.",
+    icon: "messageSquare",
+    accent: "violet",
   },
 ];
 
@@ -51,7 +68,7 @@ export default function FerramentasPage() {
   const [role, setRole] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
-  const [activeTool, setActiveTool] = useState<ToolId>("pdf-organizer");
+  const [activeTool, setActiveTool] = useState<ToolId | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -79,41 +96,62 @@ export default function FerramentasPage() {
     return null;
   }
 
+  const activeMeta = TOOLS.find((t) => t.id === activeTool);
+
   return (
     <AppShell>
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Icon name="wrench" className="h-6 w-6 text-primary" />
-          <h1 className="font-display text-xl font-semibold tracking-wide">Ferramentas</h1>
+      <div className="mb-8">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
+            <Icon name="wrench" className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-wide">Ferramentas</h1>
+            <p className="text-sm text-muted">
+              Escolha uma ferramenta — processamento local no navegador quando possível.
+            </p>
+          </div>
         </div>
-        <p className="mt-1 text-sm text-muted">
-          Utilitários do escritório — a maior parte roda localmente no navegador.
-        </p>
       </div>
 
-      <div className="mb-6 max-w-md">
-        <label className="mb-1 block text-xs font-medium text-muted">Ferramenta</label>
-        <select
-          className="industrial-input"
-          value={activeTool}
-          onChange={(e) => setActiveTool(e.target.value as ToolId)}
-        >
+      <section className="mb-8">
+        <h2 className="mb-3 text-xs font-semibold tracking-widest text-muted uppercase">
+          Escolha a ferramenta
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {TOOLS.map((tool) => (
-            <option key={tool.id} value={tool.id}>
-              {tool.label}
-            </option>
+            <ToolPickerCard
+              key={tool.id}
+              icon={tool.icon}
+              title={tool.label}
+              description={tool.description}
+              accent={tool.accent}
+              active={activeTool === tool.id}
+              onClick={() => setActiveTool(tool.id)}
+            />
           ))}
-        </select>
-        <p className="mt-1 text-xs text-muted">
-          {TOOLS.find((t) => t.id === activeTool)?.description}
-        </p>
-      </div>
+        </div>
+      </section>
 
-      {activeTool === "pdf-organizer" && <PdfOrganizerTool />}
-      {activeTool === "checklist" && <TeseChecklistTool userRole={role} />}
-      {activeTool === "cpf-cnpj" && <CpfCnpjValidatorTool />}
-      {activeTool === "csv-converter" && <CsvConverterTool />}
-      {activeTool === "notice-generator" && <NoticeGeneratorTool teamId={teamId} />}
+      {activeTool && activeMeta && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
+            <div className="flex items-center gap-2">
+              <Icon name={activeMeta.icon} className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">{activeMeta.label}</h2>
+            </div>
+            <button type="button" className="btn-ghost text-xs" onClick={() => setActiveTool(null)}>
+              ← Voltar às ferramentas
+            </button>
+          </div>
+
+          {activeTool === "pdf-organizer" && <PdfOrganizerTool />}
+          {activeTool === "checklist" && <TeseChecklistTool userRole={role} />}
+          {activeTool === "cpf-cnpj" && <CpfCnpjValidatorTool />}
+          {activeTool === "csv-converter" && <CsvConverterTool />}
+          {activeTool === "notice-generator" && <NoticeGeneratorTool teamId={teamId} />}
+        </section>
+      )}
     </AppShell>
   );
 }
