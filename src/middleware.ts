@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/health"];
+const PUBLIC_PREFIX_PATHS = ["/login", "/api/auth/login", "/api/health"];
 const COOKIE_NAME = "gestao_session";
 
 function getSecret() {
@@ -24,6 +24,13 @@ async function hasValidSession(request: NextRequest) {
   }
 }
 
+function isPublicPath(pathname: string) {
+  if (pathname === "/") return true;
+  return PUBLIC_PREFIX_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -35,10 +42,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const isPublic = isPublicPath(pathname);
 
   if (isPublic) {
-    if (pathname === "/login" && (await hasValidSession(request))) {
+    if ((pathname === "/login" || pathname === "/") && (await hasValidSession(request))) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return NextResponse.next();
