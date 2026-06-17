@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { z } from "zod";
+import { loginIdSchema, normalizeLoginId } from "@/lib/login-id";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
@@ -10,7 +11,7 @@ export const runtime = "nodejs";
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
-  email: z.string().email().optional(),
+  email: loginIdSchema.optional(),
   password: z.string().min(6).optional(),
   role: z.enum(["ADV", "GERENTE", "COLABORADOR"]).optional(),
   teamId: z.string().uuid().optional(),
@@ -58,7 +59,7 @@ export async function PATCH(
     } = {};
 
     if (parsed.data.name) data.name = parsed.data.name.trim();
-    if (parsed.data.email) data.email = parsed.data.email.trim().toLowerCase();
+    if (parsed.data.email) data.email = normalizeLoginId(parsed.data.email);
     if (parsed.data.password) data.passwordHash = await hashPassword(parsed.data.password);
     if (parsed.data.role) data.role = parsed.data.role;
     if (parsed.data.teamId) data.teamId = parsed.data.teamId;

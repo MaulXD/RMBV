@@ -133,13 +133,13 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">Email (login)</label>
+              <label className="mb-1 block text-xs text-muted">Login</label>
               <input
-                type="email"
                 className="industrial-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="username"
               />
             </div>
             <div>

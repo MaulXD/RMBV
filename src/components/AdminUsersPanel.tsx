@@ -169,8 +169,8 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
               <input className="industrial-input" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Email *</label>
-              <input type="email" className="industrial-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <label className="mb-1 block text-xs font-medium text-muted">Login *</label>
+              <input className="industrial-input" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted">Senha inicial *</label>
@@ -209,7 +209,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
                 {editingId === u.id ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input className="industrial-input" value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} />
-                    <input className="industrial-input" type="email" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} />
+                    <input className="industrial-input" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} autoComplete="username" />
                     <select className="industrial-input" value={editForm.role} onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value as UserRow["role"] }))}>
                       <option value="ADV">ADV</option>
                       <option value="GERENTE">Gerente</option>

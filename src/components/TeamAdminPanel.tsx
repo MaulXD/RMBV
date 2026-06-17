@@ -130,7 +130,7 @@ export function TeamAdminPanel({
           {withAdv && (
             <div className="grid gap-3 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-4 sm:grid-cols-2">
               <input className="industrial-input" placeholder="Nome do ADV" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required={withAdv} />
-              <input className="industrial-input" type="email" placeholder="Email do ADV" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required={withAdv} />
+              <input className="industrial-input" placeholder="Login do ADV (ex.: VMMadv)" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required={withAdv} autoComplete="username" />
               <input className="industrial-input sm:col-span-2" type="password" placeholder="Senha inicial" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} minLength={6} required={withAdv} />
             </div>
           )}

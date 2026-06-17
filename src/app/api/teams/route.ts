@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
+import { loginIdSchema, normalizeLoginId } from "@/lib/login-id";
 
 export const runtime = "nodejs";
 
@@ -21,12 +22,16 @@ const createTeamSchema = z
     if (hasAny && !hasAll) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Para criar o ADV, preencha nome, email e senha.",
+        message: "Para criar o ADV, preencha nome, login e senha.",
         path: ["ownerEmail"],
       });
     }
-    if (data.ownerEmail && !z.string().email().safeParse(data.ownerEmail).success) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Email do ADV inválido", path: ["ownerEmail"] });
+    if (data.ownerEmail && !loginIdSchema.safeParse(data.ownerEmail.trim()).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Login do ADV inválido",
+        path: ["ownerEmail"],
+      });
     }
     if (data.ownerPassword && data.ownerPassword.length < 6) {
       ctx.addIssue({
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
           const adv = await tx.user.create({
             data: {
               name: ownerName.trim(),
-              email: ownerEmail.trim().toLowerCase(),
+              email: normalizeLoginId(ownerEmail),
               passwordHash,
               role: Role.ADV,
               teamId: created.id,

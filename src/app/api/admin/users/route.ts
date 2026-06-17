@@ -5,12 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
+import { loginIdSchema, normalizeLoginId } from "@/lib/login-id";
 
 export const runtime = "nodejs";
 
 const createUserSchema = z.object({
   name: z.string().min(2),
-  email: z.string().email(),
+  email: loginIdSchema,
   password: z.string().min(6),
   role: z.enum(["ADV", "GERENTE", "COLABORADOR"]),
   teamId: z.string().uuid(),
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       const created = await prisma.user.create({
         data: {
           name: parsed.data.name.trim(),
-          email: parsed.data.email.trim().toLowerCase(),
+          email: normalizeLoginId(parsed.data.email),
           passwordHash,
           role: parsed.data.role,
           teamId: parsed.data.teamId,

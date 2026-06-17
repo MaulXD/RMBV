@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { normalizeLoginId } from "./login-id";
 
 const COOKIE_NAME = "gestao_session";
 const JWT_EXPIRY = "8h";
@@ -113,10 +114,6 @@ function normalizeLogin(login: string) {
   return String(login ?? "").trim();
 }
 
-function isEmailLike(value: string) {
-  return value.includes("@");
-}
-
 export async function authenticateUser(login: string, password: string) {
   const raw = normalizeLogin(login);
   const normalized = raw.toLowerCase();
@@ -127,20 +124,13 @@ export async function authenticateUser(login: string, password: string) {
     .toLowerCase();
 
   const lookup =
-    normalized === adminAlias ? adminEmail : isEmailLike(normalized) ? normalized : raw;
+    normalized === adminAlias ? adminEmail : normalizeLoginId(raw);
 
-  const user = isEmailLike(String(lookup).toLowerCase())
-    ? await prisma.user.findUnique({
-        where: { email: String(lookup).trim().toLowerCase() },
-      })
-    : await prisma.user.findFirst({
-        where: {
-          OR: [
-            { name: { equals: String(lookup).trim() } },
-            { email: { equals: String(lookup).trim().toLowerCase() } },
-          ],
-        },
-      });
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: lookup }, { name: { equals: raw.trim(), mode: "insensitive" } }],
+    },
+  });
   if (!user || !user.isActive) return null;
 
   const valid = await verifyPassword(password, user.passwordHash);
