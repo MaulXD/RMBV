@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -70,9 +71,9 @@ export default function LoginPage() {
         className="industrial-panel w-full max-w-md space-y-4 p-8"
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-ui)] border border-border bg-white/70 text-primary dark:bg-primary/15">
-            <Icon name="fileText" className="h-5 w-5" />
-          </span>
+          <Link href="/" className="flex items-center gap-2 text-muted hover:text-foreground">
+            <Icon name="fileText" className="h-5 w-5 text-primary" />
+          </Link>
           <div>
             <h1 className="font-display text-lg font-semibold tracking-wide">RMBV System</h1>
             <p className="text-sm text-muted">Entre com suas credenciais de acesso</p>
