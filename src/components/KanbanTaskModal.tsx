@@ -145,9 +145,9 @@ export function KanbanTaskModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
+    <div className="modal-backdrop">
       <div
-        className={`panel-solid max-h-[90vh] w-full overflow-y-auto p-5 ${
+        className={`modal-panel max-h-[90vh] w-full overflow-y-auto ${
           task ? "max-w-4xl" : "max-w-lg"
         }`}
       >

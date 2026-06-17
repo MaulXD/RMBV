@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ChamadoFormModal, type ChamadoFormValues } from "@/components/ChamadoFormModal";
+import { ChamadoListCard } from "@/components/ChamadoListCard";
+import { CategoryBadge } from "@/components/CategoryBadge";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ChamadoStatusBadge } from "@/components/ChamadoStatusBadge";
 import type { ChamadoListItem } from "@/lib/chamado-fields";
-import {
-  CHAMADO_CATEGORY_LABELS,
-  CHAMADO_STATUS_LABELS,
-} from "@/lib/enum-labels";
 import type { ChamadoCategory, ChamadoStatus } from "@prisma/client";
+import { CHAMADO_CATEGORY_LABELS, CHAMADO_STATUS_LABELS } from "@/lib/enum-labels";
 import { Icon } from "@/components/ui/Icon";
 
 type Team = { id: string; name: string };
@@ -128,26 +130,27 @@ function ChamadosContent() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-xl font-semibold tracking-wide">Chamados</h1>
-          <p className="mt-1 text-sm text-muted">Bugs, sugestões e solicitações da equipe</p>
-        </div>
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!teamId}
-          onClick={() => setModalOpen(true)}
-        >
-          <Icon name="plus" className="h-4 w-4" />
-          Novo chamado
-        </button>
-      </div>
+      <PageHeader
+        icon="ticket"
+        title="Chamados"
+        subtitle="Bugs, sugestões e solicitações — acompanhe o pipeline da equipe"
+        actions={
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!teamId}
+            onClick={() => setModalOpen(true)}
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            Novo chamado
+          </button>
+        }
+      />
 
-      <section className="panel-solid mb-4 flex flex-wrap items-end gap-3 p-4">
+      <section className="filter-bar">
         {isAdmin && (
-          <div className="min-w-[180px]">
-            <label className="mb-1 block text-xs text-muted">Equipe</label>
+          <div className="min-w-[140px]">
+            <label className="text-muted">Equipe</label>
             <select
               className="industrial-input w-full"
               value={teamId}
@@ -165,8 +168,8 @@ function ChamadosContent() {
             </select>
           </div>
         )}
-        <div className="min-w-[160px] flex-1">
-          <label className="mb-1 block text-xs text-muted">Buscar</label>
+        <div className="min-w-[140px] flex-1">
+          <label className="text-muted">Buscar</label>
           <input
             className="industrial-input w-full"
             placeholder="Título ou descrição..."
@@ -174,8 +177,8 @@ function ChamadosContent() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="min-w-[140px]">
-          <label className="mb-1 block text-xs text-muted">Status</label>
+        <div className="min-w-[120px]">
+          <label className="text-muted">Status</label>
           <select
             className="industrial-input w-full"
             value={statusFilter}
@@ -189,8 +192,8 @@ function ChamadosContent() {
             ))}
           </select>
         </div>
-        <div className="min-w-[130px]">
-          <label className="mb-1 block text-xs text-muted">Categoria</label>
+        <div className="min-w-[110px]">
+          <label className="text-muted">Categoria</label>
           <select
             className="industrial-input w-full"
             value={categoryFilter}
@@ -204,8 +207,8 @@ function ChamadosContent() {
             ))}
           </select>
         </div>
-        <div className="min-w-[120px]">
-          <label className="mb-1 block text-xs text-muted">Prioridade</label>
+        <div className="min-w-[100px]">
+          <label className="text-muted">Prioridade</label>
           <select
             className="industrial-input w-full"
             value={priorityFilter}
@@ -217,8 +220,8 @@ function ChamadosContent() {
             <option value="BAIXA">Baixa</option>
           </select>
         </div>
-        <div className="min-w-[150px]">
-          <label className="mb-1 block text-xs text-muted">Responsável</label>
+        <div className="min-w-[120px]">
+          <label className="text-muted">Responsável</label>
           <select
             className="industrial-input w-full"
             value={assigneeFilter}
@@ -232,72 +235,88 @@ function ChamadosContent() {
             ))}
           </select>
         </div>
-        <label className="flex items-center gap-2 pb-2 text-sm text-muted">
+        <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-muted">
           <input
             type="checkbox"
             checked={showClosed}
             onChange={(e) => setShowClosed(e.target.checked)}
           />
-          Mostrar fechados
+          Fechados
         </label>
       </section>
 
       {!teamId ? (
-        <div className="panel-solid p-8 text-center text-sm text-muted">
-          {isAdmin ? "Selecione uma equipe." : "Você não está vinculado a uma equipe."}
-        </div>
+        <EmptyState
+          icon="building"
+          title="Selecione uma equipe"
+          description={isAdmin ? "Escolha a equipe para listar os chamados." : "Você não está vinculado a uma equipe."}
+        />
       ) : loading ? (
-        <div className="panel-solid p-8 text-center text-sm text-muted">Carregando...</div>
+        <div className="soft-card p-8 text-center text-sm text-muted">Carregando...</div>
       ) : chamados.length === 0 ? (
-        <div className="panel-solid p-8 text-center text-sm text-muted">Nenhum chamado encontrado.</div>
+        <EmptyState
+          icon="ticket"
+          title="Nenhum chamado encontrado"
+          description="Abra um novo chamado para reportar bugs, sugestões ou solicitações."
+          action={
+            <button type="button" className="btn-primary" onClick={() => setModalOpen(true)}>
+              <Icon name="plus" className="h-4 w-4" />
+              Novo chamado
+            </button>
+          }
+        />
       ) : (
-        <div className="panel-solid overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted">
-                <th className="px-4 py-3">#</th>
-                <th className="px-4 py-3">Título</th>
-                <th className="hidden px-4 py-3 md:table-cell">Categoria</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Prioridade</th>
-                <th className="hidden px-4 py-3 lg:table-cell">Responsável</th>
-                <th className="hidden px-4 py-3 sm:table-cell">Atualizado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chamados.map((c) => (
-                <tr
-                  key={c.id}
-                  className="cursor-pointer border-b border-border/50 hover:bg-surface/80"
-                  onClick={() => router.push(`/chamados/${c.id}`)}
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-muted">#{c.number}</td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{c.title}</p>
-                    <p className="text-xs text-muted">{c.requester.name}</p>
-                  </td>
-                  <td className="hidden px-4 py-3 text-muted md:table-cell">
-                    {CHAMADO_CATEGORY_LABELS[c.category]}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-md bg-surface px-2 py-0.5 text-xs">
-                      {CHAMADO_STATUS_LABELS[c.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <PriorityBadge priority={c.priority} />
-                  </td>
-                  <td className="hidden px-4 py-3 text-muted lg:table-cell">
-                    {c.assignee?.name ?? "—"}
-                  </td>
-                  <td className="hidden px-4 py-3 text-muted sm:table-cell">
-                    {new Date(c.updatedAt).toLocaleDateString("pt-BR")}
-                  </td>
+        <>
+          <div className="grid gap-2 md:hidden">
+            {chamados.map((c) => (
+              <ChamadoListCard
+                key={c.id}
+                chamado={c}
+                onClick={() => router.push(`/chamados/${c.id}`)}
+              />
+            ))}
+          </div>
+
+          <div className="soft-card hidden overflow-hidden md:block">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Título</th>
+                  <th>Categoria</th>
+                  <th>Status</th>
+                  <th>Prioridade</th>
+                  <th className="hidden lg:table-cell">Responsável</th>
+                  <th className="hidden sm:table-cell">Atualizado</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {chamados.map((c) => (
+                  <tr key={c.id} onClick={() => router.push(`/chamados/${c.id}`)}>
+                    <td className="font-mono text-[11px] font-bold text-primary">#{c.number}</td>
+                    <td>
+                      <p className="font-medium">{c.title}</p>
+                      <p className="text-[11px] text-muted">{c.requester.name}</p>
+                    </td>
+                    <td>
+                      <CategoryBadge category={c.category} />
+                    </td>
+                    <td>
+                      <ChamadoStatusBadge status={c.status} />
+                    </td>
+                    <td>
+                      <PriorityBadge priority={c.priority} />
+                    </td>
+                    <td className="hidden text-muted lg:table-cell">{c.assignee?.name ?? "—"}</td>
+                    <td className="hidden text-[11px] text-muted sm:table-cell">
+                      {new Date(c.updatedAt).toLocaleDateString("pt-BR")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <ChamadoFormModal

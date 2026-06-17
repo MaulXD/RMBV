@@ -8,6 +8,7 @@ import { KanbanColumnManager } from "@/components/KanbanColumnManager";
 import { KanbanCommandPalette, useKanbanCommandPalette } from "@/components/KanbanCommandPalette";
 import { KanbanListView } from "@/components/KanbanListView";
 import { KanbanTaskModal, type TaskFormValues } from "@/components/KanbanTaskModal";
+import { PageHeader } from "@/components/PageHeader";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 import { groupTasksByColumn } from "@/lib/task-query";
@@ -271,72 +272,69 @@ function KanbanContent() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-xl font-semibold tracking-wide">Kanban de tarefas</h1>
-          <p className="mt-1 text-sm text-muted">
-            {activeTese
-              ? `Filtrado pela tese: ${activeTese.name}`
-              : "Todas as teses — use o seletor acima para filtrar"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-ghost hidden sm:inline-flex"
-            title="Busca rápida (Ctrl+K)"
-            onClick={() => setPaletteOpen(true)}
-          >
-            <Icon name="search" className="h-4 w-4" />
-            <span className="ml-1 hidden lg:inline">Ctrl+K</span>
-          </button>
-          <div className="flex rounded-lg border border-border">
+      <PageHeader
+        icon="kanban"
+        title="Kanban de tarefas"
+        subtitle={
+          activeTese
+            ? `Tese: ${activeTese.name}`
+            : "Arraste cards, use checklist na descrição e Ctrl+K para buscar"
+        }
+        actions={
+          <>
             <button
               type="button"
-              className={`px-3 py-1.5 text-sm ${viewMode === "board" ? "bg-primary/10 text-primary" : "text-muted"}`}
-              onClick={() => setViewMode("board")}
-              title="Quadro"
+              className="btn-ghost hidden sm:inline-flex"
+              title="Busca rápida (Ctrl+K)"
+              onClick={() => setPaletteOpen(true)}
             >
-              <Icon name="kanban" className="h-4 w-4" />
+              <Icon name="search" className="h-4 w-4" />
+              <span className="ml-1 hidden lg:inline">Ctrl+K</span>
             </button>
+            <div className="flex overflow-hidden rounded-xl border border-border">
+              <button
+                type="button"
+                className={`px-2.5 py-1.5 text-sm transition-colors ${viewMode === "board" ? "bg-primary/12 text-primary" : "text-muted hover:text-foreground"}`}
+                onClick={() => setViewMode("board")}
+                title="Quadro"
+              >
+                <Icon name="kanban" className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors ${viewMode === "list" ? "bg-primary/12 text-primary" : "text-muted hover:text-foreground"}`}
+                onClick={() => setViewMode("list")}
+                title="Lista"
+              >
+                <Icon name="list" className="h-4 w-4" />
+              </button>
+            </div>
+            {canManageColumns && teamId && (
+              <button type="button" className="btn-ghost" onClick={() => setShowColumns((v) => !v)}>
+                Colunas
+              </button>
+            )}
             <button
               type="button"
-              className={`px-3 py-1.5 text-sm ${viewMode === "list" ? "bg-primary/10 text-primary" : "text-muted"}`}
-              onClick={() => setViewMode("list")}
-              title="Lista"
+              className="btn-primary"
+              disabled={!teamId || !firstColumnId}
+              onClick={() => {
+                setEditingTask(null);
+                setDefaultColumnId(firstColumnId);
+                setModalOpen(true);
+              }}
             >
-              <Icon name="list" className="h-4 w-4" />
+              <Icon name="plus" className="h-4 w-4" />
+              Nova tarefa
             </button>
-          </div>
-          {canManageColumns && teamId && (
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => setShowColumns((v) => !v)}
-            >
-              Colunas
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={!teamId || !firstColumnId}
-            onClick={() => {
-              setEditingTask(null);
-              setDefaultColumnId(firstColumnId);
-              setModalOpen(true);
-            }}
-          >
-            <Icon name="plus" className="h-4 w-4" />
-            Nova tarefa
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      <section className="panel-solid mb-4 flex flex-wrap items-end gap-3 p-4">
+      <section className="filter-bar">
         {isAdmin && (
-          <div className="min-w-[200px] flex-1 sm:flex-none">
-            <label className="mb-1 block text-xs text-muted">Equipe</label>
+          <div className="min-w-[140px]">
+            <label className="text-muted">Equipe</label>
             <select
               className="industrial-input w-full"
               value={teamId}
@@ -355,8 +353,8 @@ function KanbanContent() {
           </div>
         )}
 
-        <div className="min-w-[200px] flex-1 sm:flex-none">
-          <label className="mb-1 block text-xs text-muted">Responsável</label>
+        <div className="min-w-[130px]">
+          <label className="text-muted">Responsável</label>
           <select
             className="industrial-input w-full"
             value={assigneeFilter}
@@ -372,8 +370,8 @@ function KanbanContent() {
           </select>
         </div>
 
-        <div className="min-w-[140px] flex-1 sm:flex-none">
-          <label className="mb-1 block text-xs text-muted">Prioridade</label>
+        <div className="min-w-[110px]">
+          <label className="text-muted">Prioridade</label>
           <select
             className="industrial-input w-full"
             value={priorityFilter}
@@ -388,8 +386,8 @@ function KanbanContent() {
         </div>
 
         {teamLabels.length > 0 && (
-          <div className="min-w-[140px] flex-1 sm:flex-none">
-            <label className="mb-1 block text-xs text-muted">Etiqueta</label>
+          <div className="min-w-[110px]">
+            <label className="text-muted">Etiqueta</label>
             <select
               className="industrial-input w-full"
               value={labelFilter}
@@ -406,7 +404,7 @@ function KanbanContent() {
           </div>
         )}
 
-        <label className="flex items-center gap-2 pb-2 text-sm text-muted">
+        <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-muted">
           <input
             type="checkbox"
             checked={mineOnly}
@@ -416,8 +414,8 @@ function KanbanContent() {
           Minhas tarefas
         </label>
 
-        <div className="min-w-[200px] flex-1 sm:flex-none">
-          <label className="mb-1 block text-xs text-muted">Prazo</label>
+        <div className="min-w-[120px]">
+          <label className="text-muted">Prazo</label>
           <select
             className="industrial-input w-full"
             value={slaFilter}

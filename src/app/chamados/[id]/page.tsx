@@ -5,11 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ChamadoStatusPipeline } from "@/components/ChamadoStatusPipeline";
+import { CategoryBadge } from "@/components/CategoryBadge";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ChamadoStatusBadge } from "@/components/ChamadoStatusBadge";
 import type { ChamadoListItem } from "@/lib/chamado-fields";
 import type { ChamadoHistoryEntry } from "@/lib/chamado-history";
 import {
-  CHAMADO_CATEGORY_LABELS,
   CHAMADO_STATUS_LABELS,
 } from "@/lib/enum-labels";
 import type { ChamadoStatus, TaskPriority } from "@prisma/client";
@@ -168,45 +169,47 @@ function ChamadoDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link href="/chamados" className="text-xs text-muted hover:text-primary">
-            ← Chamados
-          </Link>
-          <h1 className="mt-2 font-display text-xl font-semibold">
-            #{chamado.number} — {chamado.title}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <span>{CHAMADO_CATEGORY_LABELS[chamado.category]}</span>
-            <span>·</span>
-            <PriorityBadge priority={chamado.priority} />
-            <span>·</span>
-            <span>Solicitante: {chamado.requester.name}</span>
+    <div className="space-y-4">
+      <div className="soft-card p-4">
+        <Link href="/chamados" className="inline-flex items-center gap-1 text-xs text-muted hover:text-primary">
+          <Icon name="chevronRight" className="h-3 w-3 rotate-180" />
+          Chamados
+        </Link>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm font-bold text-primary">#{chamado.number}</span>
+              <CategoryBadge category={chamado.category} />
+              <ChamadoStatusBadge status={chamado.status} />
+              <PriorityBadge priority={chamado.priority} />
+            </div>
+            <h1 className="font-display text-xl font-semibold leading-snug">{chamado.title}</h1>
+            <p className="mt-1 text-xs text-muted">Solicitante: {chamado.requester.name}</p>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {!chamado.linkedTask && (
-            <button
-              type="button"
-              className="btn-ghost"
-              disabled={saving}
-              onClick={() => void createKanbanTask()}
-            >
-              <Icon name="kanban" className="h-4 w-4" />
-              Criar tarefa no Kanban
-            </button>
-          )}
-          {chamado.linkedTask && (
-            <Link href="/kanban" className="btn-ghost">
-              Tarefa: {chamado.linkedTask.title}
-            </Link>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {!chamado.linkedTask && (
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={saving}
+                onClick={() => void createKanbanTask()}
+              >
+                <Icon name="kanban" className="h-4 w-4" />
+                Criar tarefa
+              </button>
+            )}
+            {chamado.linkedTask && (
+              <Link href="/kanban" className="btn-ghost text-xs">
+                <Icon name="kanban" className="h-4 w-4" />
+                {chamado.linkedTask.title}
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
-      <section className="panel-solid p-4">
-        <h2 className="mb-3 text-xs font-bold tracking-widest text-muted uppercase">Pipeline</h2>
+      <section className="soft-card p-4">
+        <h2 className="mb-3 text-[10px] font-bold tracking-widest text-muted uppercase">Pipeline</h2>
         <ChamadoStatusPipeline
           status={chamado.status}
           disabled={saving}
@@ -214,20 +217,23 @@ function ChamadoDetail() {
         />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <section className="panel-solid p-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <section className="soft-card p-4">
             <h2 className="mb-3 text-sm font-semibold">Descrição</h2>
             <p className="whitespace-pre-wrap text-sm text-muted">
               {chamado.description || "Sem descrição."}
             </p>
           </section>
 
-          <section className="panel-solid p-4">
-            <h2 className="mb-3 text-sm font-semibold">Comentários ({comments.length})</h2>
+          <section className="soft-card p-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Icon name="messageSquare" className="h-4 w-4 text-primary" />
+              Comentários ({comments.length})
+            </h2>
             <ul className="mb-4 space-y-3">
               {comments.map((c) => (
-                <li key={c.id} className="rounded-lg border border-border/60 p-3">
+                <li key={c.id} className="soft-card p-3">
                   <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted">
                     <span className="font-medium text-foreground">{c.author.name}</span>
                     <time>{new Date(c.createdAt).toLocaleString("pt-BR")}</time>
@@ -249,8 +255,11 @@ function ChamadoDetail() {
             </form>
           </section>
 
-          <section className="panel-solid p-4">
-            <h2 className="mb-3 text-sm font-semibold">Anexos ({attachments.length})</h2>
+          <section className="soft-card p-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Icon name="upload" className="h-4 w-4 text-primary" />
+              Anexos ({attachments.length})
+            </h2>
             <ul className="mb-3 space-y-2">
               {attachments.map((a) => (
                 <li key={a.id}>
@@ -285,7 +294,7 @@ function ChamadoDetail() {
         </div>
 
         <aside className="space-y-4">
-          <section className="panel-solid p-4">
+          <section className="soft-card p-4">
             <h2 className="mb-3 text-sm font-semibold">Detalhes</h2>
             <div className="space-y-3 text-sm">
               <div>
@@ -351,8 +360,11 @@ function ChamadoDetail() {
             </div>
           </section>
 
-          <section className="panel-solid p-4">
-            <h2 className="mb-3 text-sm font-semibold">Histórico</h2>
+          <section className="soft-card p-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Icon name="clock" className="h-4 w-4 text-primary" />
+              Histórico
+            </h2>
             <ul className="max-h-80 space-y-2 overflow-y-auto text-xs">
               {history.map((h) => (
                 <li key={h.id} className="border-b border-border/40 pb-2">

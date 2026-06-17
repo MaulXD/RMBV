@@ -30,7 +30,7 @@ function columnTopBorderClass(column: KanbanColumnItem): string {
   if (n.includes("andamento") || n.includes("progress")) return "border-t-cyan-500";
   if (n.includes("aguardando") || n.includes("waiting")) return "border-t-amber-500";
   if (n.includes("conclu") || n.includes("finaliz")) return "border-t-emerald-500";
-  return "border-t-border";
+  return "border-t-primary/40";
 }
 
 function KanbanCard({
@@ -57,9 +57,7 @@ function KanbanCard({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      className={`group mx-2 mb-2 cursor-grab rounded-xl border border-border bg-surface p-3 transition-colors active:cursor-grabbing hover:border-primary/40 ${
-        dragging ? "opacity-40" : ""
-      } ${
+      className={`kanban-task-card ${dragging ? "scale-[0.98] opacity-40" : ""} ${
         task.overdue
           ? "border-red-500/50 bg-red-500/5"
           : task.dueSoon
@@ -68,8 +66,10 @@ function KanbanCard({
       }`}
     >
       <button type="button" className="w-full text-left" onClick={() => onEdit(task)}>
-        <div className="mb-1.5 flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-foreground">{task.title}</p>
+        <div className="mb-1 flex items-start justify-between gap-1.5">
+          <p className="line-clamp-2 text-xs font-semibold leading-snug text-foreground">
+            {task.title}
+          </p>
           <PriorityBadge priority={task.priority} compact />
         </div>
         {task.labels.length > 0 && (
@@ -86,7 +86,7 @@ function KanbanCard({
           </div>
         )}
         {task.description && (
-          <p className="mb-2 line-clamp-2 text-xs text-muted">{task.description}</p>
+          <p className="mb-1.5 line-clamp-1 text-[10px] text-muted">{task.description}</p>
         )}
         <TaskProgressBar checklist={task.checklist} />
         {task.assignee && (
@@ -204,17 +204,18 @@ export function KanbanBoard({
         const tasks = tasksByColumn[column.id] ?? [];
         const isDrop = dropTarget === column.id;
         const topClass = columnTopBorderClass(column);
-        const borderStyle = column.color
-          ? { borderTopColor: column.color, borderTopWidth: 3 }
-          : undefined;
 
         return (
           <section
             key={column.id}
-            className={`panel-solid flex min-h-[320px] w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-t-2 p-0 ${
-              topClass
-            } ${isDrop ? "border-primary ring-2 ring-primary/20" : ""}`}
-            style={borderStyle}
+            className={`kanban-column-shell ${topClass} ${
+              isDrop ? "ring-2 ring-primary/25" : ""
+            }`}
+            style={
+              column.color
+                ? { borderTopColor: column.color, borderTopWidth: 4 }
+                : undefined
+            }
             onDragOver={(e) => {
               e.preventDefault();
               setDropTarget(column.id);
@@ -228,19 +229,21 @@ export function KanbanBoard({
               setDraggingId(null);
             }}
           >
-            <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-3">
+            <header className="flex items-center justify-between gap-2 border-b border-border/70 bg-surface/40 px-2.5 py-2">
               <div>
-                <h3 className="text-xs font-bold tracking-widest text-muted uppercase">
+                <h3 className="text-[10px] font-bold tracking-widest text-muted uppercase">
                   {column.name}
                   {column.isDone && (
-                    <span className="ml-1.5 font-normal normal-case text-primary">· final</span>
+                    <span className="ml-1 font-normal normal-case text-emerald-600 dark:text-emerald-400">
+                      · ok
+                    </span>
                   )}
                 </h3>
-                <p className="text-xs text-muted">{tasks.length} tarefa(s)</p>
+                <p className="text-[10px] text-muted">{tasks.length}</p>
               </div>
               <button
                 type="button"
-                className="btn-ghost px-2 py-1"
+                className="btn-ghost px-1.5 py-1"
                 title="Nova tarefa"
                 onClick={() => onAddTask(column.id)}
               >
