@@ -65,6 +65,18 @@ model Team {
   goals     TeamGoal[]
 }
 
+model TeseChecklistItem {
+  id        String   @id @default(uuid())
+  teseId    String
+  tese      Tese     @relation(fields: [teseId], references: [id], onDelete: Cascade)
+  label     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  progress  ClientChecklistProgress[]
+
+  @@index([teseId, sortOrder])
+}
+
 model User {
   id             String   @id @default(uuid())
   name           String
@@ -87,6 +99,7 @@ model User {
   taskHistory                 TaskHistory[]      @relation("TaskHistoryAuthor")
   messageTemplates            MessageTemplate[]  @relation("TemplateAuthor")
   teamGoals                   TeamGoal[]         @relation("GoalAssignee")
+  checklistMarked             ClientChecklistProgress[] @relation("ChecklistDoneBy")
 
   @@index([teamId])
 }
@@ -101,6 +114,7 @@ model Tese {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   clients   Client[]
+  checklistItems TeseChecklistItem[]
 
   @@unique([teamId, name])
   @@index([teamId])
@@ -170,8 +184,25 @@ model Client {
   documents      ClientDocument[]
   history        ClientHistory[]
   tasks          Task[]
+  checklistProgress ClientChecklistProgress[]
 
   @@index([teamId])
+}
+
+model ClientChecklistProgress {
+  id        String   @id @default(uuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      TeseChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  isDone    Boolean  @default(false)
+  doneAt    DateTime?
+  doneById  String?
+  doneBy    User?    @relation("ChecklistDoneBy", fields: [doneById], references: [id], onDelete: SetNull)
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, itemId])
+  @@index([clientId])
 }
 
 model ClientHistory {

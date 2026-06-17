@@ -26,3 +26,20 @@ export function isGerenteOrAbove(user: SessionUser) {
 export function canFinalizeClients(user: SessionUser) {
   return isGerenteOrAbove(user);
 }
+
+/** Ferramentas (PDF, validadores, etc.) — oculto para colaboradores. */
+export function canAccessTools(user: { role: Role | string }) {
+  return user.role !== Role.COLABORADOR && user.role !== "COLABORADOR";
+}
+
+/** Editar modelo de checklist por tese. */
+export function canManageChecklistTemplate(user: { role: Role | string }) {
+  return (
+    user.role === Role.ADMIN ||
+    user.role === Role.ADV ||
+    user.role === Role.GERENTE ||
+    user.role === "ADMIN" ||
+    user.role === "ADV" ||
+    user.role === "GERENTE"
+  );
+}

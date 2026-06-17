@@ -22,6 +22,7 @@ import {
   FileDown,
   Search,
   AlertTriangle,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ const icons = {
   fileDown: FileDown,
   search: Search,
   alert: AlertTriangle,
+  wrench: Wrench,
 } as const;
 
 export type IconName = keyof typeof icons;

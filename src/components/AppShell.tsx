@@ -7,6 +7,7 @@ import { useTheme } from "./ThemeProvider";
 import { TeseFilterProvider } from "./TeseFilterProvider";
 import { TeseFilterBar } from "./TeseFilterBar";
 import { Icon, type IconName } from "./ui/Icon";
+import { canAccessTools } from "@/lib/roles";
 
 type SessionUser = {
   id: string;
@@ -126,6 +127,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const nav: NavItem[] = [
     ...baseNav,
+    ...(user && canAccessTools(user)
+      ? [{ href: "/ferramentas", label: "Ferramentas", shortLabel: "Tools", icon: "wrench" as const }]
+      : []),
     ...(user?.role && user.role !== "ADMIN"
       ? [{ href: "/equipe", label: "Minha equipe", shortLabel: "Equipe", icon: "briefcase" as const }]
       : []),
