@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { isAdminUser, teamScopeWhere } from "@/lib/team-access";
-import { enrichTaskSla } from "@/lib/task-sla";
+import { formatTaskForApi, taskListInclude } from "@/lib/task-query";
 
 export const runtime = "nodejs";
 
@@ -42,35 +42,10 @@ export async function GET(request: Request) {
           : {}),
       },
       orderBy: [{ column: { sortOrder: "asc" } }, { sortOrder: "asc" }],
-      include: {
-        column: true,
-        assignee: { select: { id: true, name: true } },
-        client: { select: { id: true, name: true, cod: true, teseId: true } },
-        createdBy: { select: { id: true, name: true } },
-      },
+      include: taskListInclude,
     });
 
-    const enriched = tasks.map((task) =>
-      enrichTaskSla({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        columnId: task.columnId,
-        dueAt: task.dueAt?.toISOString() ?? null,
-        sortOrder: task.sortOrder,
-        teamId: task.teamId,
-        clientId: task.clientId,
-        assigneeId: task.assigneeId,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-        column: task.column,
-        assignee: task.assignee,
-        client: task.client,
-        createdBy: task.createdBy,
-        overdue: false,
-        dueSoon: false,
-      })
-    );
+    const enriched = tasks.map(formatTaskForApi);
 
     const header =
       "Título;Coluna;Responsável;Cliente;COD;Prazo;Atrasada;Criada em;Criada por";

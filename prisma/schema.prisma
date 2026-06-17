@@ -48,6 +48,34 @@ enum TaskHistoryType {
   FIELD_UPDATE
 }
 
+enum TaskPriority {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+enum ChamadoStatus {
+  ABERTO
+  EM_ANDAMENTO
+  AGUARDANDO_VALIDACAO
+  AG_FECHAMENTO
+  FECHADO
+}
+
+enum ChamadoCategory {
+  BUG
+  SUGESTOES
+  SOLICITACOES
+}
+
+enum ChamadoHistoryType {
+  CREATED
+  STATUS_CHANGE
+  ASSIGNEE_CHANGE
+  COMMENT
+  FIELD_UPDATE
+}
+
 model Team {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -63,6 +91,8 @@ model Team {
   kanbanColumns KanbanColumn[]
   messageTemplates MessageTemplate[]
   goals     TeamGoal[]
+  taskLabels TaskLabel[]
+  chamados  Chamado[]
 }
 
 model TeseChecklistItem {
@@ -100,6 +130,11 @@ model User {
   messageTemplates            MessageTemplate[]  @relation("TemplateAuthor")
   teamGoals                   TeamGoal[]         @relation("GoalAssignee")
   checklistMarked             ClientChecklistProgress[] @relation("ChecklistDoneBy")
+  chamadosRequested           Chamado[]          @relation("ChamadoRequester")
+  chamadosAssigned            Chamado[]          @relation("ChamadoAssignee")
+  chamadoComments             ChamadoComment[]
+  chamadoAttachments          ChamadoAttachment[] @relation("ChamadoAttachmentUploader")
+  chamadoHistory              ChamadoHistory[]   @relation("ChamadoHistoryAuthor")
 
   @@index([teamId])
 }
@@ -185,6 +220,7 @@ model Client {
   history        ClientHistory[]
   tasks          Task[]
   checklistProgress ClientChecklistProgress[]
+  chamados          Chamado[]
 
   @@index([teamId])
 }
@@ -280,6 +316,7 @@ model Task {
   id          String        @id @default(uuid())
   title       String
   description String?
+  priority    TaskPriority  @default(MEDIA)
   columnId    String
   column      KanbanColumn  @relation(fields: [columnId], references: [id], onDelete: Restrict)
   dueAt       DateTime?
@@ -290,15 +327,112 @@ model Task {
   client      Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   assigneeId  String?
   assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  chamadoId   String?       @unique
+  chamado     Chamado?      @relation(fields: [chamadoId], references: [id], onDelete: SetNull)
   createdById String
   createdBy   User          @relation("TaskCreator", fields: [createdById], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   history     TaskHistory[]
+  labels      TaskLabelOnTask[]
 
   @@index([teamId, columnId, sortOrder])
   @@index([assigneeId])
   @@index([clientId])
+  @@index([priority])
+}
+
+model TaskLabel {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   @default("#0f766e")
+  createdAt DateTime @default(now())
+  tasks     TaskLabelOnTask[]
+
+  @@unique([teamId, name])
+  @@index([teamId])
+}
+
+model TaskLabelOnTask {
+  taskId  String
+  labelId String
+  task    Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label   TaskLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+}
+
+model Chamado {
+  id            String          @id @default(uuid())
+  number        Int
+  title         String
+  description   String?
+  status        ChamadoStatus   @default(ABERTO)
+  priority      TaskPriority    @default(MEDIA)
+  category      ChamadoCategory
+  teamId        String
+  team          Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  requesterId   String
+  requester     User            @relation("ChamadoRequester", fields: [requesterId], references: [id])
+  assigneeId    String?
+  assignee      User?           @relation("ChamadoAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  clientId      String?
+  client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  comments      ChamadoComment[]
+  attachments   ChamadoAttachment[]
+  history       ChamadoHistory[]
+  linkedTask    Task?
+
+  @@unique([teamId, number])
+  @@index([teamId, status])
+  @@index([requesterId])
+  @@index([assigneeId])
+}
+
+model ChamadoComment {
+  id          String   @id @default(uuid())
+  chamadoId   String
+  chamado     Chamado  @relation(fields: [chamadoId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  body        String
+  createdAt   DateTime @default(now())
+
+  @@index([chamadoId, createdAt])
+}
+
+model ChamadoAttachment {
+  id           String   @id @default(uuid())
+  chamadoId    String
+  chamado      Chamado  @relation(fields: [chamadoId], references: [id], onDelete: Cascade)
+  storedName   String
+  originalName String
+  mimeType     String
+  size         Int
+  uploadedById String
+  uploadedBy   User     @relation("ChamadoAttachmentUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([chamadoId])
+}
+
+model ChamadoHistory {
+  id          String             @id @default(uuid())
+  chamadoId   String
+  chamado     Chamado            @relation(fields: [chamadoId], references: [id], onDelete: Cascade)
+  type        ChamadoHistoryType
+  note        String?
+  fromLabel   String?
+  toLabel     String?
+  createdAt   DateTime           @default(now())
+  createdById String
+  createdBy   User               @relation("ChamadoHistoryAuthor", fields: [createdById], references: [id])
+
+  @@index([chamadoId, createdAt])
 }
 
 model KanbanColumn {

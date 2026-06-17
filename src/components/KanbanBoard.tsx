@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 import type { TaskListItem } from "@/lib/task-fields";
+import { PriorityBadge } from "./PriorityBadge";
+import { TaskProgressBar } from "./TaskProgressBar";
 import { Icon } from "./ui/Icon";
+
+const COLUMN_PAGE_SIZE = 15;
 
 function formatDueDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR");
@@ -64,12 +68,29 @@ function KanbanCard({
       }`}
     >
       <button type="button" className="w-full text-left" onClick={() => onEdit(task)}>
-        <p className="mb-2 text-sm font-medium text-foreground">{task.title}</p>
+        <div className="mb-1.5 flex items-start justify-between gap-2">
+          <p className="text-sm font-medium text-foreground">{task.title}</p>
+          <PriorityBadge priority={task.priority} compact />
+        </div>
+        {task.labels.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            {task.labels.map((l) => (
+              <span
+                key={l.id}
+                className="rounded px-1.5 py-0.5 text-[9px] font-medium text-white"
+                style={{ backgroundColor: l.color }}
+              >
+                {l.name}
+              </span>
+            ))}
+          </div>
+        )}
         {task.description && (
           <p className="mb-2 line-clamp-2 text-xs text-muted">{task.description}</p>
         )}
+        <TaskProgressBar checklist={task.checklist} />
         {task.assignee && (
-          <div className="flex items-center gap-1.5 text-xs text-muted">
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted">
             <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
               {assigneeInitial}
             </div>
@@ -88,6 +109,9 @@ function KanbanCard({
             </Link>
           </p>
         )}
+        {task.chamadoId && (
+          <p className="mt-1 text-[10px] text-primary/80">Vinculado a chamado</p>
+        )}
         {task.dueAt && (
           <span
             className={`mt-1 block text-[11px] ${
@@ -104,6 +128,57 @@ function KanbanCard({
         )}
       </button>
     </article>
+  );
+}
+
+function ColumnBody({
+  columnId,
+  tasks,
+  onEditTask,
+  draggingId,
+  setDraggingId,
+}: {
+  columnId: string;
+  tasks: TaskListItem[];
+  onEditTask: (task: TaskListItem) => void;
+  draggingId: string | null;
+  setDraggingId: (id: string | null) => void;
+}) {
+  const [visible, setVisible] = useState(COLUMN_PAGE_SIZE);
+  const shown = tasks.slice(0, visible);
+  const hasMore = tasks.length > visible;
+
+  if (tasks.length === 0) {
+    return (
+      <div className="mx-2 my-2 flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border/50 py-8 text-muted/50">
+        <Icon name="kanban" className="mb-1 h-6 w-6 opacity-30" />
+        <span className="text-xs">Arraste tarefas aqui</span>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {shown.map((task) => (
+        <KanbanCard
+          key={task.id}
+          task={task}
+          onEdit={onEditTask}
+          dragging={draggingId === task.id}
+          onDragStart={() => setDraggingId(task.id)}
+          onDragEnd={() => setDraggingId(null)}
+        />
+      ))}
+      {hasMore && (
+        <button
+          type="button"
+          className="mx-2 mb-2 w-[calc(100%-1rem)] rounded-lg border border-dashed border-border py-2 text-xs text-muted hover:border-primary/40 hover:text-primary"
+          onClick={() => setVisible((v) => v + COLUMN_PAGE_SIZE)}
+        >
+          Carregar mais ({tasks.length - visible} restantes)
+        </button>
+      )}
+    </>
   );
 }
 
@@ -174,23 +249,13 @@ export function KanbanBoard({
             </header>
 
             <div className="flex flex-1 flex-col overflow-y-auto py-2">
-              {tasks.length === 0 ? (
-                <div className="mx-2 my-2 flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border/50 py-8 text-muted/50">
-                  <Icon name="kanban" className="mb-1 h-6 w-6 opacity-30" />
-                  <span className="text-xs">Arraste tarefas aqui</span>
-                </div>
-              ) : (
-                tasks.map((task) => (
-                  <KanbanCard
-                    key={task.id}
-                    task={task}
-                    onEdit={onEditTask}
-                    dragging={draggingId === task.id}
-                    onDragStart={() => setDraggingId(task.id)}
-                    onDragEnd={() => setDraggingId(null)}
-                  />
-                ))
-              )}
+              <ColumnBody
+                columnId={column.id}
+                tasks={tasks}
+                onEditTask={onEditTask}
+                draggingId={draggingId}
+                setDraggingId={setDraggingId}
+              />
             </div>
           </section>
         );

@@ -13,11 +13,14 @@ export const runtime = "nodejs";
 const createTaskSchema = z.object({
   title: z.string().min(2).max(200),
   description: z.string().max(4000).optional().nullable(),
+  priority: z.enum(["BAIXA", "MEDIA", "ALTA"]).optional(),
   columnId: z.string().uuid().optional(),
   dueAt: z.string().datetime().optional().nullable(),
   teamId: z.string().uuid().optional(),
   clientId: z.string().uuid().optional().nullable(),
   assigneeId: z.string().uuid().optional().nullable(),
+  labelIds: z.array(z.string().uuid()).optional(),
+  chamadoId: z.string().uuid().optional().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -27,8 +30,19 @@ export async function GET(request: Request) {
     const assigneeId = searchParams.get("assigneeId");
     const clientId = searchParams.get("clientId");
     const teseId = searchParams.get("teseId");
+    const priority = searchParams.get("priority");
+    const labelId = searchParams.get("labelId");
+    const mineOnly = searchParams.get("mineOnly") === "1";
 
-    const where = buildTaskWhere(user, { teamId, assigneeId, clientId, teseId });
+    const where = buildTaskWhere(user, {
+      teamId,
+      assigneeId,
+      clientId,
+      teseId,
+      priority,
+      labelId,
+      mineOnly,
+    });
 
     const tasks = await prisma.task.findMany({
       where,
@@ -102,13 +116,22 @@ export async function POST(request: Request) {
         data: {
           title: parsed.data.title.trim(),
           description: parsed.data.description?.trim() || null,
+          priority: parsed.data.priority ?? "MEDIA",
           columnId,
           dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
           teamId,
           clientId: parsed.data.clientId ?? null,
           assigneeId: parsed.data.assigneeId ?? null,
+          chamadoId: parsed.data.chamadoId ?? null,
           createdById: user.id,
           sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+          ...(parsed.data.labelIds?.length
+            ? {
+                labels: {
+                  create: parsed.data.labelIds.map((labelId) => ({ labelId })),
+                },
+              }
+            : {}),
         },
         include: taskListInclude,
       });

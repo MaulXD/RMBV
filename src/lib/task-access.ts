@@ -9,6 +9,9 @@ export type TaskListFilters = {
   assigneeId?: string | null;
   clientId?: string | null;
   teseId?: string | null;
+  priority?: string | null;
+  labelId?: string | null;
+  mineOnly?: boolean;
 };
 
 export function resolveTaskTeamId(user: SessionUser, explicitTeamId?: string | null): string {
@@ -40,10 +43,19 @@ export function buildTaskWhere(
 ): Prisma.TaskWhereInput {
   const teamWhere = taskTeamWhere(user, filters.teamId);
 
+  const assigneeId =
+    filters.mineOnly && user.id ? user.id : filters.assigneeId || undefined;
+
   return {
     ...teamWhere,
-    ...(filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
+    ...(assigneeId ? { assigneeId } : {}),
     ...(filters.clientId ? { clientId: filters.clientId } : {}),
+    ...(filters.priority && filters.priority !== "all"
+      ? { priority: filters.priority as Prisma.EnumTaskPriorityFilter["equals"] }
+      : {}),
+    ...(filters.labelId
+      ? { labels: { some: { labelId: filters.labelId } } }
+      : {}),
     ...(filters.teseId
       ? {
           OR: [{ clientId: null }, { client: { teseId: filters.teseId } }],

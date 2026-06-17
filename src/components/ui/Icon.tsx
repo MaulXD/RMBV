@@ -38,6 +38,8 @@ import {
   Table2,
   MessageSquare,
   RotateCw,
+  LifeBuoy,
+  LayoutList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -81,6 +83,8 @@ const icons = {
   table: Table2,
   messageSquare: MessageSquare,
   rotateCw: RotateCw,
+  ticket: LifeBuoy,
+  list: LayoutList,
 } as const;
 
 export type IconName = keyof typeof icons;
