@@ -17,6 +17,11 @@ import {
 } from "@/lib/pdf-organizer";
 import { ocrImageFiles, ocrPdfBytes } from "@/lib/pdf-compress-ocr";
 import { ClientSearchField, type ClientOption } from "./ClientSearchField";
+import {
+  ImagePreviewGrid,
+  PdfPreviewWorkspace,
+  previewOverlayForMode,
+} from "./PdfPreviewWorkspace";
 import { ToolPickerCard, ToolPickerStrip } from "./ToolPickerCard";
 import { Icon, type IconName } from "./ui/Icon";
 
@@ -104,6 +109,7 @@ export function PdfOrganizerTool() {
 
   const [ocrText, setOcrText] = useState<string | null>(null);
   const [ocrProgress, setOcrProgress] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const hasPages = pages.length > 0;
   const needsPages = mode !== "images";
@@ -166,14 +172,22 @@ export function PdfOrganizerTool() {
       setError("Selecione imagens (JPG ou PNG).");
       return;
     }
+    setImageFiles(files);
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function convertImagePreviewToPdf() {
+    if (imageFiles.length === 0) return;
     setLoading(true);
     setError(null);
     try {
-      const bytes = await imagesToPdf(files);
+      const bytes = await imagesToPdf(imageFiles);
       downloadBytes(bytes, `imagens-${Date.now()}.pdf`);
       const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
       const pdfFile = new File([blob], `imagens-${Date.now()}.pdf`, { type: "application/pdf" });
       await addFiles([pdfFile]);
+      setImageFiles([]);
       setMode("merge");
       setSuccess("PDF gerado a partir das imagens. Você pode juntar ou exportar.");
     } catch {
@@ -211,6 +225,7 @@ export function PdfOrganizerTool() {
     setSources([]);
     setPages([]);
     setSelected(new Set());
+    setImageFiles([]);
     setError(null);
     setSuccess(null);
     setOcrText(null);
@@ -222,13 +237,29 @@ export function PdfOrganizerTool() {
     return buildMergedPdf(pageList, sources, exportOpts);
   }
 
+  function pagesForExport() {
+    if (mode === "merge" && selected.size > 0) {
+      return pages.filter((p) => selected.has(p.id));
+    }
+    return pages;
+  }
+
+  function selectAllPages() {
+    setSelected(new Set(pages.map((p) => p.id)));
+  }
+
+  function reorderPages(from: number, to: number) {
+    setPages((prev) => moveItem(prev, from, to));
+    setDragIndex(null);
+  }
+
   async function downloadMerged() {
     if (!hasPages) return;
     setExporting(true);
     setError(null);
     setSuccess(null);
     try {
-      const bytes = await buildBytes();
+      const bytes = await buildBytes(pagesForExport());
       downloadBytes(bytes, sanitizeFilename(saveFilename) || `pdf-organizado-${Date.now()}.pdf`);
     } catch {
       setError("Falha ao gerar o PDF.");
@@ -246,7 +277,7 @@ export function PdfOrganizerTool() {
     setError(null);
     setSuccess(null);
     try {
-      const bytes = await buildBytes();
+      const bytes = await buildBytes(pagesForExport());
       const name = sanitizeFilename(saveFilename) || `pdf-organizado-${Date.now()}.pdf`;
       const result = await uploadPdfToClient(saveClient.id, bytes, name);
       if (!result.ok) {
@@ -268,7 +299,7 @@ export function PdfOrganizerTool() {
     setOcrText(null);
     setOcrProgress("Preparando OCR…");
     try {
-      const bytes = await buildBytes();
+      const bytes = await buildBytes(pagesForExport());
       const text = await ocrPdfBytes(bytes, (cur, total) => {
         setOcrProgress(`Página ${cur}/${total}…`);
       });
@@ -384,8 +415,10 @@ export function PdfOrganizerTool() {
       </section>
 
       {mode === "images" ? (
-        <section className="panel-solid space-y-4 p-5">
-          <p className="text-sm text-muted">Selecione fotos ou prints para gerar um PDF.</p>
+        <section className="soft-card space-y-4 p-5">
+          <p className="text-sm text-muted">
+            Selecione fotos ou prints — você verá a pré-visualização antes de gerar o PDF.
+          </p>
           <input
             ref={imageInputRef}
             type="file"
@@ -396,18 +429,37 @@ export function PdfOrganizerTool() {
               if (e.target.files?.length) void addImagesAsPdf(e.target.files);
             }}
           />
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={loading}
-            onClick={() => imageInputRef.current?.click()}
-          >
-            <Icon name="image" className="h-4 w-4" />
-            {loading ? "Convertendo…" : "Escolher imagens"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={loading}
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <Icon name="image" className="h-4 w-4" />
+              Escolher imagens
+            </button>
+            {imageFiles.length > 0 && (
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={loading}
+                onClick={() => void convertImagePreviewToPdf()}
+              >
+                <Icon name="layers" className="h-4 w-4" />
+                {loading ? "Gerando PDF…" : `Gerar PDF (${imageFiles.length} img.)`}
+              </button>
+            )}
+          </div>
+          {imageFiles.length > 0 && (
+            <ImagePreviewGrid
+              files={imageFiles}
+              onRemove={(i) => setImageFiles((prev) => prev.filter((_, idx) => idx !== i))}
+            />
+          )}
         </section>
       ) : (
-        <section className="panel-solid flex flex-wrap items-center gap-2 p-4">
+        <section className="soft-card flex flex-wrap items-center gap-2 p-4">
           <input
             ref={inputRef}
             type="file"
@@ -521,67 +573,55 @@ export function PdfOrganizerTool() {
         </section>
       )}
 
-      {hasPages && (mode === "organize" || mode === "split" || mode === "merge") && (
-        <section className="panel-solid space-y-3 p-5">
-          <h3 className="text-sm font-semibold">
-            {mode === "organize" ? "Reordenar páginas" : mode === "split" ? "Selecione para dividir" : "Páginas no documento"}
-          </h3>
-          <ul className="space-y-2">
-            {pages.map((page, index) => (
-              <li
-                key={page.id}
-                draggable={mode === "organize"}
-                onDragStart={() => setDragIndex(index)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (dragIndex === null || mode !== "organize") return;
-                  setPages((prev) => moveItem(prev, dragIndex, index));
-                  setDragIndex(null);
-                }}
-                className={`flex flex-wrap items-center gap-2 rounded-[var(--radius-ui)] border px-3 py-2 ${
-                  selected.has(page.id) ? "border-primary/50 bg-primary/5" : "border-border"
-                }`}
-              >
-                {mode === "organize" && <span className="cursor-grab text-muted">⋮⋮</span>}
-                <label className="flex items-center gap-2 text-sm">
-                  {(mode === "split" || mode === "merge") && (
-                    <input type="checkbox" checked={selected.has(page.id)} onChange={() => toggleSelect(page.id)} />
-                  )}
-                  <span>
-                    <span className="font-medium">Pág. {page.pageIndex + 1}</span>
-                    <span className="text-muted"> — {page.sourceName}</span>
-                    {page.rotation > 0 && <span className="ml-1 text-xs text-primary">↻ {page.rotation}°</span>}
-                  </span>
-                </label>
-                {mode === "organize" && (
-                  <div className="ml-auto flex gap-1">
-                    <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={index === 0} onClick={() => setPages((prev) => moveItem(prev, index, index - 1))}>↑</button>
-                    <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={index === pages.length - 1} onClick={() => setPages((prev) => moveItem(prev, index, index + 1))}>↓</button>
-                    <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => rotatePage(page.id)} title="Girar 90°">
-                      <Icon name="rotateCw" className="h-3.5 w-3.5" />
-                    </button>
-                    <button type="button" className="btn-ghost px-2 py-1 text-xs text-red-600" onClick={() => removePage(page.id)}>
-                      <Icon name="x" className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
+      {hasPages && (
+        <PdfPreviewWorkspace
+          mode={mode}
+          pages={pages}
+          sources={sources}
+          selected={selected}
+          dragIndex={dragIndex}
+          overlayForIndex={(index) =>
+            previewOverlayForMode(mode, index, {
+              batesEnabled,
+              batesPrefix,
+              batesStart,
+              batesPosition,
+              watermarkEnabled,
+              watermarkText,
+              watermarkOpacity,
+              watermarkDiagonal,
+              redactionBottomPct,
+              compress,
+            })
+          }
+          onToggleSelect={toggleSelect}
+          onRotate={rotatePage}
+          onRemove={removePage}
+          onDragStart={setDragIndex}
+          onDropOn={(to) => {
+            if (dragIndex != null) reorderPages(dragIndex, to);
+          }}
+          onMovePage={reorderPages}
+          onSelectAll={selectAllPages}
+          onClearSelection={() => setSelected(new Set())}
+        />
       )}
 
       {hasPages && mode === "merge" && (
-        <section className="panel-solid p-5">
+        <section className="soft-card p-5">
           <button type="button" className="btn-primary" disabled={exporting} onClick={() => void downloadMerged()}>
             <Icon name="layers" className="h-4 w-4" />
-            {exporting ? "Gerando…" : "Baixar PDF único (juntado)"}
+            {exporting
+              ? "Gerando…"
+              : selected.size > 0
+                ? `Baixar PDF (${selected.size} páginas)`
+                : "Baixar PDF único (juntado)"}
           </button>
         </section>
       )}
 
       {hasPages && mode === "split" && (
-        <section className="panel-solid flex flex-wrap gap-2 p-5">
+        <section className="soft-card flex flex-wrap gap-2 p-5">
           <button type="button" className="btn-primary" disabled={exporting || selected.size === 0} onClick={() => void downloadSelectedSeparate()}>
             <Icon name="scissors" className="h-4 w-4" />
             Dividir selecionadas ({selected.size})
@@ -592,11 +632,11 @@ export function PdfOrganizerTool() {
         </section>
       )}
 
-      {hasPages && ["bates", "watermark", "redact", "compress"].includes(mode) && (
-        <section className="panel-solid p-5">
+      {hasPages && ["bates", "watermark", "redact", "compress", "save"].includes(mode) && (
+        <section className="soft-card p-5">
           <button type="button" className="btn-primary" disabled={exporting} onClick={() => void downloadMerged()}>
             <Icon name="fileDown" className="h-4 w-4" />
-            {exporting ? "Gerando…" : "Baixar PDF com alterações"}
+            {exporting ? "Gerando…" : mode === "save" ? "Gerar para salvar" : "Baixar PDF com alterações"}
           </button>
         </section>
       )}
