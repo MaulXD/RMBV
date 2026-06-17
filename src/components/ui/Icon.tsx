@@ -53,6 +53,7 @@ import {
   Flag,
   ArrowDown,
   Minus,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -111,6 +112,7 @@ const icons = {
   flag: Flag,
   arrowDown: ArrowDown,
   minus: Minus,
+  trash: Trash2,
 } as const;
 
 export type IconName = keyof typeof icons;
