@@ -16,7 +16,9 @@ import {
   type PdfSource,
 } from "@/lib/pdf-organizer";
 import { ocrImageFiles, ocrPdfBytes } from "@/lib/pdf-compress-ocr";
+import { clearPdfDocumentCache } from "@/lib/pdf-js-client";
 import { ClientSearchField, type ClientOption } from "./ClientSearchField";
+import { clearThumbnailCache } from "./PdfPagePreviewCard";
 import {
   ImagePreviewGrid,
   PdfPreviewWorkspace,
@@ -229,6 +231,8 @@ export function PdfOrganizerTool() {
     setError(null);
     setSuccess(null);
     setOcrText(null);
+    clearPdfDocumentCache();
+    clearThumbnailCache();
     if (inputRef.current) inputRef.current.value = "";
     if (imageInputRef.current) imageInputRef.current.value = "";
   }

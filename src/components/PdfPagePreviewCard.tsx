@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { BatesPosition, OrganizerPage, PdfSource } from "@/lib/pdf-organizer";
 import { renderPdfPageThumbnail, thumbnailCacheKey } from "@/lib/pdf-js-client";
 import { Icon } from "./ui/Icon";
 
 const thumbnailCache = new Map<string, string>();
+
+export function clearThumbnailCache() {
+  thumbnailCache.clear();
+}
 
 type PreviewOverlay = {
   batesLabel?: string;
@@ -75,7 +79,7 @@ export function PdfPagePreviewCard({
 
   const source = sources.find((s) => s.id === page.sourceId);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!source) {
       setError(true);
       setLoading(false);
@@ -87,35 +91,50 @@ export function PdfPagePreviewCard({
     if (cached) {
       setThumb(cached);
       setLoading(false);
+      setError(false);
       return;
     }
 
+    setThumb(null);
+    setLoading(true);
+    setError(false);
+
     let cancelled = false;
+    const el = rootRef.current;
+    if (!el) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
+
+    const loadThumb = () => {
+      void renderPdfPageThumbnail(page.sourceId, source.bytes, page.pageIndex, {
+        rotation: page.rotation,
+      })
+        .then((url) => {
+          if (cancelled) return;
+          thumbnailCache.set(key, url);
+          setThumb(url);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError(true);
+            setLoading(false);
+          }
+        });
+    };
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         observer.disconnect();
-
-        void renderPdfPageThumbnail(source.bytes, page.pageIndex, {
-          rotation: page.rotation,
-        })
-          .then((url) => {
-            if (cancelled) return;
-            thumbnailCache.set(key, url);
-            setThumb(url);
-            setLoading(false);
-          })
-          .catch(() => {
-            if (!cancelled) {
-              setError(true);
-              setLoading(false);
-            }
-          });
+        loadThumb();
       },
-      { rootMargin: "120px" }
+      { rootMargin: "160px" }
     );
 
-    if (rootRef.current) observer.observe(rootRef.current);
+    observer.observe(el);
     return () => {
       cancelled = true;
       observer.disconnect();
