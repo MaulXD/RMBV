@@ -17,7 +17,39 @@ import {
 } from "@/lib/pdf-organizer";
 import { ocrImageFiles, ocrPdfBytes } from "@/lib/pdf-compress-ocr";
 import { ClientSearchField, type ClientOption } from "./ClientSearchField";
-import { Icon } from "./ui/Icon";
+import { ToolPickerCard, ToolPickerStrip } from "./ToolPickerCard";
+import { Icon, type IconName } from "./ui/Icon";
+
+type PdfMode =
+  | "merge"
+  | "split"
+  | "organize"
+  | "bates"
+  | "watermark"
+  | "redact"
+  | "compress"
+  | "ocr"
+  | "images"
+  | "save";
+
+const PDF_MODES: {
+  id: PdfMode;
+  label: string;
+  description: string;
+  icon: IconName;
+  accent: "primary" | "amber" | "emerald" | "sky" | "violet";
+}[] = [
+  { id: "merge", label: "Juntar PDF", description: "Unir vários arquivos em um só.", icon: "layers", accent: "primary" },
+  { id: "split", label: "Dividir", description: "Separar páginas em arquivos.", icon: "scissors", accent: "sky" },
+  { id: "organize", label: "Reordenar / Girar", description: "Arrastar, subir, descer e rotacionar.", icon: "grip", accent: "amber" },
+  { id: "bates", label: "Bates", description: "Numeração PREFIXO-0001 com posição.", icon: "hash", accent: "violet" },
+  { id: "watermark", label: "Marca d'água", description: "Texto diagonal ou reto no documento.", icon: "stamp", accent: "emerald" },
+  { id: "redact", label: "Redação", description: "Tarja preta em área da página.", icon: "eyeOff", accent: "primary" },
+  { id: "compress", label: "Comprimir", description: "Reduzir tamanho para envio.", icon: "minimize", accent: "sky" },
+  { id: "ocr", label: "OCR", description: "Extrair texto de PDF ou imagem.", icon: "scanText", accent: "amber" },
+  { id: "images", label: "Imagens → PDF", description: "Converter fotos JPG/PNG em PDF.", icon: "image", accent: "emerald" },
+  { id: "save", label: "Salvar no cliente", description: "Enviar resultado para Documentos.", icon: "folderUp", accent: "violet" },
+];
 
 const BATES_POSITIONS: { value: BatesPosition; label: string }[] = [
   { value: "bottom-right", label: "Inferior direito" },
@@ -43,8 +75,10 @@ function moveItem<T>(list: T[], from: number, to: number): T[] {
 }
 
 export function PdfOrganizerTool() {
+  const [mode, setMode] = useState<PdfMode>("merge");
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const ocrImageRef = useRef<HTMLInputElement>(null);
   const [sources, setSources] = useState<PdfSource[]>([]);
   const [pages, setPages] = useState<OrganizerPage[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -72,29 +106,32 @@ export function PdfOrganizerTool() {
   const [ocrProgress, setOcrProgress] = useState<string | null>(null);
 
   const hasPages = pages.length > 0;
+  const needsPages = mode !== "images";
 
   const exportOpts: PdfExportOptions = {
-    bates: batesEnabled
-      ? { enabled: true, prefix: batesPrefix, startNumber: batesStart, position: batesPosition }
-      : undefined,
-    watermark: watermarkEnabled
-      ? {
-          enabled: true,
-          text: watermarkText,
-          opacity: watermarkOpacity,
-          diagonal: watermarkDiagonal,
-        }
-      : undefined,
+    bates:
+      batesEnabled || mode === "bates"
+        ? { enabled: true, prefix: batesPrefix, startNumber: batesStart, position: batesPosition }
+        : undefined,
+    watermark:
+      watermarkEnabled || mode === "watermark"
+        ? {
+            enabled: true,
+            text: watermarkText,
+            opacity: watermarkOpacity,
+            diagonal: watermarkDiagonal,
+          }
+        : undefined,
     redactions:
-      redactionBottomPct > 0
+      redactionBottomPct > 0 || mode === "redact"
         ? Object.fromEntries(
             pages.map((p) => [
               p.id,
-              [{ xPct: 0, yPct: 0, wPct: 100, hPct: redactionBottomPct }],
+              [{ xPct: 0, yPct: 0, wPct: 100, hPct: redactionBottomPct || 12 }],
             ])
           )
         : undefined,
-    compress,
+    compress: mode === "compress" ? compress : compress !== "none" ? compress : undefined,
   };
 
   const addFiles = useCallback(async (fileList: FileList | File[]) => {
@@ -117,7 +154,7 @@ export function PdfOrganizerTool() {
       setSources((prev) => [...prev, ...loaded.sources]);
       setPages((prev) => [...prev, ...loaded.pages]);
     } catch {
-      setError("Não foi possível ler um dos PDFs. Verifique se o arquivo não está corrompido.");
+      setError("Não foi possível ler um dos PDFs.");
     } finally {
       setLoading(false);
     }
@@ -133,9 +170,12 @@ export function PdfOrganizerTool() {
     setError(null);
     try {
       const bytes = await imagesToPdf(files);
+      downloadBytes(bytes, `imagens-${Date.now()}.pdf`);
       const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
       const pdfFile = new File([blob], `imagens-${Date.now()}.pdf`, { type: "application/pdf" });
       await addFiles([pdfFile]);
+      setMode("merge");
+      setSuccess("PDF gerado a partir das imagens. Você pode juntar ou exportar.");
     } catch {
       setError("Falha ao converter imagens em PDF.");
     } finally {
@@ -191,7 +231,7 @@ export function PdfOrganizerTool() {
       const bytes = await buildBytes();
       downloadBytes(bytes, sanitizeFilename(saveFilename) || `pdf-organizado-${Date.now()}.pdf`);
     } catch {
-      setError("Falha ao gerar o PDF. Tente com arquivos menores.");
+      setError("Falha ao gerar o PDF.");
     } finally {
       setExporting(false);
     }
@@ -199,7 +239,7 @@ export function PdfOrganizerTool() {
 
   async function saveToClient() {
     if (!hasPages || !saveClient) {
-      setError("Selecione um cliente para salvar.");
+      setError("Selecione um cliente.");
       return;
     }
     setExporting(true);
@@ -230,11 +270,11 @@ export function PdfOrganizerTool() {
     try {
       const bytes = await buildBytes();
       const text = await ocrPdfBytes(bytes, (cur, total) => {
-        setOcrProgress(`OCR página ${cur}/${total}…`);
+        setOcrProgress(`Página ${cur}/${total}…`);
       });
       setOcrText(text || "(Nenhum texto detectado)");
     } catch {
-      setError("Falha no OCR. Tente com menos páginas.");
+      setError("Falha no OCR.");
     } finally {
       setOcrProgress(null);
       setExporting(false);
@@ -263,23 +303,23 @@ export function PdfOrganizerTool() {
   async function downloadSelectedSeparate() {
     const chosen = pages.filter((p) => selected.has(p.id));
     if (chosen.length === 0) {
-      setError("Selecione ao menos uma página para dividir.");
+      setError("Selecione ao menos uma página.");
       return;
     }
     setExporting(true);
     setError(null);
     try {
-      let batesNum = batesEnabled ? batesStart : undefined;
+      let batesNum = exportOpts.bates?.enabled ? batesStart : undefined;
       for (let i = 0; i < chosen.length; i += 1) {
         const page = chosen[i]!;
         const bytes = await buildSinglePagePdf(page, sources, exportOpts, batesNum);
-        if (batesEnabled && batesNum != null) batesNum += 1;
+        if (exportOpts.bates?.enabled && batesNum != null) batesNum += 1;
         const base = sanitizeFilename(page.sourceName.replace(/\.pdf$/i, ""));
         downloadBytes(bytes, `${base}-pagina-${page.pageIndex + 1}.pdf`);
         await new Promise((r) => setTimeout(r, 120));
       }
     } catch {
-      setError("Falha ao dividir o PDF.");
+      setError("Falha ao dividir.");
     } finally {
       setExporting(false);
     }
@@ -290,43 +330,62 @@ export function PdfOrganizerTool() {
     setExporting(true);
     setError(null);
     try {
-      let batesNum = batesEnabled ? batesStart : undefined;
+      let batesNum = exportOpts.bates?.enabled ? batesStart : undefined;
       for (let i = 0; i < pages.length; i += 1) {
         const page = pages[i]!;
         const bytes = await buildSinglePagePdf(page, sources, exportOpts, batesNum);
-        if (batesEnabled && batesNum != null) batesNum += 1;
+        if (exportOpts.bates?.enabled && batesNum != null) batesNum += 1;
         const base = sanitizeFilename(page.sourceName.replace(/\.pdf$/i, ""));
         downloadBytes(bytes, `${base}-pagina-${page.pageIndex + 1}.pdf`);
         await new Promise((r) => setTimeout(r, 120));
       }
     } catch {
-      setError("Falha ao dividir o PDF.");
+      setError("Falha ao dividir.");
     } finally {
       setExporting(false);
     }
   }
 
+  function selectMode(next: PdfMode) {
+    setMode(next);
+    setError(null);
+    if (next === "bates") setBatesEnabled(true);
+    if (next === "watermark") setWatermarkEnabled(true);
+    if (next === "redact" && redactionBottomPct === 0) setRedactionBottomPct(12);
+    if (next === "compress" && compress === "none") setCompress("light");
+  }
+
   return (
     <div className="space-y-6">
-      <section className="panel-solid space-y-4 p-5">
-        <div>
-          <h2 className="font-semibold text-foreground">Organizador de PDF</h2>
-          <p className="mt-1 text-sm text-muted">
-            Junte, reordene, Bates, marca d&apos;água, redação, compressão e OCR — tudo no navegador.
-          </p>
+      <section>
+        <h3 className="mb-3 text-xs font-semibold tracking-widest text-muted uppercase">
+          O que fazer com o PDF?
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {PDF_MODES.map((item) => (
+            <ToolPickerCard
+              key={item.id}
+              icon={item.icon}
+              title={item.label}
+              description={item.description}
+              accent={item.accent}
+              active={mode === item.id}
+              onClick={() => selectMode(item.id)}
+            />
+          ))}
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.length) void addFiles(e.target.files);
-            }}
+        <div className="mt-3 md:hidden">
+          <ToolPickerStrip
+            items={PDF_MODES.map((m) => ({ id: m.id, label: m.label, icon: m.icon }))}
+            activeId={mode}
+            onSelect={(id) => selectMode(id as PdfMode)}
           />
+        </div>
+      </section>
+
+      {mode === "images" ? (
+        <section className="panel-solid space-y-4 p-5">
+          <p className="text-sm text-muted">Selecione fotos ou prints para gerar um PDF.</p>
           <input
             ref={imageInputRef}
             type="file"
@@ -341,291 +400,217 @@ export function PdfOrganizerTool() {
             type="button"
             className="btn-primary"
             disabled={loading}
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <Icon name="image" className="h-4 w-4" />
+            {loading ? "Convertendo…" : "Escolher imagens"}
+          </button>
+        </section>
+      ) : (
+        <section className="panel-solid flex flex-wrap items-center gap-2 p-4">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) void addFiles(e.target.files);
+            }}
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={loading}
             onClick={() => inputRef.current?.click()}
           >
             <Icon name="upload" className="h-4 w-4" />
-            {loading ? "Carregando..." : "Adicionar PDFs"}
+            {loading ? "Carregando…" : "Adicionar PDFs"}
           </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={loading}
-            onClick={() => imageInputRef.current?.click()}
-          >
-            Imagens → PDF
-          </button>
-          <label className="btn-ghost cursor-pointer">
-            OCR em imagens
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.length) void runOcrOnImages(e.target.files);
-              }}
-            />
-          </label>
           {hasPages && (
             <button type="button" className="btn-ghost" onClick={clearAll}>
-              Limpar tudo
+              Limpar
             </button>
           )}
-        </div>
+          {hasPages && (
+            <span className="text-xs text-muted">
+              {sources.length} arquivo(s) · {pages.length} página(s)
+            </span>
+          )}
+        </section>
+      )}
 
-        {hasPages && (
-          <p className="text-xs text-muted">
-            {sources.length} arquivo(s) · {pages.length} página(s)
-          </p>
-        )}
-      </section>
-
-      <section className="panel-solid grid gap-4 p-5 md:grid-cols-2">
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Bates e marca d&apos;água</h3>
-          <label className="flex items-center gap-2 text-sm">
+      {mode === "bates" && (
+        <section className="panel-solid grid gap-3 p-5 sm:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" checked={batesEnabled} onChange={(e) => setBatesEnabled(e.target.checked)} />
-            Numeração Bates (PREFIXO-0001)
+            Ativar numeração Bates
           </label>
-          {batesEnabled && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <input
-                className="industrial-input text-sm"
-                placeholder="Prefixo"
-                value={batesPrefix}
-                onChange={(e) => setBatesPrefix(e.target.value)}
-              />
-              <input
-                className="industrial-input text-sm"
-                type="number"
-                min={1}
-                value={batesStart}
-                onChange={(e) => setBatesStart(Number(e.target.value) || 1)}
-              />
-              <select
-                className="industrial-input text-sm sm:col-span-2"
-                value={batesPosition}
-                onChange={(e) => setBatesPosition(e.target.value as BatesPosition)}
-              >
-                {BATES_POSITIONS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={watermarkEnabled}
-              onChange={(e) => setWatermarkEnabled(e.target.checked)}
-            />
-            Marca d&apos;água
-          </label>
-          {watermarkEnabled && (
-            <div className="space-y-2">
-              <input
-                className="industrial-input text-sm"
-                value={watermarkText}
-                onChange={(e) => setWatermarkText(e.target.value)}
-              />
-              <input
-                type="range"
-                min={0.1}
-                max={0.6}
-                step={0.05}
-                value={watermarkOpacity}
-                onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
-              />
-              <label className="flex items-center gap-2 text-xs text-muted">
-                <input
-                  type="checkbox"
-                  checked={watermarkDiagonal}
-                  onChange={(e) => setWatermarkDiagonal(e.target.checked)}
-                />
-                Diagonal
-              </label>
-            </div>
-          )}
-        </div>
+          <input className="industrial-input text-sm" placeholder="Prefixo" value={batesPrefix} onChange={(e) => setBatesPrefix(e.target.value)} />
+          <input className="industrial-input text-sm" type="number" min={1} value={batesStart} onChange={(e) => setBatesStart(Number(e.target.value) || 1)} />
+          <select className="industrial-input text-sm sm:col-span-2" value={batesPosition} onChange={(e) => setBatesPosition(e.target.value as BatesPosition)}>
+            {BATES_POSITIONS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </section>
+      )}
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Redação e compressão</h3>
-          <label className="block text-xs text-muted">
-            Tarja inferior (% da página) — redação em bloco preto
+      {mode === "watermark" && (
+        <section className="panel-solid space-y-3 p-5">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={watermarkEnabled} onChange={(e) => setWatermarkEnabled(e.target.checked)} />
+            Ativar marca d&apos;água
           </label>
-          <input
-            type="range"
-            min={0}
-            max={40}
-            value={redactionBottomPct}
-            onChange={(e) => setRedactionBottomPct(Number(e.target.value))}
-            className="w-full"
-          />
-          <p className="text-xs text-muted">{redactionBottomPct}% inferior</p>
-          <label className="mb-1 block text-xs text-muted">Compressão</label>
-          <select
-            className="industrial-input text-sm"
-            value={compress}
-            onChange={(e) => setCompress(e.target.value as "none" | "light" | "strong")}
-          >
+          <input className="industrial-input text-sm" value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} />
+          <input type="range" min={0.1} max={0.6} step={0.05} value={watermarkOpacity} onChange={(e) => setWatermarkOpacity(Number(e.target.value))} className="w-full" />
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" checked={watermarkDiagonal} onChange={(e) => setWatermarkDiagonal(e.target.checked)} />
+            Texto diagonal
+          </label>
+        </section>
+      )}
+
+      {mode === "redact" && (
+        <section className="panel-solid space-y-2 p-5">
+          <p className="text-sm text-muted">Tarja inferior (% da página)</p>
+          <input type="range" min={0} max={40} value={redactionBottomPct} onChange={(e) => setRedactionBottomPct(Number(e.target.value))} className="w-full" />
+          <p className="text-xs text-muted">{redactionBottomPct}% coberto em preto</p>
+        </section>
+      )}
+
+      {mode === "compress" && (
+        <section className="panel-solid p-5">
+          <label className="mb-1 block text-xs text-muted">Nível de compressão</label>
+          <select className="industrial-input text-sm" value={compress} onChange={(e) => setCompress(e.target.value as "none" | "light" | "strong")}>
             <option value="none">Nenhuma</option>
             <option value="light">Leve (recomendado)</option>
-            <option value="strong">Forte (arquivos menores)</option>
+            <option value="strong">Forte</option>
           </select>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {hasPages && (
-        <>
-          <section className="panel-solid space-y-3 p-5">
-            <h3 className="text-sm font-semibold">Páginas — arraste para reordenar</h3>
-            <ul className="space-y-2">
-              {pages.map((page, index) => (
-                <li
-                  key={page.id}
-                  draggable
-                  onDragStart={() => setDragIndex(index)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => {
-                    if (dragIndex === null) return;
-                    setPages((prev) => moveItem(prev, dragIndex, index));
-                    setDragIndex(null);
-                  }}
-                  className={`flex flex-wrap items-center gap-2 rounded-[var(--radius-ui)] border px-3 py-2 ${
-                    selected.has(page.id) ? "border-primary/50 bg-primary/5" : "border-border"
-                  }`}
-                >
-                  <span className="cursor-grab text-muted" title="Arrastar">
-                    ⋮⋮
+      {mode === "ocr" && (
+        <section className="panel-solid flex flex-wrap gap-2 p-5">
+          <button type="button" className="btn-primary" disabled={exporting || !hasPages} onClick={() => void runOcr()}>
+            <Icon name="scanText" className="h-4 w-4" />
+            OCR do PDF carregado
+          </button>
+          <label className="btn-ghost cursor-pointer">
+            <Icon name="image" className="h-4 w-4" />
+            OCR em imagens
+            <input ref={ocrImageRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { if (e.target.files?.length) void runOcrOnImages(e.target.files); }} />
+          </label>
+        </section>
+      )}
+
+      {mode === "save" && (
+        <section className="panel-solid grid gap-4 p-5 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs text-muted">Nome do arquivo</label>
+            <input className="industrial-input text-sm" value={saveFilename} onChange={(e) => setSaveFilename(e.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Cliente</label>
+            <ClientSearchField value={saveClient} onChange={setSaveClient} />
+          </div>
+          <button type="button" className="btn-primary md:col-span-2" disabled={exporting || !saveClient || !hasPages} onClick={() => void saveToClient()}>
+            <Icon name="folderUp" className="h-4 w-4" />
+            Salvar nos Documentos do cliente
+          </button>
+        </section>
+      )}
+
+      {hasPages && (mode === "organize" || mode === "split" || mode === "merge") && (
+        <section className="panel-solid space-y-3 p-5">
+          <h3 className="text-sm font-semibold">
+            {mode === "organize" ? "Reordenar páginas" : mode === "split" ? "Selecione para dividir" : "Páginas no documento"}
+          </h3>
+          <ul className="space-y-2">
+            {pages.map((page, index) => (
+              <li
+                key={page.id}
+                draggable={mode === "organize"}
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex === null || mode !== "organize") return;
+                  setPages((prev) => moveItem(prev, dragIndex, index));
+                  setDragIndex(null);
+                }}
+                className={`flex flex-wrap items-center gap-2 rounded-[var(--radius-ui)] border px-3 py-2 ${
+                  selected.has(page.id) ? "border-primary/50 bg-primary/5" : "border-border"
+                }`}
+              >
+                {mode === "organize" && <span className="cursor-grab text-muted">⋮⋮</span>}
+                <label className="flex items-center gap-2 text-sm">
+                  {(mode === "split" || mode === "merge") && (
+                    <input type="checkbox" checked={selected.has(page.id)} onChange={() => toggleSelect(page.id)} />
+                  )}
+                  <span>
+                    <span className="font-medium">Pág. {page.pageIndex + 1}</span>
+                    <span className="text-muted"> — {page.sourceName}</span>
+                    {page.rotation > 0 && <span className="ml-1 text-xs text-primary">↻ {page.rotation}°</span>}
                   </span>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(page.id)}
-                      onChange={() => toggleSelect(page.id)}
-                    />
-                    <span>
-                      <span className="font-medium">Pág. {page.pageIndex + 1}</span>
-                      <span className="text-muted"> — {page.sourceName}</span>
-                      {page.rotation > 0 && (
-                        <span className="ml-1 text-xs text-primary">↻ {page.rotation}°</span>
-                      )}
-                    </span>
-                  </label>
+                </label>
+                {mode === "organize" && (
                   <div className="ml-auto flex gap-1">
-                    <button
-                      type="button"
-                      className="btn-ghost px-2 py-1 text-xs"
-                      disabled={index === 0}
-                      onClick={() => setPages((prev) => moveItem(prev, index, index - 1))}
-                    >
-                      ↑
+                    <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={index === 0} onClick={() => setPages((prev) => moveItem(prev, index, index - 1))}>↑</button>
+                    <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={index === pages.length - 1} onClick={() => setPages((prev) => moveItem(prev, index, index + 1))}>↓</button>
+                    <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => rotatePage(page.id)} title="Girar 90°">
+                      <Icon name="rotateCw" className="h-3.5 w-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      className="btn-ghost px-2 py-1 text-xs"
-                      disabled={index === pages.length - 1}
-                      onClick={() => setPages((prev) => moveItem(prev, index, index + 1))}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost px-2 py-1 text-xs"
-                      onClick={() => rotatePage(page.id)}
-                    >
-                      ↻
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost px-2 py-1 text-xs text-red-600"
-                      onClick={() => removePage(page.id)}
-                    >
+                    <button type="button" className="btn-ghost px-2 py-1 text-xs text-red-600" onClick={() => removePage(page.id)}>
                       <Icon name="x" className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-          <section className="panel-solid space-y-4 p-5">
-            <h3 className="text-sm font-semibold">Exportar e salvar no cliente</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-muted">Nome do arquivo</label>
-                <input
-                  className="industrial-input text-sm"
-                  value={saveFilename}
-                  onChange={(e) => setSaveFilename(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Salvar em cliente (Documentos)</label>
-                <ClientSearchField value={saveClient} onChange={setSaveClient} />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={exporting}
-                onClick={() => void downloadMerged()}
-              >
-                <Icon name="fileDown" className="h-4 w-4" />
-                {exporting ? "Gerando..." : "Baixar PDF único"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={exporting || !saveClient}
-                onClick={() => void saveToClient()}
-              >
-                Salvar no cliente
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={exporting}
-                onClick={() => void runOcr()}
-              >
-                OCR do PDF (Tesseract)
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={exporting || selected.size === 0}
-                onClick={() => void downloadSelectedSeparate()}
-              >
-                Dividir selecionadas ({selected.size})
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={exporting}
-                onClick={() => void downloadAllSeparate()}
-              >
-                Dividir todas
-              </button>
-            </div>
-          </section>
-        </>
+      {hasPages && mode === "merge" && (
+        <section className="panel-solid p-5">
+          <button type="button" className="btn-primary" disabled={exporting} onClick={() => void downloadMerged()}>
+            <Icon name="layers" className="h-4 w-4" />
+            {exporting ? "Gerando…" : "Baixar PDF único (juntado)"}
+          </button>
+        </section>
+      )}
+
+      {hasPages && mode === "split" && (
+        <section className="panel-solid flex flex-wrap gap-2 p-5">
+          <button type="button" className="btn-primary" disabled={exporting || selected.size === 0} onClick={() => void downloadSelectedSeparate()}>
+            <Icon name="scissors" className="h-4 w-4" />
+            Dividir selecionadas ({selected.size})
+          </button>
+          <button type="button" className="btn-ghost" disabled={exporting} onClick={() => void downloadAllSeparate()}>
+            Dividir todas ({pages.length})
+          </button>
+        </section>
+      )}
+
+      {hasPages && ["bates", "watermark", "redact", "compress"].includes(mode) && (
+        <section className="panel-solid p-5">
+          <button type="button" className="btn-primary" disabled={exporting} onClick={() => void downloadMerged()}>
+            <Icon name="fileDown" className="h-4 w-4" />
+            {exporting ? "Gerando…" : "Baixar PDF com alterações"}
+          </button>
+        </section>
+      )}
+
+      {needsPages && !hasPages && mode !== "ocr" && (
+        <p className="text-center text-sm text-muted">Adicione PDFs para usar esta função.</p>
       )}
 
       {ocrProgress && <p className="text-sm text-muted">{ocrProgress}</p>}
       {ocrText && (
         <section className="panel-solid p-5">
-          <h3 className="mb-2 text-sm font-semibold">Texto extraído (OCR)</h3>
+          <h3 className="mb-2 text-sm font-semibold">Texto extraído</h3>
           <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap text-xs">{ocrText}</pre>
-          <button
-            type="button"
-            className="btn-ghost mt-2 text-sm"
-            onClick={() => void navigator.clipboard.writeText(ocrText)}
-          >
-            Copiar texto
-          </button>
+          <button type="button" className="btn-ghost mt-2 text-sm" onClick={() => void navigator.clipboard.writeText(ocrText)}>Copiar</button>
         </section>
       )}
 

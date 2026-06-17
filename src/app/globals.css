@@ -167,16 +167,18 @@
   }
 
   .nav-link-active {
-    background: color-mix(in srgb, #ffffff 88%, var(--color-surface));
     color: var(--color-primary);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
     font-weight: 600;
+    background: transparent;
+    border: none;
+    box-shadow: inset 0 -2px 0 var(--color-primary);
   }
 
   .dark .nav-link-active {
-    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
     color: var(--color-primary);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+    background: transparent;
+    border: none;
+    box-shadow: inset 0 -2px 0 var(--color-primary);
   }
 
   .field-card {
