@@ -42,7 +42,7 @@ function NavLinks({
 }) {
   return (
     <nav
-      className="scrollbar-none flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain"
+      className="scrollbar-none flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain lg:overflow-x-visible lg:overflow-y-visible"
       aria-label="Navegação principal"
     >
       {nav.map((item) => {
@@ -61,8 +61,8 @@ function NavLinks({
             }`}
           >
             <Icon name={item.icon} className="h-4 w-4 shrink-0" />
-            <span className="hidden whitespace-nowrap lg:inline">{item.label}</span>
-            <span className="hidden whitespace-nowrap md:inline lg:hidden">
+            <span className="hidden whitespace-nowrap xl:inline">{item.label}</span>
+            <span className="hidden whitespace-nowrap sm:inline xl:hidden">
               {item.shortLabel ?? item.label}
             </span>
             {showOverdueBadge && (
@@ -141,8 +141,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TeseFilterProvider>
       <div className="min-h-screen bg-surface">
-        <header className="sticky top-0 z-40 overflow-hidden border-b border-border bg-surface-elevated/95 backdrop-blur-md">
-          <div className="mx-auto flex h-[60px] max-w-7xl items-center gap-1.5 px-3 sm:gap-2 sm:px-6 lg:gap-3">
+        <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated/95 backdrop-blur-md">
+          <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center gap-1.5 overflow-x-hidden px-3 sm:gap-2 sm:px-6 lg:gap-3">
             <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
               <Icon name="fileText" className="h-5 w-5 text-primary" />
               <span className="hidden min-w-0 flex-col md:flex">
@@ -157,9 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <NavLinks nav={nav} pathname={pathname} kanbanOverdueCount={kanbanOverdueCount} />
 
-            {showTeseControls && <TeseFilterBar showPdfButton embedded />}
-
-            <div className="flex shrink-0 items-center gap-0.5 pl-1.5 sm:gap-1 sm:pl-2">
+            <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -187,6 +185,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
+
+        {showTeseControls && <TeseFilterBar showPdfButton />}
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
       </div>

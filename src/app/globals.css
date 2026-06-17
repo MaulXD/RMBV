@@ -301,6 +301,21 @@
     width: 0;
     height: 0;
   }
+
+  header {
+    overflow-x: clip;
+  }
+
+  header nav {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  header nav::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 ::-webkit-scrollbar {
