@@ -27,16 +27,31 @@ type PdfMode =
   | "save";
 
 const MODE_PREVIEW_HINT: Record<string, string> = {
-  merge: "Pré-visualização do PDF final na ordem abaixo. Marque páginas se quiser juntar só algumas.",
+  merge: "Arraste para reordenar, marque páginas para juntar só algumas ou exclua com a lixeira.",
   split: "Selecione as páginas para exportar em arquivos separados.",
-  organize: "Arraste os cards para reordenar, gire ou remova páginas.",
-  bates: "Veja onde a numeração Bates aparecerá em cada página.",
-  watermark: "Prévia da marca d'água aplicada em todas as páginas.",
-  redact: "A faixa preta mostra a área que será tarjada.",
-  compress: "Miniaturas do documento antes da compressão.",
-  ocr: "Páginas que serão enviadas ao OCR.",
-  save: "Documento que será salvo nos Documentos do cliente.",
+  organize: "Arraste pelo botão «Arrastar», exclua páginas com a lixeira ou selecione várias para excluir em lote.",
+  bates: "Reordene ou exclua páginas antes de aplicar a numeração Bates.",
+  watermark: "Reordene ou exclua páginas antes de aplicar a marca d'água.",
+  redact: "Reordene ou exclua páginas antes da redação.",
+  compress: "Reordene ou exclua páginas antes de comprimir.",
+  ocr: "Reordene ou exclua páginas antes do OCR.",
+  save: "Reordene ou exclua páginas antes de salvar no cliente.",
 };
+
+const REORDERABLE_MODES = new Set<PdfMode>([
+  "organize",
+  "merge",
+  "bates",
+  "watermark",
+  "redact",
+  "compress",
+  "ocr",
+  "save",
+]);
+
+const DELETABLE_MODES = REORDERABLE_MODES;
+
+const BULK_DELETE_MODES = new Set<PdfMode>(["organize"]);
 
 export function PdfPreviewWorkspace({
   mode,
@@ -49,10 +64,12 @@ export function PdfPreviewWorkspace({
   onRotate,
   onRemove,
   onDragStart,
+  onDragEnd,
   onDropOn,
   onMovePage,
   onSelectAll,
   onClearSelection,
+  onRemoveSelected,
 }: {
   mode: PdfMode;
   pages: OrganizerPage[];
@@ -64,14 +81,24 @@ export function PdfPreviewWorkspace({
   onRotate?: (id: string) => void;
   onRemove?: (id: string) => void;
   onDragStart?: (index: number) => void;
+  onDragEnd?: () => void;
   onDropOn?: (index: number) => void;
   onMovePage?: (from: number, to: number) => void;
   onSelectAll?: () => void;
   onClearSelection?: () => void;
+  onRemoveSelected?: () => void;
 }) {
-  const selectable = mode === "split" || mode === "merge";
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const reorderable = REORDERABLE_MODES.has(mode);
+  const deletable = DELETABLE_MODES.has(mode);
   const editable = mode === "organize";
+  const exportSelectable = mode === "split" || mode === "merge";
+  const bulkDelete = BULK_DELETE_MODES.has(mode);
   const hint = MODE_PREVIEW_HINT[mode] ?? "Pré-visualização das páginas.";
+
+  useEffect(() => {
+    if (dragIndex === null) setDragOverIndex(null);
+  }, [dragIndex]);
 
   return (
     <section className="soft-card overflow-hidden">
@@ -86,18 +113,35 @@ export function PdfPreviewWorkspace({
           </h3>
           <p className="mt-0.5 text-xs text-muted">{hint}</p>
         </div>
-        {selectable && (
-          <div className="flex flex-wrap gap-2">
+        {(exportSelectable || bulkDelete) && (
+          <div className="flex flex-wrap items-center gap-2">
             <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onSelectAll}>
               Selecionar todas
             </button>
             <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onClearSelection}>
               Limpar seleção
             </button>
-            {selected.size > 0 && (
-              <span className="self-center text-xs text-primary">{selected.size} selecionada(s)</span>
+            {bulkDelete && selected.size > 0 && (
+              <button
+                type="button"
+                className="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-500/10"
+                onClick={onRemoveSelected}
+              >
+                <Icon name="trash" className="h-3.5 w-3.5" />
+                Excluir {selected.size} página(s)
+              </button>
+            )}
+            {exportSelectable && selected.size > 0 && (
+              <span className="self-center text-xs text-primary">
+                {mode === "merge"
+                  ? `${selected.size} para juntar`
+                  : `${selected.size} selecionada(s)`}
+              </span>
             )}
           </div>
+        )}
+        {reorderable && !exportSelectable && !bulkDelete && (
+          <p className="text-[10px] text-muted">Use o botão «Arrastar» em cada card.</p>
         )}
       </header>
 
@@ -106,7 +150,37 @@ export function PdfPreviewWorkspace({
           {pages.map((page, index) => {
             const overlay = overlayForIndex(index, page);
             return (
-              <div key={page.id} className="relative">
+              <div
+                key={page.id}
+                className="relative"
+                onDragOver={
+                  reorderable
+                    ? (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dragIndex !== null && dragIndex !== index) {
+                          setDragOverIndex(index);
+                        }
+                      }
+                    : undefined
+                }
+                onDragLeave={
+                  reorderable
+                    ? () => {
+                        if (dragOverIndex === index) setDragOverIndex(null);
+                      }
+                    : undefined
+                }
+                onDrop={
+                  reorderable
+                    ? (e) => {
+                        e.preventDefault();
+                        setDragOverIndex(null);
+                        onDropOn?.(index);
+                      }
+                    : undefined
+                }
+              >
                 {overlay?.badge && (
                   <span
                     className={`absolute -right-1 -top-1 z-10 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase ${
@@ -126,23 +200,33 @@ export function PdfPreviewWorkspace({
                   index={index}
                   overlay={overlay}
                   selected={selected.has(page.id)}
-                  selectable={selectable}
-                  draggable={editable}
+                  selectable={exportSelectable || bulkDelete}
+                  reorderable={reorderable}
+                  showDelete={deletable}
                   isDragging={dragIndex === index}
-                  onSelect={selectable ? () => onToggleSelect?.(page.id) : undefined}
+                  isDragOver={dragOverIndex === index}
+                  onSelect={
+                    exportSelectable || bulkDelete ? () => onToggleSelect?.(page.id) : undefined
+                  }
                   onRotate={editable ? () => onRotate?.(page.id) : undefined}
-                  onRemove={editable ? () => onRemove?.(page.id) : undefined}
+                  onRemove={deletable ? () => onRemove?.(page.id) : undefined}
                   onMoveUp={
-                    editable && index > 0 ? () => onMovePage?.(index, index - 1) : undefined
+                    reorderable && index > 0 ? () => onMovePage?.(index, index - 1) : undefined
                   }
                   onMoveDown={
-                    editable && index < pages.length - 1
+                    reorderable && index < pages.length - 1
                       ? () => onMovePage?.(index, index + 1)
                       : undefined
                   }
-                  onDragStart={() => onDragStart?.(index)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onDropOn?.(index)}
+                  onDragStart={reorderable ? onDragStart : undefined}
+                  onDragEnd={
+                    reorderable
+                      ? () => {
+                          setDragOverIndex(null);
+                          onDragEnd?.();
+                        }
+                      : undefined
+                  }
                 />
               </div>
             );

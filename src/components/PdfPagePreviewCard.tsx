@@ -42,17 +42,18 @@ export function PdfPagePreviewCard({
   overlay,
   selected,
   selectable,
-  draggable,
+  reorderable,
+  showDelete,
   showIndex,
+  isDragOver,
+  isDragging,
   onSelect,
   onRotate,
   onRemove,
   onMoveUp,
   onMoveDown,
   onDragStart,
-  onDragOver,
-  onDrop,
-  isDragging,
+  onDragEnd,
 }: {
   page: OrganizerPage;
   sources: PdfSource[];
@@ -60,17 +61,18 @@ export function PdfPagePreviewCard({
   overlay?: PreviewOverlay;
   selected?: boolean;
   selectable?: boolean;
-  draggable?: boolean;
+  reorderable?: boolean;
+  showDelete?: boolean;
   showIndex?: boolean;
+  isDragOver?: boolean;
+  isDragging?: boolean;
   onSelect?: () => void;
   onRotate?: () => void;
   onRemove?: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
-  onDragStart?: () => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: () => void;
-  isDragging?: boolean;
+  onDragStart?: (index: number) => void;
+  onDragEnd?: () => void;
 }) {
   const [thumb, setThumb] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,19 +143,20 @@ export function PdfPagePreviewCard({
     };
   }, [page.sourceId, page.pageIndex, page.rotation, source]);
 
+  function handleDragStart(e: React.DragEvent) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+    onDragStart?.(index);
+  }
+
   return (
     <article
       ref={rootRef}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop?.();
-      }}
       className={`group relative flex flex-col overflow-hidden rounded-xl border bg-surface-elevated shadow-sm transition-all duration-200 ${
         selected ? "border-primary ring-2 ring-primary/25" : "border-border/80 hover:border-primary/30"
-      } ${isDragging ? "scale-[0.97] opacity-50" : ""}`}
+      } ${isDragging ? "scale-[0.97] opacity-50" : ""} ${
+        isDragOver ? "border-primary ring-2 ring-primary/40" : ""
+      }`}
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-200/80 dark:bg-slate-800/80">
         {loading && !error && (
@@ -213,14 +216,26 @@ export function PdfPagePreviewCard({
           </span>
         )}
 
+        {reorderable && (
+          <div
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={onDragEnd}
+            title="Arrastar para reordenar"
+            className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 cursor-grab items-center gap-0.5 rounded-lg border border-white/30 bg-black/60 px-2 py-1 text-white backdrop-blur-sm active:cursor-grabbing"
+          >
+            <Icon name="grip" className="h-3.5 w-3.5" />
+            <span className="text-[9px] font-semibold uppercase tracking-wide">Arrastar</span>
+          </div>
+        )}
+
         {selectable && (
-          <label className="absolute right-2 top-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-white/40 bg-black/50 backdrop-blur-sm">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={selected}
-              onChange={onSelect}
-            />
+          <label
+            className={`absolute right-2 top-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-white/40 bg-black/50 backdrop-blur-sm ${
+              showDelete ? "top-2" : ""
+            }`}
+          >
+            <input type="checkbox" className="sr-only" checked={selected} onChange={onSelect} />
             {selected ? (
               <Icon name="check" className="h-3.5 w-3.5 text-white" />
             ) : (
@@ -229,7 +244,20 @@ export function PdfPagePreviewCard({
           </label>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 flex translate-y-full flex-wrap justify-center gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+        {showDelete && onRemove && (
+          <button
+            type="button"
+            className={`absolute right-2 rounded-md bg-black/55 p-1 text-white transition-colors hover:bg-red-500 ${
+              selectable ? "top-10" : "top-2"
+            }`}
+            onClick={onRemove}
+            title="Excluir página"
+          >
+            <Icon name="trash" className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 flex translate-y-full flex-wrap justify-center gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pb-9 opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
           {onRotate && (
             <button
               type="button"
@@ -258,24 +286,13 @@ export function PdfPagePreviewCard({
               ↓
             </button>
           )}
-          {onRemove && (
-            <button
-              type="button"
-              className="rounded-lg bg-red-500/90 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-500"
-              onClick={onRemove}
-            >
-              <Icon name="x" className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
       </div>
 
       <footer className="border-t border-border/60 px-2 py-1.5">
         <p className="truncate text-[10px] font-medium text-foreground">
           Pág. {page.pageIndex + 1}
-          {page.rotation > 0 && (
-            <span className="ml-1 text-primary">· {page.rotation}°</span>
-          )}
+          {page.rotation > 0 && <span className="ml-1 text-primary">· {page.rotation}°</span>}
         </p>
         <p className="truncate text-[9px] text-muted">{page.sourceName}</p>
       </footer>

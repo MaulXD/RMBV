@@ -48,7 +48,7 @@ const PDF_MODES: {
 }[] = [
   { id: "merge", label: "Juntar PDF", description: "Unir vários arquivos em um só.", icon: "layers", accent: "primary" },
   { id: "split", label: "Dividir", description: "Separar páginas em arquivos.", icon: "scissors", accent: "sky" },
-  { id: "organize", label: "Reordenar / Girar", description: "Arrastar, subir, descer e rotacionar.", icon: "grip", accent: "amber" },
+  { id: "organize", label: "Organizar PDF", description: "Reordenar, girar e excluir páginas.", icon: "grip", accent: "amber" },
   { id: "bates", label: "Bates", description: "Numeração PREFIXO-0001 com posição.", icon: "hash", accent: "violet" },
   { id: "watermark", label: "Marca d'água", description: "Texto diagonal ou reto no documento.", icon: "stamp", accent: "emerald" },
   { id: "redact", label: "Redação", description: "Tarja preta em área da página.", icon: "eyeOff", accent: "primary" },
@@ -206,6 +206,12 @@ export function PdfOrganizerTool() {
       next.delete(id);
       return next;
     });
+  }
+
+  function removeSelectedPages() {
+    if (selected.size === 0) return;
+    setPages((prev) => prev.filter((p) => !selected.has(p.id)));
+    setSelected(new Set());
   }
 
   function rotatePage(id: string) {
@@ -602,13 +608,34 @@ export function PdfOrganizerTool() {
           onRotate={rotatePage}
           onRemove={removePage}
           onDragStart={setDragIndex}
+          onDragEnd={() => setDragIndex(null)}
           onDropOn={(to) => {
             if (dragIndex != null) reorderPages(dragIndex, to);
           }}
           onMovePage={reorderPages}
           onSelectAll={selectAllPages}
           onClearSelection={() => setSelected(new Set())}
+          onRemoveSelected={removeSelectedPages}
         />
+      )}
+
+      {hasPages && mode === "organize" && (
+        <section className="soft-card flex flex-wrap gap-2 p-5">
+          <button type="button" className="btn-primary" disabled={exporting} onClick={() => void downloadMerged()}>
+            <Icon name="fileDown" className="h-4 w-4" />
+            {exporting ? "Gerando…" : `Baixar PDF organizado (${pages.length} pág.)`}
+          </button>
+          {selected.size > 0 && (
+            <button
+              type="button"
+              className="btn-ghost text-red-600"
+              onClick={removeSelectedPages}
+            >
+              <Icon name="trash" className="h-4 w-4" />
+              Excluir {selected.size} selecionada(s)
+            </button>
+          )}
+        </section>
       )}
 
       {hasPages && mode === "merge" && (
