@@ -12,11 +12,13 @@ export const runtime = "nodejs";
 const updateTaskSchema = z.object({
   title: z.string().min(2).max(200).optional(),
   description: z.string().max(4000).optional().nullable(),
+  priority: z.enum(["BAIXA", "MEDIA", "ALTA"]).optional(),
   columnId: z.string().uuid().optional(),
   dueAt: z.string().datetime().optional().nullable(),
   clientId: z.string().uuid().optional().nullable(),
   assigneeId: z.string().uuid().optional().nullable(),
   sortOrder: z.number().int().min(0).optional(),
+  labelIds: z.array(z.string().uuid()).optional(),
 });
 
 async function buildNameMaps(teamId: string, clientIds: string[], assigneeIds: string[]) {
@@ -114,6 +116,7 @@ export async function PATCH(
         parsed.data.assigneeId !== undefined ? parsed.data.assigneeId : existing.assigneeId,
       clientId: parsed.data.clientId !== undefined ? parsed.data.clientId : existing.clientId,
       dueAt: nextDueAt,
+      priority: parsed.data.priority !== undefined ? parsed.data.priority : existing.priority,
     };
 
     const beforeSnapshot = {
@@ -122,6 +125,7 @@ export async function PATCH(
       assigneeId: existing.assigneeId,
       clientId: existing.clientId,
       dueAt: existing.dueAt,
+      priority: existing.priority,
     };
 
     const clientIds = [beforeSnapshot.clientId, afterSnapshot.clientId].filter(Boolean) as string[];
@@ -135,6 +139,15 @@ export async function PATCH(
     );
 
     const task = await prisma.$transaction(async (tx) => {
+      if (parsed.data.labelIds !== undefined) {
+        await tx.taskLabelOnTask.deleteMany({ where: { taskId: id } });
+        if (parsed.data.labelIds.length > 0) {
+          await tx.taskLabelOnTask.createMany({
+            data: parsed.data.labelIds.map((labelId) => ({ taskId: id, labelId })),
+          });
+        }
+      }
+
       const updated = await tx.task.update({
         where: { id },
         data: {
@@ -142,6 +155,7 @@ export async function PATCH(
           ...(parsed.data.description !== undefined
             ? { description: parsed.data.description?.trim() || null }
             : {}),
+          ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
           ...(parsed.data.columnId !== undefined ? { columnId: parsed.data.columnId } : {}),
           ...(parsed.data.dueAt !== undefined ? { dueAt: nextDueAt } : {}),
           ...(parsed.data.clientId !== undefined ? { clientId: parsed.data.clientId } : {}),

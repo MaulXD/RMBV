@@ -1,5 +1,6 @@
-import type { TaskHistoryType } from "@prisma/client";
+import type { TaskHistoryType, TaskPriority } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
+import { PRIORITY_LABELS } from "./enum-labels";
 
 export type TaskHistoryEntry = {
   id: string;
@@ -82,6 +83,7 @@ type TaskSnapshot = {
   assigneeId: string | null;
   clientId: string | null;
   dueAt: Date | null;
+  priority: TaskPriority;
 };
 
 export async function recordTaskFieldChanges(
@@ -152,6 +154,13 @@ export async function recordTaskFieldChanges(
     logs.push({
       type: "FIELD_UPDATE",
       note: `Prazo: ${beforeDue || "—"} → ${afterDue || "—"}`,
+    });
+  }
+
+  if (before.priority !== after.priority) {
+    logs.push({
+      type: "FIELD_UPDATE",
+      note: `Prioridade: ${PRIORITY_LABELS[before.priority]} → ${PRIORITY_LABELS[after.priority]}`,
     });
   }
 

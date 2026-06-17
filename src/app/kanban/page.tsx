@@ -5,16 +5,19 @@ import { AppShell } from "@/components/AppShell";
 import { KanbanAlertsBanner } from "@/components/KanbanAlertsBanner";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
+import { KanbanCommandPalette, useKanbanCommandPalette } from "@/components/KanbanCommandPalette";
+import { KanbanListView } from "@/components/KanbanListView";
 import { KanbanTaskModal, type TaskFormValues } from "@/components/KanbanTaskModal";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 import { groupTasksByColumn } from "@/lib/task-query";
-import type { TaskListItem } from "@/lib/task-fields";
+import type { TaskLabelItem, TaskListItem } from "@/lib/task-fields";
 import { Icon } from "@/components/ui/Icon";
 
 type Team = { id: string; name: string };
 type Member = { id: string; name: string; role: string };
 type SlaFilter = "all" | "overdue" | "due_soon";
+type ViewMode = "board" | "list";
 
 function dueAtToIso(date: string): string | null {
   if (!date) return null;
@@ -38,7 +41,13 @@ function KanbanContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [columns, setColumns] = useState<KanbanColumnItem[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [labelFilter, setLabelFilter] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("board");
+  const [teamLabels, setTeamLabels] = useState<TaskLabelItem[]>([]);
   const [slaFilter, setSlaFilter] = useState<SlaFilter>("all");
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useKanbanCommandPalette();
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [alertOverdue, setAlertOverdue] = useState<TaskListItem[]>([]);
   const [alertDueSoon, setAlertDueSoon] = useState<TaskListItem[]>([]);
@@ -92,6 +101,9 @@ function KanbanContent() {
     const res = await fetch(`/api/tasks/assignees?teamId=${teamId}`);
     const data = await res.json();
     if (res.ok) setMembers(data.members ?? []);
+    const labelsRes = await fetch(`/api/task-labels?teamId=${teamId}`);
+    const labelsData = await labelsRes.json();
+    if (labelsRes.ok) setTeamLabels(labelsData.labels ?? []);
   }, [teamId]);
 
   const loadAlerts = useCallback(async () => {
@@ -122,13 +134,16 @@ function KanbanContent() {
       const params = new URLSearchParams({ teamId });
       if (activeTeseId) params.set("teseId", activeTeseId);
       if (assigneeFilter) params.set("assigneeId", assigneeFilter);
+      if (priorityFilter !== "all") params.set("priority", priorityFilter);
+      if (labelFilter) params.set("labelId", labelFilter);
+      if (mineOnly) params.set("mineOnly", "1");
       const res = await fetch(`/api/tasks?${params}`);
       const data = await res.json();
       if (res.ok) setTasks(data.tasks ?? []);
     } finally {
       setLoading(false);
     }
-  }, [teamId, activeTeseId, assigneeFilter]);
+  }, [teamId, activeTeseId, assigneeFilter, priorityFilter, labelFilter, mineOnly]);
 
   const refreshBoard = useCallback(async () => {
     await Promise.all([loadColumns(), loadTasks(), loadAlerts()]);
@@ -188,10 +203,12 @@ function KanbanContent() {
       const payload = {
         title: values.title,
         description: values.description || null,
+        priority: values.priority,
         columnId: values.columnId,
         dueAt: dueAtToIso(values.dueAt),
         assigneeId: values.assigneeId || null,
         clientId: values.clientId || null,
+        labelIds: values.labelIds,
         teamId,
       };
 
@@ -264,6 +281,33 @@ function KanbanContent() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-ghost hidden sm:inline-flex"
+            title="Busca rápida (Ctrl+K)"
+            onClick={() => setPaletteOpen(true)}
+          >
+            <Icon name="search" className="h-4 w-4" />
+            <span className="ml-1 hidden lg:inline">Ctrl+K</span>
+          </button>
+          <div className="flex rounded-lg border border-border">
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm ${viewMode === "board" ? "bg-primary/10 text-primary" : "text-muted"}`}
+              onClick={() => setViewMode("board")}
+              title="Quadro"
+            >
+              <Icon name="kanban" className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm ${viewMode === "list" ? "bg-primary/10 text-primary" : "text-muted"}`}
+              onClick={() => setViewMode("list")}
+              title="Lista"
+            >
+              <Icon name="list" className="h-4 w-4" />
+            </button>
+          </div>
           {canManageColumns && teamId && (
             <button
               type="button"
@@ -328,6 +372,50 @@ function KanbanContent() {
           </select>
         </div>
 
+        <div className="min-w-[140px] flex-1 sm:flex-none">
+          <label className="mb-1 block text-xs text-muted">Prioridade</label>
+          <select
+            className="industrial-input w-full"
+            value={priorityFilter}
+            disabled={!teamId}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+          >
+            <option value="all">Todas</option>
+            <option value="ALTA">Alta</option>
+            <option value="MEDIA">Média</option>
+            <option value="BAIXA">Baixa</option>
+          </select>
+        </div>
+
+        {teamLabels.length > 0 && (
+          <div className="min-w-[140px] flex-1 sm:flex-none">
+            <label className="mb-1 block text-xs text-muted">Etiqueta</label>
+            <select
+              className="industrial-input w-full"
+              value={labelFilter}
+              disabled={!teamId}
+              onChange={(e) => setLabelFilter(e.target.value)}
+            >
+              <option value="">Todas</option>
+              {teamLabels.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <label className="flex items-center gap-2 pb-2 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={mineOnly}
+            disabled={!teamId}
+            onChange={(e) => setMineOnly(e.target.checked)}
+          />
+          Minhas tarefas
+        </label>
+
         <div className="min-w-[200px] flex-1 sm:flex-none">
           <label className="mb-1 block text-xs text-muted">Prazo</label>
           <select
@@ -382,6 +470,15 @@ function KanbanContent() {
         <div className="panel-solid p-8 text-center text-sm text-muted">Carregando tarefas...</div>
       ) : columns.length === 0 ? (
         <div className="panel-solid p-8 text-center text-sm text-muted">Nenhuma coluna configurada.</div>
+      ) : viewMode === "list" ? (
+        <KanbanListView
+          tasks={filteredTasks}
+          columns={columns}
+          onEditTask={(task) => {
+            setEditingTask(task);
+            setModalOpen(true);
+          }}
+        />
       ) : (
         <KanbanBoard
           columns={columns}
@@ -398,6 +495,21 @@ function KanbanContent() {
           }}
         />
       )}
+
+      <KanbanCommandPalette
+        open={paletteOpen}
+        tasks={tasks}
+        onClose={() => setPaletteOpen(false)}
+        onSelectTask={(task) => {
+          setEditingTask(task);
+          setModalOpen(true);
+        }}
+        onNewTask={() => {
+          setEditingTask(null);
+          setDefaultColumnId(firstColumnId);
+          setModalOpen(true);
+        }}
+      />
 
       <KanbanTaskModal
         open={modalOpen}

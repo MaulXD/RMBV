@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import type { TaskPriority } from "@prisma/client";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
-import type { TaskListItem } from "@/lib/task-fields";
+import type { TaskLabelItem, TaskListItem } from "@/lib/task-fields";
 import { Icon } from "./ui/Icon";
 import { TaskHistoryPanel } from "./TaskHistoryPanel";
 
@@ -13,21 +14,25 @@ type ClientOption = { id: string; name: string; cod: string | null };
 export type TaskFormValues = {
   title: string;
   description: string;
+  priority: TaskPriority;
   columnId: string;
   dueAt: string;
   assigneeId: string;
   clientId: string;
   clientLabel: string;
+  labelIds: string[];
 };
 
 const emptyForm = (columnId: string): TaskFormValues => ({
   title: "",
   description: "",
+  priority: "MEDIA",
   columnId,
   dueAt: "",
   assigneeId: "",
   clientId: "",
   clientLabel: "",
+  labelIds: [],
 });
 
 export function KanbanTaskModal({
@@ -65,7 +70,15 @@ export function KanbanTaskModal({
   const [clientQuery, setClientQuery] = useState("");
   const [clientOptions, setClientOptions] = useState<ClientOption[]>([]);
   const [searchingClients, setSearchingClients] = useState(false);
+  const [teamLabels, setTeamLabels] = useState<TaskLabelItem[]>([]);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!open || !teamId) return;
+    fetch(`/api/task-labels?teamId=${teamId}`)
+      .then((r) => r.json())
+      .then((d) => setTeamLabels(d.labels ?? []));
+  }, [open, teamId]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,11 +86,13 @@ export function KanbanTaskModal({
       setForm({
         title: task.title,
         description: task.description ?? "",
+        priority: task.priority,
         columnId: task.columnId,
         dueAt: task.dueAt ? task.dueAt.slice(0, 10) : "",
         assigneeId: task.assigneeId ?? "",
         clientId: task.clientId ?? "",
         clientLabel: task.client ? `${task.client.name}${task.client.cod ? ` (${task.client.cod})` : ""}` : "",
+        labelIds: task.labels.map((l) => l.id),
       });
       setClientQuery(task.client?.name ?? "");
     } else {
@@ -167,12 +182,27 @@ export function KanbanTaskModal({
             <label className="mb-1 block text-xs text-muted">Descrição</label>
             <textarea
               className="industrial-input min-h-[88px] resize-y"
+              placeholder="Use - [ ] item para checklist"
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
             />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Prioridade</label>
+              <select
+                className="industrial-input"
+                value={form.priority}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, priority: e.target.value as TaskPriority }))
+                }
+              >
+                <option value="BAIXA">Baixa</option>
+                <option value="MEDIA">Média</option>
+                <option value="ALTA">Alta</option>
+              </select>
+            </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Coluna</label>
               <select
@@ -187,16 +217,48 @@ export function KanbanTaskModal({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Prazo (SLA)</label>
-              <input
-                type="date"
-                className="industrial-input"
-                value={form.dueAt}
-                onChange={(e) => setForm((p) => ({ ...p, dueAt: e.target.value }))}
-              />
-            </div>
           </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-muted">Prazo (SLA)</label>
+            <input
+              type="date"
+              className="industrial-input"
+              value={form.dueAt}
+              onChange={(e) => setForm((p) => ({ ...p, dueAt: e.target.value }))}
+            />
+          </div>
+
+          {teamLabels.length > 0 && (
+            <div>
+              <label className="mb-1 block text-xs text-muted">Etiquetas</label>
+              <div className="flex flex-wrap gap-2">
+                {teamLabels.map((label) => {
+                  const selected = form.labelIds.includes(label.id);
+                  return (
+                    <button
+                      key={label.id}
+                      type="button"
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        selected ? "border-transparent text-white" : "border-border text-muted"
+                      }`}
+                      style={selected ? { backgroundColor: label.color } : undefined}
+                      onClick={() =>
+                        setForm((p) => ({
+                          ...p,
+                          labelIds: selected
+                            ? p.labelIds.filter((id) => id !== label.id)
+                            : [...p.labelIds, label.id],
+                        }))
+                      }
+                    >
+                      {label.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="mb-1 block text-xs text-muted">Responsável</label>
