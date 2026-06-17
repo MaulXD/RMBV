@@ -47,11 +47,7 @@ function NavLinks({
             key={item.href}
             href={item.href}
             title={item.label}
-            className={`inline-flex shrink-0 items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm lg:gap-2 lg:px-3 lg:py-2 ${
-              active
-                ? "border-primary font-semibold text-primary"
-                : "border-transparent text-muted hover:text-foreground"
-            }`}
+            className={`nav-pill ${active ? "nav-pill-active" : "nav-pill-idle"}`}
           >
             <Icon name={item.icon} className="h-4 w-4 shrink-0" />
             <span className="hidden whitespace-nowrap xl:inline">{item.label}</span>
@@ -127,7 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TeseFilterProvider>
       <div className="min-h-screen bg-surface">
-        <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated">
+        <header className="sticky top-0 z-40 border-b border-border/80 bg-surface-elevated/95 shadow-sm backdrop-blur-md">
           <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center gap-1.5 overflow-x-hidden px-3 sm:gap-2 sm:px-6 lg:gap-3">
             <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
               <Icon name="fileText" className="h-5 w-5 text-primary" />

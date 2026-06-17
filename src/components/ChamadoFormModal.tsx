@@ -51,11 +51,17 @@ export function ChamadoFormModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="panel-solid max-h-[90vh] w-full max-w-lg overflow-y-auto p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold">Novo chamado</h2>
-          <button type="button" className="btn-ghost p-1" onClick={onClose}>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-panel max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/22 to-primary/6 text-primary">
+            <Icon name="ticket" className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-display text-lg font-semibold">Novo chamado</h2>
+            <p className="text-xs text-muted">Descreva o problema ou solicitação</p>
+          </div>
+          <button type="button" className="btn-ghost ml-auto p-1" onClick={onClose}>
             <Icon name="x" className="h-5 w-5" />
           </button>
         </div>

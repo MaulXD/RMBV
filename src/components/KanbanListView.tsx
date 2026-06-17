@@ -2,10 +2,8 @@
 
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 import type { TaskListItem } from "@/lib/task-fields";
-import { PRIORITY_LABELS } from "@/lib/enum-labels";
 import { PriorityBadge } from "./PriorityBadge";
 import { TaskProgressBar } from "./TaskProgressBar";
-import { Icon } from "./ui/Icon";
 
 function formatDueDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR");
@@ -31,38 +29,34 @@ export function KanbanListView({
 
   if (sorted.length === 0) {
     return (
-      <div className="panel-solid p-8 text-center text-sm text-muted">Nenhuma tarefa encontrada.</div>
+      <div className="soft-card p-8 text-center text-sm text-muted">Nenhuma tarefa encontrada.</div>
     );
   }
 
   return (
-    <div className="panel-solid overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="soft-card overflow-hidden">
+      <table className="data-table">
         <thead>
-          <tr className="border-b border-border text-left text-xs text-muted">
-            <th className="px-4 py-3 font-medium">Tarefa</th>
-            <th className="hidden px-4 py-3 font-medium md:table-cell">Coluna</th>
-            <th className="px-4 py-3 font-medium">Prioridade</th>
-            <th className="hidden px-4 py-3 font-medium lg:table-cell">Responsável</th>
-            <th className="hidden px-4 py-3 font-medium sm:table-cell">Prazo</th>
-            <th className="px-4 py-3 font-medium">Progresso</th>
+          <tr>
+            <th>Tarefa</th>
+            <th className="hidden md:table-cell">Coluna</th>
+            <th>Prioridade</th>
+            <th className="hidden lg:table-cell">Responsável</th>
+            <th className="hidden sm:table-cell">Prazo</th>
+            <th>Progresso</th>
           </tr>
         </thead>
         <tbody>
           {sorted.map((task) => (
-            <tr
-              key={task.id}
-              className="cursor-pointer border-b border-border/50 hover:bg-surface/80"
-              onClick={() => onEditTask(task)}
-            >
-              <td className="px-4 py-3">
-                <p className="font-medium text-foreground">{task.title}</p>
+            <tr key={task.id} onClick={() => onEditTask(task)}>
+              <td>
+                <p className="font-medium">{task.title}</p>
                 {task.labels.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {task.labels.map((l) => (
                       <span
                         key={l.id}
-                        className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                        className="rounded px-1.5 py-0.5 text-[9px] font-medium text-white"
                         style={{ backgroundColor: l.color }}
                       >
                         {l.name}
@@ -71,16 +65,14 @@ export function KanbanListView({
                   </div>
                 )}
               </td>
-              <td className="hidden px-4 py-3 text-muted md:table-cell">
+              <td className="hidden text-muted md:table-cell">
                 {columnMap.get(task.columnId) ?? "—"}
               </td>
-              <td className="px-4 py-3">
+              <td>
                 <PriorityBadge priority={task.priority} />
               </td>
-              <td className="hidden px-4 py-3 text-muted lg:table-cell">
-                {task.assignee?.name ?? "—"}
-              </td>
-              <td className="hidden px-4 py-3 sm:table-cell">
+              <td className="hidden text-muted lg:table-cell">{task.assignee?.name ?? "—"}</td>
+              <td className="hidden sm:table-cell">
                 {task.dueAt ? (
                   <span
                     className={
@@ -97,9 +89,12 @@ export function KanbanListView({
                   "—"
                 )}
               </td>
-              <td className="px-4 py-3">
+              <td>
                 {task.checklist.total > 0 ? (
-                  <span className="text-xs text-muted">{task.checklist.percent}%</span>
+                  <div className="min-w-[72px]">
+                    <TaskProgressBar checklist={task.checklist} showLabel={false} />
+                    <span className="text-[10px] text-muted">{task.checklist.percent}%</span>
+                  </div>
                 ) : (
                   "—"
                 )}

@@ -40,11 +40,11 @@ export function KanbanCommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[15vh]"
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[15vh] backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className="panel-solid w-full max-w-lg overflow-hidden shadow-xl"
+        className="soft-card w-full max-w-lg overflow-hidden shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
