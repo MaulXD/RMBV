@@ -8,15 +8,7 @@ import { TeseFilterProvider } from "./TeseFilterProvider";
 import { TeseFilterBar } from "./TeseFilterBar";
 import { Icon, type IconName } from "./ui/Icon";
 import { canAccessTools } from "@/lib/roles";
-
-type SessionUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: "ADMIN" | "ADV" | "GERENTE" | "COLABORADOR";
-  teamId: string | null;
-  teamName: string | null;
-};
+import { useSession } from "./SessionProvider";
 
 type NavItem = { href: string; label: string; shortLabel?: string; icon: IconName };
 
@@ -54,10 +46,10 @@ function NavLinks({
             key={item.href}
             href={item.href}
             title={item.label}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-[var(--radius-ui)] px-2 py-1.5 text-sm transition-colors lg:gap-2 lg:px-3 lg:py-2 ${
+            className={`inline-flex shrink-0 items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm lg:gap-2 lg:px-3 lg:py-2 ${
               active
-                ? "nav-link-active"
-                : "border border-transparent text-muted hover:text-foreground"
+                ? "border-primary font-semibold text-primary"
+                : "border-transparent text-muted hover:text-foreground"
             }`}
           >
             <Icon name={item.icon} className="h-4 w-4 shrink-0" />
@@ -83,20 +75,13 @@ function NavLinks({
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const { user } = useSession();
   const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
 
   const showTeseControls =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/reports") ||
     pathname.startsWith("/kanban");
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => setUser(d.user ?? null))
-      .catch(() => setUser(null));
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -141,7 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TeseFilterProvider>
       <div className="min-h-screen bg-surface">
-        <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated/95 backdrop-blur-md">
+        <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated">
           <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center gap-1.5 overflow-x-hidden px-3 sm:gap-2 sm:px-6 lg:gap-3">
             <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
               <Icon name="fileText" className="h-5 w-5 text-primary" />
