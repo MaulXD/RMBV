@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Icon } from "./ui/Icon";
 
@@ -14,7 +15,11 @@ type Notification = {
 };
 
 export function NotificationBell() {
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; right: number; width: number } | null>(
+    null,
+  );
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -34,6 +39,38 @@ export function NotificationBell() {
     return () => clearInterval(interval);
   }, [load]);
 
+  useEffect(() => {
+    if (!open) {
+      setPanelStyle(null);
+      return;
+    }
+
+    function updatePosition() {
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const margin = 12;
+      const maxWidth = 320;
+      const width = Math.min(maxWidth, window.innerWidth - margin * 2);
+      const right = Math.max(margin, window.innerWidth - rect.right);
+
+      setPanelStyle({
+        top: rect.bottom + 6,
+        right,
+        width,
+      });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
   async function markRead(id: string) {
     await fetch(`/api/notifications/${id}`, { method: "PATCH" });
     load();
@@ -47,9 +84,11 @@ export function NotificationBell() {
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         className="btn-ghost relative px-2 py-1.5"
         title="Notificações"
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         <Icon name="bell" className="h-4 w-4" />
@@ -60,52 +99,71 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-1 w-80 overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-xl">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className="text-xs font-semibold">Notificações</span>
-              {unreadCount > 0 && (
-                <button type="button" className="text-[10px] text-primary" onClick={() => void markAllRead()}>
-                  Marcar todas como lidas
-                </button>
-              )}
+      {open &&
+        panelStyle &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[60] bg-black/20 sm:bg-transparent"
+              aria-hidden
+              onClick={() => setOpen(false)}
+            />
+            <div
+              className="fixed z-[61] overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-xl"
+              style={{
+                top: panelStyle.top,
+                right: panelStyle.right,
+                width: panelStyle.width,
+              }}
+            >
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-xs font-semibold">Notificações</span>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-primary"
+                    onClick={() => void markAllRead()}
+                  >
+                    Marcar todas como lidas
+                  </button>
+                )}
+              </div>
+              <ul className="max-h-[min(18rem,calc(100dvh-8rem))] overflow-y-auto">
+                {notifications.length === 0 && (
+                  <li className="px-3 py-6 text-center text-xs text-muted">Nenhuma notificação</li>
+                )}
+                {notifications.map((n) => (
+                  <li key={n.id} className={`border-b border-border/50 ${n.read ? "opacity-70" : ""}`}>
+                    {n.href ? (
+                      <Link
+                        href={n.href}
+                        className="block px-3 py-2 text-sm hover:bg-surface"
+                        onClick={() => {
+                          if (!n.read) void markRead(n.id);
+                          setOpen(false);
+                        }}
+                      >
+                        <p className="font-medium">{n.title}</p>
+                        {n.body && <p className="text-xs text-muted">{n.body}</p>}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-surface"
+                        onClick={() => !n.read && void markRead(n.id)}
+                      >
+                        <p className="font-medium">{n.title}</p>
+                        {n.body && <p className="text-xs text-muted">{n.body}</p>}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="max-h-72 overflow-y-auto">
-              {notifications.length === 0 && (
-                <li className="px-3 py-6 text-center text-xs text-muted">Nenhuma notificação</li>
-              )}
-              {notifications.map((n) => (
-                <li key={n.id} className={`border-b border-border/50 ${n.read ? "opacity-70" : ""}`}>
-                  {n.href ? (
-                    <Link
-                      href={n.href}
-                      className="block px-3 py-2 text-sm hover:bg-surface"
-                      onClick={() => {
-                        if (!n.read) void markRead(n.id);
-                        setOpen(false);
-                      }}
-                    >
-                      <p className="font-medium">{n.title}</p>
-                      {n.body && <p className="text-xs text-muted">{n.body}</p>}
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      className="block w-full px-3 py-2 text-left text-sm hover:bg-surface"
-                      onClick={() => !n.read && void markRead(n.id)}
-                    >
-                      <p className="font-medium">{n.title}</p>
-                      {n.body && <p className="text-xs text-muted">{n.body}</p>}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

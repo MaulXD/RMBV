@@ -15,13 +15,6 @@ import { OnboardingTour } from "./OnboardingTour";
 
 type NavItem = { href: string; label: string; shortLabel?: string; icon: IconName };
 
-const baseNav: NavItem[] = [
-  { href: "/dashboard", label: "Clientes", icon: "dashboard" },
-  { href: "/kanban", label: "Kanban", icon: "kanban" },
-  { href: "/chamados", label: "Chamados", icon: "ticket" },
-  { href: "/reports", label: "Relatórios", icon: "reports" },
-];
-
 function userInitial(name: string) {
   const trimmed = name.trim();
   return trimmed ? trimmed[0]!.toUpperCase() : "?";
@@ -38,7 +31,7 @@ function NavLinks({
 }) {
   return (
     <nav
-      className="scrollbar-none flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain lg:overflow-x-visible lg:overflow-y-visible"
+      className="scrollbar-none flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
       aria-label="Navegação principal"
     >
       {nav.map((item) => {
@@ -115,10 +108,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [user, pathname]);
 
   const nav: NavItem[] = [
-    ...baseNav,
+    { href: "/dashboard", label: "Clientes", icon: "dashboard" },
     ...(user && canAccessTools(user)
       ? [{ href: "/ferramentas", label: "Ferramentas", shortLabel: "Tools", icon: "wrench" as const }]
       : []),
+    { href: "/kanban", label: "Kanban", icon: "kanban" },
+    { href: "/chamados", label: "Chamados", icon: "ticket" },
+    { href: "/reports", label: "Relatórios", icon: "reports" },
     ...(user?.role && user.role !== "ADMIN"
       ? [{ href: "/equipe", label: "Minha equipe", shortLabel: "Equipe", icon: "briefcase" as const }]
       : []),
@@ -131,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <TeseFilterProvider>
       <div className="min-h-screen bg-surface">
         <header className="sticky top-0 z-40 border-b border-border/80 bg-surface-elevated/95 shadow-sm backdrop-blur-md">
-          <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center gap-1.5 overflow-x-hidden px-3 sm:gap-2 sm:px-6 lg:gap-3">
+          <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center gap-1.5 px-3 sm:gap-2 sm:px-6 lg:gap-3">
             <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
               <Icon name="fileText" className="h-5 w-5 text-primary" />
               <span className="hidden min-w-0 flex-col md:flex">
@@ -149,9 +145,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
               {user && (
                 <>
+                  {canAccessTools(user) && (
+                    <Link
+                      href="/ferramentas"
+                      className={`btn-ghost px-2 py-1.5 md:hidden ${
+                        pathname.startsWith("/ferramentas") ? "text-primary" : ""
+                      }`}
+                      title="Ferramentas"
+                      aria-label="Ferramentas"
+                    >
+                      <Icon name="wrench" className="h-4 w-4" />
+                    </Link>
+                  )}
                   <button
                     type="button"
-                    className="btn-ghost hidden px-2 py-1.5 text-xs sm:inline-flex"
+                    className="btn-ghost px-2 py-1.5 text-xs sm:inline-flex"
                     onClick={openSearch}
                     title="Busca global (Ctrl+K)"
                   >
