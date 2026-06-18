@@ -33,6 +33,7 @@ enum ClientHistoryType {
   CALL
   WHATSAPP
   NOTE
+  PESQUISA_UPDATED
 }
 
 enum PhoneCheckResult {
