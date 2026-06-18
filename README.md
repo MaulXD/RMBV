@@ -1,156 +1,75 @@
-# RMBV System
+# RMBV — Sistema de Gestão de Clientes Jurídicos
 
-Plataforma web para gestão de clientes jurídicos com equipes isoladas, teses (ações), Kanban de tarefas, histórico de comunicação, relatórios e controle de acesso por categoria.
+Plataforma interna para escritórios de advocacia com múltiplas equipes e teses. Controla o ciclo de vida completo dos clientes desde a captação até a finalização, com Kanban, chamados, documentos e relatórios.
 
 **Produção:** [rmbv.vercel.app](https://rmbv.vercel.app) · **Health:** [/api/health](https://rmbv.vercel.app/api/health)
-
----
-
-## Índice
-
-- [Visão geral](#visão-geral)
-- [Funcionalidades](#funcionalidades)
-- [Papéis e permissões](#papéis-e-permissões)
-- [Stack técnica](#stack-técnica)
-- [Início rápido](#início-rápido)
-- [Variáveis de ambiente](#variáveis-de-ambiente)
-- [Scripts](#scripts)
-- [Deploy](#deploy)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Documentação](#documentação)
-
----
-
-## Visão geral
-
-O **RMBV System** centraliza o fluxo de localização e acompanhamento de clientes em escritórios com múltiplas equipes. Cada equipe opera de forma isolada — clientes, teses, tarefas e templates — enquanto o administrador tem visão global.
-
-O cadastro segue o modelo `MODEL.csv` (COD, TESE, NOME, CPF, telefones, endereços, status). Não há dependência de IA paga: pesquisa e extração de dados usam regras locais sobre texto colado.
-
-```mermaid
-flowchart LR
-  subgraph usuarios [Usuários]
-    Admin
-    ADV
-    Gerente
-    Colaborador
-  end
-
-  subgraph app [RMBV]
-    Dashboard[Clientes]
-    Kanban[Tarefas]
-    Perfil[Perfil do cliente]
-    Relatorios[Relatórios]
-    AdminPanel[Administração]
-  end
-
-  subgraph dados [Dados]
-    Neon[(PostgreSQL)]
-    Blob[(Vercel Blob)]
-  end
-
-  usuarios --> app
-  app --> Neon
-  Perfil --> Blob
-```
 
 ---
 
 ## Funcionalidades
 
 ### Clientes
+- Listagem com busca, filtros por status, workflow e tese — nome clicável abre o perfil
+- Perfil completo: dados, documentos (drag-and-drop + categorização por tags), pesquisa e revisão por OCR
+- Cadastro manual e importação em lote via CSV
+- Finalização com fluxo solicitar → aprovar
+- Detecção de duplicatas por CPF
 
-| Recurso | Descrição |
-|---------|-----------|
-| Painel de clientes | Lista paginada, busca, filtros por status, workflow e tese |
-| Perfil completo | Dados do `MODEL.csv`, documentos, pesquisa e revisão |
-| Cadastro manual | Formulário com análise de texto (telefones/endereços sem IA) |
-| Importação CSV | Admin importa em lote (`;`, modelo em `public/MODEL.csv`) |
-| Finalização | Fluxo solicitar → aprovar, com sync automático no Kanban |
-| Duplicatas por CPF | Bloqueio na **mesma tese**; aviso informativo em **outras teses** |
+### Documentos
+- Upload por drag-and-drop com formulário de categorização (RG, CPF, Contrato, Comprovante de residência, Ficha de Filiação ANCREF, Procuração, Certidões, IR, etc.)
+- Exibição em cards com badges de tipo
+- Storage: Vercel Blob em produção, disco local em dev
 
 ### Kanban e tarefas
+- Board por equipe com colunas configuráveis (nome, cor, coluna final)
+- Alertas de SLA e "vence em breve"
+- Sincronização com fluxo de finalização de clientes
 
-| Recurso | Descrição |
-|---------|-----------|
-| Board por equipe | Colunas customizáveis (nome, cor, coluna final) |
-| SLA / prazos | Alertas de atraso e “vence em breve” |
-| Histórico da tarefa | Comentários e log de mudanças |
-| Perfil do cliente | Aba Tarefas + criar tarefa com cliente pré-vinculado |
-| Sync finalização | Solicitação → coluna Aguardando; aprovação → Concluído |
+### Chamados
+- Sistema de tickets internos com anexos, comentários e histórico
 
-### Comunicação (histórico do cliente)
-
-| Recurso | Descrição |
-|---------|-----------|
-| Registros | Ligação, WhatsApp e nota livre com texto digitado |
-| Templates | Mensagens salvas por equipe, com botão “Usar” |
-| Timeline | Status, verificação de telefone e comunicações unificados |
+### Ferramentas
+- Pesquisa de dados via CPF, verificação de telefones, extração por OCR (Tesseract.js)
 
 ### Relatórios
-
-| Recurso | Descrição |
-|---------|-----------|
-| Cards por status | Aguardando, Localizado, Sem sucesso, Tente novamente |
-| Gráfico mensal | Novos clientes, finalizados e localizados (12 meses) |
-| Metas | Finalizações por mês (equipe ou ADV) com % atingido |
-| Exportação | Clientes e tarefas em CSV (Excel); relatório PDF |
+- Cards por status, gráfico mensal (12 meses), metas de finalização
+- Exportação CSV e PDF
 
 ### Administração
+- Equipes, usuários (ADMIN / ADV / GERENTE / COLABORADOR), teses, importação CSV, auditoria
+- Painel de configurações por equipe: teses, membros, colunas Kanban
 
-| Recurso | Descrição |
-|---------|-----------|
-| Equipes | Criar, renomear, ativar/desativar |
-| Usuários | Criar ADV/Gerente/Colaborador; editar, desativar, trocar senha |
-| Teses | Por equipe, com filtro global no header |
-| Categorias + RBAC | Permissões de criar/ler/editar/excluir por categoria |
-
----
-
-## Papéis e permissões
-
-| Papel | Escopo |
-|-------|--------|
-| **ADMIN** | Todas as equipes, usuários, importação CSV, relatórios globais |
-| **ADV** | Sua equipe; gerencia membros e teses; aprova finalização |
-| **GERENTE** | Sua equipe; operação completa nos clientes liberados |
-| **COLABORADOR** | Sua equipe; acesso conforme permissões de categoria |
-
-Credenciais padrão após `npm run db:seed`:
-
-| Papel | Login | Senha |
-|-------|--------|--------|
-| Admin | `Admin` ou `admin@sistema.local` | `rmbvadmin` |
-| ADV | `adv@sistema.local` | `Adv@123` |
-| Gerente | `gerente@sistema.local` | `Gerente@123` |
+### Interface
+- Sidebar lateral com navegação em grupos e ícones coloridos
+- Modo claro (`#c2ddff`) e escuro (GitHub-style `#0d1117`) com alternância persistida
+- Notificações em tempo real, busca global (⌘K)
 
 ---
 
-## Stack técnica
+## Stack
 
 | Camada | Tecnologia |
-|--------|------------|
-| Framework | [Next.js 15](https://nextjs.org) (App Router, Turbopack em dev) |
-| Linguagem | TypeScript |
-| UI | React 19, Tailwind CSS v4, Lucide Icons |
-| Banco | PostgreSQL via [Prisma](https://www.prisma.io) |
-| Auth | JWT (cookie httpOnly) + bcrypt |
+|---|---|
+| Framework | Next.js 15 (App Router, Turbopack) |
+| Linguagem | TypeScript + React 19 |
+| Estilo | Tailwind CSS v4 — config via CSS `@theme` (sem `tailwind.config.ts`) |
+| Banco | PostgreSQL via Prisma ORM (Neon em produção) |
+| Auth | JWT com `jose` + cookies httpOnly + bcrypt |
+| Storage | Vercel Blob (produção) / `storage/` local (dev) |
+| PDF | pdf-lib, pdfkit, pdfjs-dist |
+| OCR | Tesseract.js |
 | Validação | Zod |
-| PDF | PDFKit |
-| Storage | Vercel Blob (documentos em produção) |
-| Deploy | [Vercel](https://vercel.com) + [Neon](https://neon.tech) |
+| Deploy | Vercel (auto-deploy em push para `main`) |
 
 ---
 
 ## Início rápido
 
 ### Pré-requisitos
+- Node.js 20+
+- Conta Vercel + banco PostgreSQL (recomendado: [Neon](https://neon.tech))
 
-- **Node.js 20+**
-- **PostgreSQL** (Neon recomendado)
-- Conta GitHub + Vercel (para deploy)
-
-### Instalação local
+### Instalação
 
 ```bash
 git clone https://github.com/MaulXD/RMBV.git
@@ -159,150 +78,128 @@ npm install
 cp .env.example .env
 ```
 
-Edite `.env` com `DATABASE_URL` e `JWT_SECRET` (mín. 32 caracteres).
+Edite `.env`:
 
-```bash
-npm run db:push
-npm run db:seed
-npm run dev
+```env
+DATABASE_URL="postgresql://usuario:senha@host/banco?sslmode=require"
+JWT_SECRET="chave-aleatoria-com-32-ou-mais-caracteres"
+
+# Opcionais para seed
+ADMIN_EMAIL="admin@sistema.local"
+ADMIN_PASSWORD="rmbvadmin"
+ADMIN_NAME="Admin"
+
+# Obrigatório em produção para uploads
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 ```
 
-Abra [http://localhost:3000](http://localhost:3000) e entre com `Admin` / `rmbvadmin`.
-
-### Desenvolvimento com banco da Vercel
-
 ```bash
-npx vercel env pull .env.local --environment=production
-npm run env:setup-local
-npm run db:push
-npm run dev
+npm run db:push   # cria as tabelas
+npm run db:seed   # cria usuário admin e dados iniciais
+npm run dev       # http://localhost:3000
 ```
 
-> Valores secretos do `vercel env pull` podem vir vazios — copie `DATABASE_URL` e `JWT_SECRET` manualmente no painel da Vercel.
+**Login padrão:** `Admin` / `rmbvadmin`
 
 ---
 
 ## Variáveis de ambiente
 
 | Variável | Obrigatório | Descrição |
-|----------|:-----------:|-----------|
-| `DATABASE_URL` | Sim | Connection string PostgreSQL (`?sslmode=require`) |
-| `JWT_SECRET` | Sim | Chave aleatória com 32+ caracteres |
-| `ADMIN_EMAIL` | Seed | Email do administrador |
-| `ADMIN_PASSWORD` | Seed | Senha do admin |
-| `ADMIN_NAME` | Seed | Nome de login exibido (ex.: `Admin`) |
-| `ADV_*`, `GERENTE_*` | Seed | Usuários extras opcionais |
+|---|:---:|---|
+| `DATABASE_URL` | ✅ | Connection string PostgreSQL |
+| `JWT_SECRET` | ✅ | Chave aleatória 32+ caracteres |
 | `BLOB_READ_WRITE_TOKEN` | Produção | Upload persistente de documentos |
+| `ADMIN_EMAIL` | Seed | Padrão: `admin@sistema.local` |
+| `ADMIN_PASSWORD` | Seed | Padrão: `rmbvadmin` |
+| `ADMIN_NAME` | Seed | Padrão: `Admin` |
 
-Veja [.env.example](./.env.example).
+### Configurar Vercel Blob
 
-### Configurando o Vercel Blob (`BLOB_READ_WRITE_TOKEN`)
+1. Vercel → **Storage** → Create → **Blob** → criar
+2. Dentro do Blob → **Tokens** → Create Token (Read & Write) → copiar
+3. Projeto → **Settings** → **Environment Variables** → adicionar `BLOB_READ_WRITE_TOKEN`
+4. Redeploy para aplicar
 
-O upload de documentos de clientes e anexos de chamados usa **Vercel Blob** em produção. Sem ele, uploads falham no Vercel (o filesystem é efêmero).
+Sem o token, uploads falham em produção (o filesystem da Vercel é efêmero). Em dev local, arquivos vão para `storage/` na raiz do projeto.
 
-**Passo a passo:**
+---
 
-1. No painel da Vercel, abra o projeto → aba **Storage**
-2. Clique em **Create Database** → escolha **Blob**
-3. Nomeie (ex.: `rmbv-docs`) e confirme
-4. Copie o token gerado (`vercel_blob_rw_...`) em **Tokens**
-5. Adicione como variável de ambiente:
-   - Nome: `BLOB_READ_WRITE_TOKEN`
-   - Valor: o token copiado
-   - Ambientes: ✅ Production ✅ Preview
-6. Faça um novo deploy para aplicar
+## Deploy
 
-Em desenvolvimento local, os arquivos são salvos em `storage/` na raiz do projeto (sem necessidade de token).
+O repositório tem deploy automático na Vercel a cada push em `main`.
+
+O `vercel.json` executa no build:
+```
+prisma generate → prisma db push → db:seed → next build
+```
+
+### Checklist inicial
+
+1. Importar o repo na Vercel
+2. Conectar banco **Neon** pelo Marketplace (preenche `DATABASE_URL`)
+3. Definir `JWT_SECRET` e variáveis de seed
+4. *(Opcional)* Criar **Vercel Blob** e adicionar `BLOB_READ_WRITE_TOKEN`
+5. Deploy e validar `GET /api/health` → `"ok": true`
+
+---
+
+## Papéis de usuário
+
+| Role | Acesso |
+|---|---|
+| `ADMIN` | Tudo — painel admin, todas equipes, importação CSV, auditoria global |
+| `ADV` | Sua equipe — gerencia membros, teses e aprova finalizações |
+| `GERENTE` | Sua equipe — operação completa nos clientes |
+| `COLABORADOR` | Sua equipe — acesso conforme permissões de categoria |
 
 ---
 
 ## Scripts
 
 | Comando | Função |
-|---------|--------|
+|---|---|
 | `npm run dev` | Servidor de desenvolvimento (Turbopack) |
 | `npm run build` | `prisma generate` + build de produção |
-| `npm run start` | Servidor após build |
+| `npm run start` | Servidor de produção após build |
 | `npm run lint` | ESLint |
 | `npm run db:push` | Sincroniza schema Prisma → banco |
-| `npm run db:seed` | Usuários, equipes, categorias e permissões |
-| `npm run db:migrate` | Migrations Prisma (dev) |
-| `npm run env:setup-local` | Ajusta `.env.local` após `vercel env pull` |
+| `npm run db:seed` | Usuários, equipes, categorias e permissões iniciais |
 
 ---
 
-## Deploy
-
-O repositório está configurado para deploy automático na Vercel a cada push em `main`.
-
-O `vercel.json` executa no build:
+## Estrutura
 
 ```
-prisma generate → prisma db push → db:seed → next build
-```
+src/
+├── app/
+│   ├── globals.css       ← paleta de cores e classes utilitárias
+│   ├── dashboard/        ← listagem de clientes
+│   ├── clients/[id]/     ← perfil completo do cliente
+│   ├── kanban/           ← board de tarefas
+│   ├── chamados/         ← tickets internos
+│   ├── ferramentas/      ← pesquisa e OCR
+│   ├── reports/          ← relatórios e exportação
+│   ├── equipe/           ← configurações da equipe
+│   ├── admin/            ← painel administrativo
+│   └── api/              ← rotas REST
+├── components/           ← componentes React
+└── lib/                  ← lógica de negócio, auth, storage
 
-### Checklist
-
-1. Importar o repo **MaulXD/RMBV** na Vercel
-2. Conectar **Neon** pelo Marketplace (preenche `DATABASE_URL`)
-3. Definir `JWT_SECRET` e variáveis de seed
-4. *(Opcional)* Criar **Vercel Blob** para documentos
-5. Deploy e validar `GET /api/health` → `"ok": true`
-
-```bash
-npx vercel --prod
+prisma/
+├── schema.prisma         ← modelos do banco
+└── seed.ts               ← dados iniciais
 ```
 
 ---
 
-## Estrutura do projeto
-
-```
-├── prisma/
-│   ├── schema.prisma      # Modelos: User, Team, Client, Task, Kanban…
-│   └── seed.ts            # Dados iniciais
-├── public/
-│   └── MODEL.csv          # Modelo de importação
-├── src/
-│   ├── app/               # Rotas Next.js (pages + API)
-│   │   ├── dashboard/     # Lista de clientes
-│   │   ├── kanban/        # Board de tarefas
-│   │   ├── clients/       # Perfil e cadastro
-│   │   ├── reports/       # Relatórios e gráficos
-│   │   ├── admin/         # Painel administrativo
-│   │   └── api/           # REST API
-│   ├── components/        # UI React
-│   └── lib/               # Regras de negócio, auth, queries
-├── docs/
-│   └── PASSO-A-PASSO.md   # Guia completo de uso
-├── design.md              # Identidade visual
-├── DEPLOY.md              # Deploy detalhado
-└── vercel.json
-```
-
-### Rotas principais
-
-| Rota | Acesso | Descrição |
-|------|--------|-----------|
-| `/dashboard` | Autenticado | Painel de clientes |
-| `/clients/new` | Autenticado | Novo cliente |
-| `/clients/[id]` | Autenticado | Perfil do cliente |
-| `/kanban` | Autenticado | Kanban de tarefas |
-| `/reports` | Autenticado | Relatórios e exportação |
-| `/admin` | ADMIN | Equipes, usuários, CSV |
-| `/equipe` | ADV | Membros e teses da equipe |
-| `/api/health` | Público | Diagnóstico do ambiente |
-
----
-
-## Documentação
+## Documentação interna
 
 | Arquivo | Conteúdo |
-|---------|----------|
-| [docs/PASSO-A-PASSO.md](./docs/PASSO-A-PASSO.md) | Instalação, deploy, fluxo admin e troubleshooting |
-| [DEPLOY.md](./DEPLOY.md) | Vercel, Neon, Blob e variáveis |
-| [design.md](./design.md) | Paleta claro/escuro, tipografia e ícones |
-| [docs/RELATORIO-AUDITORIA.md](./docs/RELATORIO-AUDITORIA.md) | Notas técnicas de auditoria |
+|---|---|
+| [docs/DESENVOLVIMENTO.md](./docs/DESENVOLVIMENTO.md) | **Documento vivo** — funcionamento detalhado, decisões técnicas e histórico de mudanças |
+| [docs/PASSO-A-PASSO.md](./docs/PASSO-A-PASSO.md) | Instalação, deploy e fluxo de uso |
+| [docs/RELATORIO-AUDITORIA.md](./docs/RELATORIO-AUDITORIA.md) | Auditoria técnica de 27/05/2026 |
 
 ---
 
