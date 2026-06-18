@@ -1,6 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+function useCountUp(target: number, enabled: boolean, duration = 900): number {
+  const [val, setVal] = useState(0);
+  const raf = useRef<number>(0);
+  useEffect(() => {
+    if (!enabled) { setVal(0); return; }
+    const t0 = performance.now();
+    function tick(now: number) {
+      const p = Math.min((now - t0) / duration, 1);
+      const e = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(e * target));
+      if (p < 1) raf.current = requestAnimationFrame(tick);
+    }
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, enabled, duration]);
+  return val;
+}
+
+function useCountUpFloat(target: number, enabled: boolean, decimals = 1, duration = 900): string {
+  const [val, setVal] = useState(0);
+  const raf = useRef<number>(0);
+  useEffect(() => {
+    if (!enabled) { setVal(0); return; }
+    const t0 = performance.now();
+    function tick(now: number) {
+      const p = Math.min((now - t0) / duration, 1);
+      const e = 1 - Math.pow(1 - p, 3);
+      setVal(e * target);
+      if (p < 1) raf.current = requestAnimationFrame(tick);
+    }
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, enabled, duration]);
+  return val.toFixed(decimals);
+}
 
 type ResearchUser = {
   id: string;
@@ -19,15 +55,26 @@ type ResearchData = {
   timeline: { date: string; count: number; isWorkingDay: boolean }[];
 };
 
-function UserBar({ user, maxAvg }: { user: ResearchUser; maxAvg: number }) {
+function UserBar({
+  user,
+  maxAvg,
+  animated,
+}: {
+  user: ResearchUser;
+  maxAvg: number;
+  animated: boolean;
+}) {
   const pct = maxAvg > 0 ? (user.avgPerDay / maxAvg) * 100 : 0;
   return (
     <div className="flex items-center gap-3">
       <span className="w-32 shrink-0 truncate text-sm font-medium text-foreground">{user.name}</span>
       <div className="flex-1 overflow-hidden rounded-full bg-border" style={{ height: 10 }}>
         <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full bg-primary"
+          style={{
+            width: animated ? `${pct}%` : "0%",
+            transition: "width 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
         />
       </div>
       <span className="w-10 text-right text-xs font-semibold text-primary">{user.avgPerDay}/dia</span>
@@ -71,6 +118,31 @@ function MiniCalendar({ timeline }: { timeline: ResearchData["timeline"] }) {
   );
 }
 
+function SummaryCards({ data, animated }: { data: ResearchData; animated: boolean }) {
+  const total = useCountUp(data.totalPesquisas, animated);
+  const days = useCountUp(data.workingDays, animated);
+  const avg = useCountUpFloat(data.avgPerDay, animated);
+
+  const cards = [
+    { label: "Total de pesquisas", value: String(total), color: "text-primary", border: "border-primary/30" },
+    { label: "Dias úteis no período", value: String(days), color: "text-foreground", border: "border-border" },
+    { label: "Média geral / dia útil", value: avg, color: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-300 dark:border-emerald-800" },
+  ];
+  return (
+    <div
+      className="grid grid-cols-3 gap-3 transition-all duration-500"
+      style={{ opacity: animated ? 1 : 0, transform: animated ? "translateY(0)" : "translateY(12px)" }}
+    >
+      {cards.map((c) => (
+        <div key={c.label} className={`panel-solid border-l-2 p-4 ${c.border}`}>
+          <p className="text-xs text-muted">{c.label}</p>
+          <p className={`mt-1 text-3xl font-extrabold tabular-nums ${c.color}`}>{c.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ResearchReportPanel({
   teams,
   userRole,
@@ -95,7 +167,16 @@ export function ResearchReportPanel({
   );
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ResearchData | null>(null);
+  const [animated, setAnimated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data) {
+      setAnimated(false);
+      const t = setTimeout(() => setAnimated(true), 60);
+      return () => clearTimeout(t);
+    }
+  }, [data]);
 
   async function load() {
     setLoading(true);
@@ -178,33 +259,7 @@ export function ResearchReportPanel({
       {data && (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              {
-                label: "Total de pesquisas",
-                value: data.totalPesquisas,
-                color: "text-primary",
-                border: "border-primary/30",
-              },
-              {
-                label: "Dias úteis no período",
-                value: data.workingDays,
-                color: "text-foreground",
-                border: "border-border",
-              },
-              {
-                label: "Média geral / dia útil",
-                value: data.avgPerDay,
-                color: "text-emerald-600 dark:text-emerald-400",
-                border: "border-emerald-300 dark:border-emerald-800",
-              },
-            ].map((c) => (
-              <div key={c.label} className={`panel-solid border-l-2 p-4 ${c.border}`}>
-                <p className="text-xs text-muted">{c.label}</p>
-                <p className={`mt-1 text-3xl font-extrabold ${c.color}`}>{c.value}</p>
-              </div>
-            ))}
-          </div>
+          <SummaryCards data={data} animated={animated} />
 
           {data.users.length === 0 ? (
             <section className="panel-solid p-6 text-center text-sm text-muted">
@@ -217,13 +272,16 @@ export function ResearchReportPanel({
           ) : (
             <>
               {/* Per user bars */}
-              <section className="panel-solid p-5">
+              <section
+                className="panel-solid p-5 transition-all duration-500"
+                style={{ opacity: animated ? 1 : 0, transform: animated ? "translateY(0)" : "translateY(10px)" }}
+              >
                 <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted">
                   Média por colaborador (pesquisas / dia útil)
                 </h3>
                 <div className="space-y-3">
                   {data.users.map((u) => (
-                    <UserBar key={u.id} user={u} maxAvg={maxAvg} />
+                    <UserBar key={u.id} user={u} maxAvg={maxAvg} animated={animated} />
                   ))}
                 </div>
               </section>
