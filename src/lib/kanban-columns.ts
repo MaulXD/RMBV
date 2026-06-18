@@ -67,6 +67,11 @@ export async function getKanbanColumnsForTeam(teamId: string): Promise<KanbanCol
   return columns.map(formatKanbanColumn);
 }
 
+export async function getDefaultKanbanColumnId(teamId: string) {
+  const columns = await getKanbanColumnsForTeam(teamId);
+  return columns.find((c) => !c.isDone)?.id ?? columns[0]?.id ?? null;
+}
+
 export async function assertColumnBelongsToTeam(columnId: string, teamId: string) {
   const column = await prisma.kanbanColumn.findFirst({
     where: { id: columnId, teamId },

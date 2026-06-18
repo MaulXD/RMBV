@@ -15,6 +15,7 @@ import {
 import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 import { WORKFLOW_OPTIONS } from "@/lib/client-fields";
 import { Icon } from "@/components/ui/Icon";
+import { TeamTodayPanel } from "@/components/TeamTodayPanel";
 
 type ClientRow = {
   id: string;
@@ -145,6 +146,8 @@ function DashboardContent() {
           Novo cliente
         </Link>
       </div>
+
+      <TeamTodayPanel />
 
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-3">
         <select

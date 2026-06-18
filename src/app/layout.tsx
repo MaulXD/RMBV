@@ -18,6 +18,12 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "RMBV System",
   description: "RMBV System — gestão de clientes com equipes, teses, documentação e relatórios",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "RMBV",
+    statusBarStyle: "default",
+  },
 };
 
 const themeInitScript = `
@@ -40,6 +46,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0f766e" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${inter.variable} ${playfair.variable} font-sans`}>

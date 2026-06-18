@@ -7,11 +7,12 @@ import { AppShell } from "@/components/AppShell";
 import { CSV_HEADERS } from "@/lib/client-fields";
 import { TeamAdminPanel } from "@/components/TeamAdminPanel";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
+import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
 type Category = { id: string; name: string };
-type Tab = "equipes" | "usuarios" | "importar";
+type Tab = "equipes" | "usuarios" | "importar" | "auditoria";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -96,10 +97,11 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: "building" | "users" | "upload" }[] = [
+  const tabs: { id: Tab; label: string; icon: "building" | "users" | "upload" | "clipboardList" }[] = [
     { id: "equipes", label: "Equipes", icon: "building" },
     { id: "usuarios", label: "Usuários", icon: "users" },
     { id: "importar", label: "Importar CSV", icon: "upload" },
+    { id: "auditoria", label: "Auditoria", icon: "clipboardList" },
   ];
 
   return (
@@ -190,6 +192,8 @@ export default function AdminPage() {
           {error && <p className="alert alert-error">{error}</p>}
         </section>
       )}
+
+      {tab === "auditoria" && <AuditLogPanel />}
     </AppShell>
   );
 }

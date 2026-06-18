@@ -37,7 +37,8 @@ type PdfMode =
   | "compress"
   | "ocr"
   | "images"
-  | "save";
+  | "save"
+  | "stamp";
 
 const PDF_MODES: {
   id: PdfMode;
@@ -56,6 +57,7 @@ const PDF_MODES: {
   { id: "ocr", label: "OCR", description: "Extrair texto de PDF ou imagem.", icon: "scanText", accent: "amber" },
   { id: "images", label: "Imagens → PDF", description: "Converter fotos JPG/PNG em PDF.", icon: "image", accent: "emerald" },
   { id: "save", label: "Salvar no cliente", description: "Enviar resultado para Documentos.", icon: "folderUp", accent: "violet" },
+  { id: "stamp", label: "Carimbo", description: "Carimbo com texto e data no rodapé.", icon: "stamp", accent: "emerald" },
 ];
 
 const BATES_POSITIONS: { value: BatesPosition; label: string }[] = [
@@ -105,6 +107,9 @@ export function PdfOrganizerTool() {
   const [watermarkDiagonal, setWatermarkDiagonal] = useState(true);
   const [redactionBottomPct, setRedactionBottomPct] = useState(0);
   const [compress, setCompress] = useState<"none" | "light" | "strong">("none");
+  const [stampEnabled, setStampEnabled] = useState(false);
+  const [stampText, setStampText] = useState("CÓPIA AUTENTICADA");
+  const [stampIncludeDate, setStampIncludeDate] = useState(true);
 
   const [saveClient, setSaveClient] = useState<ClientOption | null>(null);
   const [saveFilename, setSaveFilename] = useState("documento-organizado.pdf");
@@ -140,6 +145,10 @@ export function PdfOrganizerTool() {
           )
         : undefined,
     compress: mode === "compress" ? compress : compress !== "none" ? compress : undefined,
+    stamp:
+      stampEnabled || mode === "stamp"
+        ? { enabled: true, text: stampText, includeDate: stampIncludeDate }
+        : undefined,
   };
 
   const addFiles = useCallback(async (fileList: FileList | File[]) => {
@@ -533,6 +542,20 @@ export function PdfOrganizerTool() {
         </section>
       )}
 
+      {mode === "stamp" && (
+        <section className="panel-solid space-y-3 p-5">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={stampEnabled} onChange={(e) => setStampEnabled(e.target.checked)} />
+            Ativar carimbo
+          </label>
+          <input className="industrial-input text-sm" value={stampText} onChange={(e) => setStampText(e.target.value)} />
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" checked={stampIncludeDate} onChange={(e) => setStampIncludeDate(e.target.checked)} />
+            Incluir data
+          </label>
+        </section>
+      )}
+
       {mode === "redact" && (
         <section className="panel-solid space-y-2 p-5">
           <p className="text-sm text-muted">Tarja inferior (% da página)</p>
@@ -663,7 +686,7 @@ export function PdfOrganizerTool() {
         </section>
       )}
 
-      {hasPages && ["bates", "watermark", "redact", "compress", "save"].includes(mode) && (
+      {hasPages && ["bates", "watermark", "redact", "compress", "save", "stamp"].includes(mode) && (
         <section className="soft-card p-5">
           <button type="button" className="btn-primary" disabled={exporting} onClick={() => void downloadMerged()}>
             <Icon name="fileDown" className="h-4 w-4" />
