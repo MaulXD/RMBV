@@ -15,8 +15,41 @@ type ClientRow = {
   workflowStatus: ClientWorkflowStatus;
   createdAt: string;
   primaryPhone: string | null;
+  hasResearch: boolean;
+  hasContacts: boolean;
   categories: { id: string; name: string }[];
 };
+
+function ResearchBadge({ hasResearch, hasContacts }: { hasResearch: boolean; hasContacts: boolean }) {
+  if (!hasResearch) {
+    return (
+      <span
+        title="Sem pesquisa"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-muted/30 text-[11px] text-muted/50"
+      >
+        ○
+      </span>
+    );
+  }
+  if (!hasContacts) {
+    return (
+      <span
+        title="Pesquisa feita — sem contatos"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-sm text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+      >
+        ⚠
+      </span>
+    );
+  }
+  return (
+    <span
+      title="Pesquisa feita — com contatos"
+      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+    >
+      ✓
+    </span>
+  );
+}
 
 export function ClientsTable({
   clients,
@@ -48,7 +81,7 @@ export function ClientsTable({
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">CPF</th>
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Status</th>
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Finalização</th>
-              <th className="px-4 py-2" colSpan={3} />
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Pesquisa</th>
             </tr>
           </thead>
           <tbody>
@@ -140,7 +173,9 @@ export function ClientsTable({
             <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
               Telefone
             </th>
-            <th className="px-4 py-2" />
+            <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Pesquisa
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -194,13 +229,8 @@ export function ClientsTable({
                   </div>
                 </td>
                 <td className="px-4 py-2 text-sm text-muted">{client.primaryPhone ?? "—"}</td>
-                <td className="px-4 py-2 text-right">
-                  <Link
-                    href={`/clients/${client.id}`}
-                    className="inline-flex rounded-lg border border-border px-3 py-1 text-xs text-muted opacity-0 transition-opacity hover:border-primary hover:bg-primary/[0.08] hover:text-primary group-hover:opacity-100"
-                  >
-                    Abrir
-                  </Link>
+                <td className="px-4 py-2 text-center">
+                  <ResearchBadge hasResearch={client.hasResearch} hasContacts={client.hasContacts} />
                 </td>
               </tr>
             );
