@@ -127,6 +127,8 @@ export function NotificationBell() {
               className="fixed z-[61] overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-xl"
               style={{
                 top: panelStyle.top,
+                bottom: panelStyle.bottom,
+                left: panelStyle.left,
                 right: panelStyle.right,
                 width: panelStyle.width,
               }}

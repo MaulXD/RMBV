@@ -194,7 +194,25 @@ npm run dev
 | `ADV_*`, `GERENTE_*` | Seed | Usuários extras opcionais |
 | `BLOB_READ_WRITE_TOKEN` | Produção | Upload persistente de documentos |
 
-Veja [.env.example](./.env.example) e [DEPLOY.md](./DEPLOY.md).
+Veja [.env.example](./.env.example).
+
+### Configurando o Vercel Blob (`BLOB_READ_WRITE_TOKEN`)
+
+O upload de documentos de clientes e anexos de chamados usa **Vercel Blob** em produção. Sem ele, uploads falham no Vercel (o filesystem é efêmero).
+
+**Passo a passo:**
+
+1. No painel da Vercel, abra o projeto → aba **Storage**
+2. Clique em **Create Database** → escolha **Blob**
+3. Nomeie (ex.: `rmbv-docs`) e confirme
+4. Copie o token gerado (`vercel_blob_rw_...`) em **Tokens**
+5. Adicione como variável de ambiente:
+   - Nome: `BLOB_READ_WRITE_TOKEN`
+   - Valor: o token copiado
+   - Ambientes: ✅ Production ✅ Preview
+6. Faça um novo deploy para aplicar
+
+Em desenvolvimento local, os arquivos são salvos em `storage/` na raiz do projeto (sem necessidade de token).
 
 ---
 
