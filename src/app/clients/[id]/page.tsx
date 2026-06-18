@@ -19,6 +19,7 @@ import { ClientTasksSection } from "@/components/ClientTasksSection";
 import { ClientUnifiedTimeline } from "@/components/ClientUnifiedTimeline";
 import { ClientMobileQuickActions } from "@/components/ClientMobileQuickActions";
 import { ClientChecklistSection } from "@/components/ChecklistTools";
+import { ClientRelativesPanel } from "@/components/ClientRelativesPanel";
 import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
@@ -224,6 +225,11 @@ export default function ClientDetailPage() {
             </div>
           }
           tarefas={<ClientTasksSection client={client} />}
+          parentes={
+            <section className="panel-solid p-5">
+              <ClientRelativesPanel clientId={client.id} />
+            </section>
+          }
         />
       </div>
       <ClientMobileQuickActions clientId={client.id} primaryPhone={client.phone1} />
