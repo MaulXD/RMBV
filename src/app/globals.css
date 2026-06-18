@@ -205,11 +205,12 @@
   .industrial-input {
     @apply w-full rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
     border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
-    background: color-mix(in srgb, #ffffff 88%, var(--color-surface));
+    background: color-mix(in srgb, #ffffff 90%, var(--color-border));
   }
 
   .dark .industrial-input {
-    background: color-mix(in srgb, var(--color-surface-glass) 80%, var(--color-surface));
+    background: color-mix(in srgb, var(--color-border) 18%, var(--color-surface-elevated));
+    border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
   }
 
   .industrial-panel .industrial-input {
