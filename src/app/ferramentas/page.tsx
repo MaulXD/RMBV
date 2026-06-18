@@ -9,7 +9,6 @@ import { CpfCnpjValidatorTool } from "@/components/CpfCnpjValidatorTool";
 import { CsvConverterTool } from "@/components/CsvConverterTool";
 import { NoticeGeneratorTool } from "@/components/NoticeGeneratorTool";
 import { ToolPickerCard } from "@/components/ToolPickerCard";
-import { canAccessTools } from "@/lib/roles";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
 type ToolId =
@@ -77,8 +76,9 @@ export default function FerramentasPage() {
         const userRole = d.user?.role ?? null;
         setRole(userRole);
         setTeamId(d.user?.teamId ?? null);
-        if (!userRole || !canAccessTools({ role: userRole })) {
-          router.replace("/dashboard");
+        if (!userRole) {
+          router.replace("/login");
+          return;
         }
       })
       .finally(() => setChecking(false));
@@ -92,7 +92,7 @@ export default function FerramentasPage() {
     );
   }
 
-  if (!role || !canAccessTools({ role })) {
+  if (!role) {
     return null;
   }
 
