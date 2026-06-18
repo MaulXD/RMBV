@@ -41,13 +41,14 @@ export async function GET() {
     }
 
     const members = await prisma.user.findMany({
-      where: { teamId: user.teamId!, isActive: true },
+      where: { teamId: user.teamId! },
       orderBy: [{ role: "desc" }, { name: "asc" }],
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
     });

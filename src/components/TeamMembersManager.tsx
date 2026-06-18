@@ -10,6 +10,7 @@ type Member = {
   name: string;
   email: string;
   role: "ADV" | "GERENTE" | "COLABORADOR" | "ADMIN";
+  isActive: boolean;
   createdAt: string;
 };
 
@@ -31,6 +32,7 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"GERENTE" | "COLABORADOR">("COLABORADOR");
   const [saving, setSaving] = useState(false);
+  const [patchingId, setPatchingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,9 +79,37 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
     }
   }
 
+  async function patchMember(id: string, patch: { role?: string; isActive?: boolean }) {
+    setPatchingId(id);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/teams/members/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao atualizar");
+      if (patch.isActive !== undefined) {
+        setMessage(patch.isActive ? "Acesso reativado." : "Acesso suspenso.");
+      } else {
+        setMessage("Função atualizada.");
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setPatchingId(null);
+    }
+  }
+
   if (loading) {
     return <p className="text-sm text-muted">Carregando equipe...</p>;
   }
+
+  const editableRoles = ["GERENTE", "COLABORADOR"] as const;
+  const canEdit = canInvite;
 
   return (
     <div className="space-y-6">
@@ -102,17 +132,64 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
           <p className="text-sm text-muted">Nenhum membro.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {members.map((m) => (
-              <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                <div>
-                  <p className="font-medium">{m.name}</p>
-                  <p className="text-xs text-muted">{m.email}</p>
-                </div>
-                <span className="rounded-[var(--radius-ui)] border border-border px-2 py-0.5 text-xs">
-                  {ROLE_LABELS[m.role]}
-                </span>
-              </li>
-            ))}
+            {members.map((m) => {
+              const isEditable = canEdit && m.role !== "ADV" && m.role !== "ADMIN";
+              const isPatching = patchingId === m.id;
+              return (
+                <li
+                  key={m.id}
+                  className={`flex flex-wrap items-center justify-between gap-3 py-3 ${!m.isActive ? "opacity-50" : ""}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium leading-tight">
+                      {m.name}
+                      {!m.isActive && (
+                        <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                          SUSPENSO
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted">{m.email}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isEditable ? (
+                      <select
+                        className="industrial-input py-1 text-xs"
+                        value={m.role}
+                        disabled={isPatching}
+                        onChange={(e) => void patchMember(m.id, { role: e.target.value })}
+                      >
+                        {editableRoles.map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABELS[r]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="rounded-[var(--radius-ui)] border border-border px-2 py-0.5 text-xs">
+                        {ROLE_LABELS[m.role]}
+                      </span>
+                    )}
+
+                    {isEditable && (
+                      <button
+                        type="button"
+                        disabled={isPatching}
+                        onClick={() => void patchMember(m.id, { isActive: !m.isActive })}
+                        className={`rounded-[var(--radius-ui)] border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                          m.isActive
+                            ? "border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                            : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                        }`}
+                      >
+                        {isPatching ? "..." : m.isActive ? "Suspender" : "Reativar"}
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
