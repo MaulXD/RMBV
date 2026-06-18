@@ -302,6 +302,7 @@ model ClientDocument {
   originalName String
   mimeType     String
   size         Int
+  tags         String   @default("[]")
   uploadedById String
   uploadedBy   User     @relation("DocumentsUploaded", fields: [uploadedById], references: [id])
   createdAt    DateTime @default(now())

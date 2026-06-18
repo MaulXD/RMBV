@@ -32,6 +32,7 @@ export async function GET(
         originalName: doc.originalName,
         mimeType: doc.mimeType,
         size: doc.size,
+        tags: JSON.parse(doc.tags ?? "[]") as string[],
         createdAt: doc.createdAt.toISOString(),
         uploadedBy: doc.uploadedBy,
         downloadUrl: `/api/clients/${clientId}/documents/${doc.id}`,
@@ -57,6 +58,9 @@ export async function POST(
       return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
     }
 
+    const tagsRaw = formData.get("tags");
+    const tags = tagsRaw ? JSON.stringify(JSON.parse(tagsRaw as string)) : "[]";
+
     try {
       const { storedName } = await saveClientDocument(clientId, file);
 
@@ -68,6 +72,7 @@ export async function POST(
             originalName: file.name || "documento",
             mimeType: file.type || "application/octet-stream",
             size: file.size,
+            tags,
             uploadedById: user.id,
           },
           include: {
@@ -101,6 +106,7 @@ export async function POST(
             originalName: document.originalName,
             mimeType: document.mimeType,
             size: document.size,
+            tags: JSON.parse(document.tags ?? "[]") as string[],
             createdAt: document.createdAt.toISOString(),
             uploadedBy: document.uploadedBy,
             downloadUrl: `/api/clients/${clientId}/documents/${document.id}`,
