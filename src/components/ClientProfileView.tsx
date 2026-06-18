@@ -6,6 +6,7 @@ import { CLIENT_FIELD_GROUPS, PHONE_FIELD_KEYS } from "@/lib/client-fields";
 import { StatusBadge } from "./StatusBadge";
 import { WorkflowBadge } from "./WorkflowBadge";
 import { CopyButton } from "./CopyButton";
+import { WhatsAppButton } from "./WhatsAppButton";
 import { PhoneCheckButtons } from "./PhoneCheckButtons";
 
 export function ClientProfileView({
@@ -121,6 +122,7 @@ export function ClientProfileView({
                 </p>
                 <div className="action-toolbar mt-2">
                   <CopyButton value={phone.value} label={`Copiar ${phone.label}`} compact />
+                  <WhatsAppButton value={phone.value} compact />
                   <PhoneCheckButtons
                     clientId={client.id}
                     phoneKey={phone.key}
