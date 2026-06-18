@@ -7,7 +7,6 @@ import { useTheme } from "./ThemeProvider";
 import { TeseFilterProvider } from "./TeseFilterProvider";
 import { TeseFilterBar } from "./TeseFilterBar";
 import { Icon, type IconName } from "./ui/Icon";
-import { canAccessTools } from "@/lib/roles";
 import { useSession } from "./SessionProvider";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "./GlobalSearchPalette";
 import { NotificationBell } from "./NotificationBell";
@@ -65,18 +64,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const nav: NavItem[] = [
     { href: "/dashboard", label: "Clientes", icon: "dashboard" },
-    ...(user && canAccessTools(user)
-      ? [{ href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const }]
-      : []),
+    { href: "/ferramentas", label: "Ferramentas", icon: "wrench" },
     { href: "/kanban", label: "Kanban", icon: "kanban" },
     { href: "/chamados", label: "Chamados", icon: "ticket" },
     { href: "/reports", label: "Relatórios", icon: "reports" },
-    ...(user?.role && user.role !== "ADMIN"
-      ? [{ href: "/equipe", label: "Minha equipe", icon: "briefcase" as const }]
-      : []),
+    // Enquanto a sessão carrega (user null), mostra Minha equipe por padrão
     ...(user?.role === "ADMIN"
       ? [{ href: "/admin", label: "Administração", icon: "shield" as const }]
-      : []),
+      : [{ href: "/equipe", label: "Minha equipe", icon: "briefcase" as const }]),
   ];
 
   const sidebarContent = (
