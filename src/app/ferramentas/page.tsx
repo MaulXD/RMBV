@@ -8,6 +8,8 @@ import { TeseChecklistTool } from "@/components/ChecklistTools";
 import { CpfCnpjValidatorTool } from "@/components/CpfCnpjValidatorTool";
 import { CsvConverterTool } from "@/components/CsvConverterTool";
 import { NoticeGeneratorTool } from "@/components/NoticeGeneratorTool";
+import { DocumentTemplateTool } from "@/components/DocumentTemplateTool";
+import { PdfExtractTool } from "@/components/PdfExtractTool";
 import { ToolPickerCard } from "@/components/ToolPickerCard";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
@@ -16,7 +18,9 @@ type ToolId =
   | "checklist"
   | "cpf-cnpj"
   | "csv-converter"
-  | "notice-generator";
+  | "notice-generator"
+  | "document-templates"
+  | "pdf-extract";
 
 const TOOLS: {
   id: ToolId;
@@ -59,6 +63,20 @@ const TOOLS: {
     description: "Templates com nome, código, CPF e telefone do cliente.",
     icon: "messageSquare",
     accent: "violet",
+  },
+  {
+    id: "document-templates",
+    label: "Templates de documentos",
+    description: "Modelos com variáveis do cliente para copiar ou imprimir.",
+    icon: "clipboardPen",
+    accent: "primary",
+  },
+  {
+    id: "pdf-extract",
+    label: "Extrair dados do PDF",
+    description: "OCR para identificar nome, CPF e telefone no documento.",
+    icon: "scanText",
+    accent: "amber",
   },
 ];
 
@@ -150,6 +168,8 @@ export default function FerramentasPage() {
           {activeTool === "cpf-cnpj" && <CpfCnpjValidatorTool />}
           {activeTool === "csv-converter" && <CsvConverterTool />}
           {activeTool === "notice-generator" && <NoticeGeneratorTool teamId={teamId} />}
+          {activeTool === "document-templates" && <DocumentTemplateTool teamId={teamId} />}
+          {activeTool === "pdf-extract" && <PdfExtractTool />}
         </section>
       )}
     </AppShell>

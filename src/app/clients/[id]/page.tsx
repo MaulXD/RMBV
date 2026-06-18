@@ -16,6 +16,8 @@ import { ClientDuplicateBanner } from "@/components/ClientDuplicateBanner";
 import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSection";
 import { ClientExtractionReview } from "@/components/ClientExtractionReview";
 import { ClientTasksSection } from "@/components/ClientTasksSection";
+import { ClientUnifiedTimeline } from "@/components/ClientUnifiedTimeline";
+import { ClientMobileQuickActions } from "@/components/ClientMobileQuickActions";
 import { ClientChecklistSection } from "@/components/ChecklistTools";
 import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
@@ -214,7 +216,13 @@ export default function ClientDetailPage() {
               />
               <section className="panel-solid p-4">
                 <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
-                  Linha do tempo
+                  Timeline unificada
+                </h2>
+                <ClientUnifiedTimeline clientId={client.id} />
+              </section>
+              <section className="panel-solid p-4">
+                <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+                  Histórico detalhado
                 </h2>
                 <ClientHistoryTimeline clientId={client.id} refreshKey={historyRefreshKey} />
               </section>
@@ -223,6 +231,8 @@ export default function ClientDetailPage() {
           tarefas={<ClientTasksSection client={client} />}
         />
       </div>
+      <ClientMobileQuickActions clientId={client.id} primaryPhone={client.phone1} />
+      <div className="pb-20 md:pb-0" />
     </AppShell>
   );
 }

@@ -11,6 +11,9 @@ import {
 import { recordChamadoHistory } from "@/lib/chamado-history";
 import { formatChamadoForApi, chamadoListInclude } from "@/lib/chamado-query";
 import { CHAMADO_CATEGORY_LABELS } from "@/lib/enum-labels";
+import { computeChamadoSlaDueAt } from "@/lib/chamado-sla-config";
+import { runAutomations, ensureDefaultAutomationRules, ensureDefaultChamadoSla } from "@/lib/automations";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -89,6 +92,11 @@ export async function POST(request: Request) {
       }
     }
 
+    await ensureDefaultChamadoSla(teamId);
+    await ensureDefaultAutomationRules(teamId);
+
+    const slaDueAt = await computeChamadoSlaDueAt(teamId, "ABERTO");
+
     const chamado = await prisma.$transaction(async (tx) => {
       const number = await nextChamadoNumber(teamId);
       const created = await tx.chamado.create({
@@ -102,6 +110,7 @@ export async function POST(request: Request) {
           requesterId: user.id,
           assigneeId: parsed.data.assigneeId ?? null,
           clientId: parsed.data.clientId ?? null,
+          slaDueAt,
         },
         include: chamadoListInclude,
       });
@@ -113,6 +122,24 @@ export async function POST(request: Request) {
         type: "CREATED",
         note: `Chamado #${number} criado (${categoryLabel})`,
       });
+
+      await runAutomations(tx, "CHAMADO_CREATED", {
+        teamId,
+        actorId: user.id,
+        chamadoId: created.id,
+        chamadoTitle: created.title,
+        clientId: created.clientId ?? undefined,
+      });
+
+      if (created.assigneeId) {
+        await createNotification(tx, {
+          userId: created.assigneeId,
+          type: "CHAMADO_ASSIGNED",
+          title: `Chamado #${number} atribuído a você`,
+          body: created.title,
+          href: `/chamados/${created.id}`,
+        });
+      }
 
       return created;
     });

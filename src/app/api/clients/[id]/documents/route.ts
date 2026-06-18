@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { getClientIfAllowed } from "@/lib/client-access";
 import { saveClientDocument } from "@/lib/document-storage";
+import { runAutomations } from "@/lib/automations";
+import { notifyTeam } from "@/lib/notifications";
 export const runtime = "nodejs";
 
 export async function GET(
@@ -58,18 +60,38 @@ export async function POST(
     try {
       const { storedName } = await saveClientDocument(clientId, file);
 
-      const document = await prisma.clientDocument.create({
-        data: {
-          clientId,
-          storedName,
-          originalName: file.name || "documento",
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
-          uploadedById: user.id,
-        },
-        include: {
-          uploadedBy: { select: { id: true, name: true, email: true } },
-        },
+      const document = await prisma.$transaction(async (tx) => {
+        const doc = await tx.clientDocument.create({
+          data: {
+            clientId,
+            storedName,
+            originalName: file.name || "documento",
+            mimeType: file.type || "application/octet-stream",
+            size: file.size,
+            uploadedById: user.id,
+          },
+          include: {
+            uploadedBy: { select: { id: true, name: true, email: true } },
+          },
+        });
+
+        if (client.teamId) {
+          await runAutomations(tx, "DOCUMENT_UPLOADED", {
+            teamId: client.teamId,
+            actorId: user.id,
+            clientId,
+            clientName: client.name,
+            documentName: doc.originalName,
+          });
+          await notifyTeam(tx, client.teamId, {
+            type: "CLIENT_DOCUMENT",
+            title: "Novo documento",
+            body: `${doc.originalName} — ${client.name}`,
+            href: `/clients/${clientId}`,
+          }, user.id);
+        }
+
+        return doc;
       });
 
       return NextResponse.json(

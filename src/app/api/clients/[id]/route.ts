@@ -12,6 +12,8 @@ import { clientUpdateSchema } from "@/lib/client-schema";
 import { formatClientForApi } from "@/lib/client-fields";
 import { findClientDuplicates } from "@/lib/client-duplicates";
 import { teamScopeWhere } from "@/lib/team-access";
+import { runAutomations } from "@/lib/automations";
+import { recordAuditLog } from "@/lib/audit-log";
 import type { ClientStatus } from "@prisma/client";
 export const runtime = "nodejs";
 
@@ -136,6 +138,23 @@ export async function PATCH(
             toStatus: newStatus,
             note: statusChangeNote!.trim(),
           },
+        });
+
+        if (newStatus === "LOCALIZADO" && existing.teamId) {
+          await runAutomations(tx, "CLIENT_STATUS_LOCALIZADO", {
+            teamId: existing.teamId,
+            actorId: user.id,
+            clientId: id,
+            clientName: existing.name,
+          });
+        }
+
+        await recordAuditLog(tx, {
+          userId: user.id,
+          action: "STATUS_CHANGE",
+          entity: "client",
+          entityId: id,
+          summary: `Status ${existing.status} → ${newStatus}`,
         });
       }
     });

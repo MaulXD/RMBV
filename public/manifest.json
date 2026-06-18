@@ -1,0 +1,18 @@
+{
+  "name": "RMBV System",
+  "short_name": "RMBV",
+  "description": "Gestão de clientes, Kanban, chamados e ferramentas PDF",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f766e",
+  "lang": "pt-BR",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

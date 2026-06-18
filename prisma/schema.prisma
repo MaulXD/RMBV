@@ -93,6 +93,9 @@ model Team {
   goals     TeamGoal[]
   taskLabels TaskLabel[]
   chamados  Chamado[]
+  automationRules AutomationRule[]
+  documentTemplates DocumentTemplate[]
+  chamadoSlaConfigs ChamadoSlaConfig[]
 }
 
 model TeseChecklistItem {
@@ -135,6 +138,9 @@ model User {
   chamadoComments             ChamadoComment[]
   chamadoAttachments          ChamadoAttachment[] @relation("ChamadoAttachmentUploader")
   chamadoHistory              ChamadoHistory[]   @relation("ChamadoHistoryAuthor")
+  notifications               Notification[]
+  auditLogs                   AuditLog[]         @relation("AuditLogUser")
+  onboarding                  UserOnboarding?
 
   @@index([teamId])
 }
@@ -382,6 +388,8 @@ model Chamado {
   client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  statusChangedAt DateTime      @default(now())
+  slaDueAt        DateTime?
   comments      ChamadoComment[]
   attachments   ChamadoAttachment[]
   history       ChamadoHistory[]
@@ -464,4 +472,108 @@ model TaskHistory {
   createdBy   User            @relation("TaskHistoryAuthor", fields: [createdById], references: [id])
 
   @@index([taskId, createdAt])
+}
+
+enum NotificationType {
+  TASK_OVERDUE
+  TASK_ASSIGNED
+  CHAMADO_ASSIGNED
+  CHAMADO_SLA
+  CLIENT_FINALIZATION
+  CLIENT_DOCUMENT
+  GENERAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+}
+
+enum AutomationTrigger {
+  CLIENT_STATUS_LOCALIZADO
+  CLIENT_WORKFLOW_FINALIZACAO
+  DOCUMENT_UPLOADED
+  CHAMADO_CREATED
+}
+
+enum AutomationAction {
+  CREATE_TASK
+  NOTIFY_ASSIGNEE
+  NOTIFY_TEAM
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  href      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read, createdAt])
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String?
+  user      User?       @relation("AuditLogUser", fields: [userId], references: [id], onDelete: SetNull)
+  action    AuditAction
+  entity    String
+  entityId  String?
+  summary   String
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+}
+
+model AutomationRule {
+  id        String            @id @default(uuid())
+  teamId    String
+  team      Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name      String
+  enabled   Boolean           @default(true)
+  trigger   AutomationTrigger
+  action    AutomationAction
+  config    Json?
+  createdAt DateTime          @default(now())
+
+  @@index([teamId, enabled])
+}
+
+model DocumentTemplate {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name      String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, name])
+  @@index([teamId])
+}
+
+model ChamadoSlaConfig {
+  id     String        @id @default(uuid())
+  teamId String
+  team   Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  status ChamadoStatus
+  hours  Int
+
+  @@unique([teamId, status])
+}
+
+model UserOnboarding {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedSteps  Json     @default("[]")
+  dismissed       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
 }

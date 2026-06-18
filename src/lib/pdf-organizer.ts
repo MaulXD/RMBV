@@ -32,6 +32,11 @@ export type PdfExportOptions = {
   };
   redactions?: Record<string, RedactionRect[]>;
   compress?: "none" | "light" | "strong";
+  stamp?: {
+    enabled: boolean;
+    text: string;
+    includeDate: boolean;
+  };
 };
 
 export type PdfSource = {
@@ -85,6 +90,7 @@ async function decoratePage(
     batesPosition?: BatesPosition;
     watermark?: { text: string; opacity: number; diagonal: boolean };
     redactions?: RedactionRect[];
+    stamp?: { text: string; includeDate: boolean };
   }
 ) {
   const { width, height } = page.getSize();
@@ -122,6 +128,33 @@ async function decoratePage(
       size: fontSize,
       font,
       color: rgb(0, 0, 0),
+    });
+  }
+
+  if (opts.stamp?.text) {
+    const stampLines = [opts.stamp.text];
+    if (opts.stamp.includeDate) {
+      stampLines.push(new Date().toLocaleDateString("pt-BR"));
+    }
+    const stampText = stampLines.join(" · ");
+    const fontSize = 8;
+    const textWidth = font.widthOfTextAtSize(stampText, fontSize);
+    page.drawRectangle({
+      x: width - textWidth - 16,
+      y: 12,
+      width: textWidth + 12,
+      height: 22,
+      color: rgb(1, 1, 1),
+      opacity: 0.85,
+      borderWidth: 1,
+      borderColor: rgb(0.2, 0.2, 0.2),
+    });
+    page.drawText(stampText, {
+      x: width - textWidth - 10,
+      y: 18,
+      size: fontSize,
+      font,
+      color: rgb(0.15, 0.15, 0.15),
     });
   }
 }
@@ -190,6 +223,10 @@ async function copyPageInto(
           }
         : undefined,
     redactions: exportOpts?.redactions?.[page.id],
+    stamp:
+      exportOpts?.stamp?.enabled && exportOpts.stamp.text
+        ? { text: exportOpts.stamp.text, includeDate: exportOpts.stamp.includeDate }
+        : undefined,
   });
 
   target.addPage(copied);

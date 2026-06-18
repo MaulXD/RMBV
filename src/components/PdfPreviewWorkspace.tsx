@@ -24,7 +24,8 @@ type PdfMode =
   | "compress"
   | "ocr"
   | "images"
-  | "save";
+  | "save"
+  | "stamp";
 
 const MODE_PREVIEW_HINT: Record<string, string> = {
   merge: "Arraste para reordenar, marque páginas para juntar só algumas ou exclua com a lixeira.",
@@ -36,6 +37,7 @@ const MODE_PREVIEW_HINT: Record<string, string> = {
   compress: "Reordene ou exclua páginas antes de comprimir.",
   ocr: "Reordene ou exclua páginas antes do OCR.",
   save: "Reordene ou exclua páginas antes de salvar no cliente.",
+  stamp: "Prévia do carimbo no rodapé de cada página.",
 };
 
 const REORDERABLE_MODES = new Set<PdfMode>([
@@ -47,6 +49,7 @@ const REORDERABLE_MODES = new Set<PdfMode>([
   "compress",
   "ocr",
   "save",
+  "stamp",
 ]);
 
 const DELETABLE_MODES = REORDERABLE_MODES;
@@ -347,6 +350,10 @@ export function previewOverlayForMode(
 
   if (mode === "ocr") {
     overlay.badge = { label: "OCR", tone: "amber" };
+  }
+
+  if (mode === "stamp") {
+    overlay.badge = { label: "Carimbo", tone: "primary" };
   }
 
   return Object.keys(overlay).length > 0 ? overlay : undefined;

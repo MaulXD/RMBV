@@ -9,6 +9,7 @@ import { getClientIfAllowed } from "@/lib/client-access";
 import { formatClientForApi } from "@/lib/client-fields";
 import { clientListInclude } from "@/lib/client-query";
 import { syncClientTasksOnFinalizationRequest } from "@/lib/task-finalization-sync";
+import { runAutomations } from "@/lib/automations";
 export const runtime = "nodejs";
 
 export async function POST(
@@ -47,14 +48,27 @@ export async function POST(
       );
     }
 
-    const updated = await prisma.client.update({
-      where: { id },
-      data: {
-        workflowStatus: "FINALIZACAO_SOLICITADA",
-        finalizationRequestedAt: new Date(),
-        finalizationRequestedById: user.id,
-      },
-      include: clientListInclude,
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.client.update({
+        where: { id },
+        data: {
+          workflowStatus: "FINALIZACAO_SOLICITADA",
+          finalizationRequestedAt: new Date(),
+          finalizationRequestedById: user.id,
+        },
+        include: clientListInclude,
+      });
+
+      if (client.teamId) {
+        await runAutomations(tx, "CLIENT_WORKFLOW_FINALIZACAO", {
+          teamId: client.teamId,
+          actorId: user.id,
+          clientId: id,
+          clientName: client.name,
+        });
+      }
+
+      return row;
     });
 
     const { moved } = await syncClientTasksOnFinalizationRequest(

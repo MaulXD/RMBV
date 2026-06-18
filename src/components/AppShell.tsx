@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "./ThemeProvider";
 import { TeseFilterProvider } from "./TeseFilterProvider";
 import { TeseFilterBar } from "./TeseFilterBar";
 import { Icon, type IconName } from "./ui/Icon";
 import { canAccessTools } from "@/lib/roles";
 import { useSession } from "./SessionProvider";
+import { GlobalSearchPalette, useGlobalSearchShortcut } from "./GlobalSearchPalette";
+import { NotificationBell } from "./NotificationBell";
+import { OnboardingTour } from "./OnboardingTour";
 
 type NavItem = { href: string; label: string; shortLabel?: string; icon: IconName };
 
@@ -74,6 +77,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useSession();
   const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  useGlobalSearchShortcut(openSearch);
 
   const showTeseControls =
     pathname.startsWith("/dashboard") ||
@@ -140,6 +147,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLinks nav={nav} pathname={pathname} kanbanOverdueCount={kanbanOverdueCount} />
 
             <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+              {user && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-ghost hidden px-2 py-1.5 text-xs sm:inline-flex"
+                    onClick={openSearch}
+                    title="Busca global (Ctrl+K)"
+                  >
+                    <Icon name="search" className="h-4 w-4" />
+                  </button>
+                  <NotificationBell />
+                </>
+              )}
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -170,7 +190,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {showTeseControls && <TeseFilterBar showPdfButton />}
 
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+          {user && <OnboardingTour />}
+          {children}
+        </main>
+        {user && <GlobalSearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />}
       </div>
     </TeseFilterProvider>
   );

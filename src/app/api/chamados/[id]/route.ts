@@ -6,6 +6,8 @@ import { getChamadoIfAllowed } from "@/lib/chamado-access";
 import { recordChamadoHistory, recordChamadoStatusChange } from "@/lib/chamado-history";
 import { formatChamadoForApi, chamadoListInclude } from "@/lib/chamado-query";
 import { CHAMADO_STATUS_LABELS, PRIORITY_LABELS } from "@/lib/enum-labels";
+import { computeChamadoSlaDueAt } from "@/lib/chamado-sla-config";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -114,6 +116,14 @@ export async function PATCH(
         });
       }
 
+      let nextSlaDueAt: Date | null | undefined;
+      if (parsed.data.status !== undefined && parsed.data.status !== existing.status) {
+        nextSlaDueAt =
+          parsed.data.status === "FECHADO"
+            ? null
+            : await computeChamadoSlaDueAt(existing.teamId, parsed.data.status);
+      }
+
       const updated = await tx.chamado.update({
         where: { id },
         data: {
@@ -121,7 +131,13 @@ export async function PATCH(
           ...(parsed.data.description !== undefined
             ? { description: parsed.data.description?.trim() || null }
             : {}),
-          ...(parsed.data.status !== undefined ? { status: parsed.data.status } : {}),
+          ...(parsed.data.status !== undefined
+            ? {
+                status: parsed.data.status,
+                statusChangedAt: new Date(),
+                ...(nextSlaDueAt !== undefined ? { slaDueAt: nextSlaDueAt } : {}),
+              }
+            : {}),
           ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
           ...(parsed.data.category !== undefined ? { category: parsed.data.category } : {}),
           ...(parsed.data.assigneeId !== undefined ? { assigneeId: parsed.data.assigneeId } : {}),
@@ -129,6 +145,19 @@ export async function PATCH(
         },
         include: chamadoListInclude,
       });
+
+      if (
+        parsed.data.assigneeId &&
+        parsed.data.assigneeId !== existing.assigneeId
+      ) {
+        await createNotification(tx, {
+          userId: parsed.data.assigneeId,
+          type: "CHAMADO_ASSIGNED",
+          title: `Chamado #${existing.number} atribuído a você`,
+          body: updated.title,
+          href: `/chamados/${id}`,
+        });
+      }
 
       return updated;
     });
