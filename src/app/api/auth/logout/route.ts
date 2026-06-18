@@ -4,5 +4,6 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   await clearSessionCookie();
-  return NextResponse.redirect(new URL("/", request.url));
+  // 303 forces GET on redirect — 307 would re-POST to "/" and return 405
+  return NextResponse.redirect(new URL("/", request.url), 303);
 }
