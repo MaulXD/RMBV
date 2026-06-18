@@ -12,7 +12,8 @@ import { GlobalSearchPalette, useGlobalSearchShortcut } from "./GlobalSearchPale
 import { NotificationBell } from "./NotificationBell";
 import { OnboardingTour } from "./OnboardingTour";
 
-type NavItem = { href: string; label: string; icon: IconName };
+type NavItem = { href: string; label: string; icon: IconName; color: string };
+type NavGroup = { label: string; items: NavItem[] };
 
 function userInitial(name: string) {
   const trimmed = name.trim();
@@ -62,16 +63,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, pathname]);
 
-  const nav: NavItem[] = [
-    { href: "/dashboard", label: "Clientes", icon: "dashboard" },
-    { href: "/ferramentas", label: "Ferramentas", icon: "wrench" },
-    { href: "/kanban", label: "Kanban", icon: "kanban" },
-    { href: "/chamados", label: "Chamados", icon: "ticket" },
-    { href: "/reports", label: "Relatórios", icon: "reports" },
-    // Enquanto a sessão carrega (user null), mostra Minha equipe por padrão
-    ...(user?.role === "ADMIN"
-      ? [{ href: "/admin", label: "Administração", icon: "shield" as const }]
-      : [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const }]),
+  const navGroups: NavGroup[] = [
+    {
+      label: "Principal",
+      items: [
+        { href: "/dashboard", label: "Clientes", icon: "dashboard", color: "text-blue-500" },
+        { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
+        { href: "/reports", label: "Relatórios", icon: "reports", color: "text-emerald-500" },
+      ],
+    },
+    {
+      label: "Operações",
+      items: [
+        { href: "/ferramentas", label: "Ferramentas", icon: "wrench", color: "text-orange-500" },
+        { href: "/chamados", label: "Chamados", icon: "ticket", color: "text-amber-500" },
+      ],
+    },
+    {
+      label: "Sistema",
+      items: [
+        user?.role === "ADMIN"
+          ? { href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }
+          : { href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" },
+      ],
+    },
   ];
 
   const sidebarContent = (
@@ -121,34 +136,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Navegação principal">
-        {nav.map((item) => {
-          const active = pathname.startsWith(item.href);
-          const showBadge = item.href === "/kanban" && kanbanOverdueCount > 0;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted hover:bg-surface hover:text-foreground"
-              }`}
-            >
-              <Icon
-                name={item.icon}
-                className={`h-4 w-4 shrink-0 ${active ? "text-primary" : ""}`}
-              />
-              <span className="flex-1">{item.label}</span>
-              {showBadge && (
-                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {kanbanOverdueCount > 99 ? "99+" : kanbanOverdueCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-2 py-1" aria-label="Navegação principal">
+        {navGroups.map((group) => (
+          <div key={group.label} className="mb-1">
+            <p className="px-3 pb-1 pt-3 text-[10px] font-bold tracking-[0.1em] text-muted/70 uppercase">
+              {group.label}
+            </p>
+            {group.items.map((item) => {
+              const active = pathname.startsWith(item.href);
+              const showBadge = item.href === "/kanban" && kanbanOverdueCount > 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-primary/10 text-foreground"
+                      : "text-foreground/70 hover:bg-surface/50 hover:text-foreground"
+                  }`}
+                >
+                  <Icon
+                    name={item.icon}
+                    className={`h-4 w-4 shrink-0 ${item.color} ${active ? "opacity-100" : "opacity-70"}`}
+                  />
+                  <span className="flex-1">{item.label}</span>
+                  {showBadge && (
+                    <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {kanbanOverdueCount > 99 ? "99+" : kanbanOverdueCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* User footer */}
