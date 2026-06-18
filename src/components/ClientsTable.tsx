@@ -25,9 +25,11 @@ function ResearchBadge({ hasResearch, hasContacts }: { hasResearch: boolean; has
     return (
       <span
         title="Sem pesquisa"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-muted/30 text-[11px] text-muted/50"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-muted/30"
       >
-        ○
+        <svg viewBox="0 0 16 16" className="h-3 w-3 text-muted/40" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="8" cy="8" r="6" />
+        </svg>
       </span>
     );
   }
@@ -35,18 +37,22 @@ function ResearchBadge({ hasResearch, hasContacts }: { hasResearch: boolean; has
     return (
       <span
         title="Pesquisa feita — sem contatos"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-sm text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30"
       >
-        ⚠
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" fill="currentColor">
+          <path d="M8 2a.75.75 0 0 1 .66.392l5.5 9.5A.75.75 0 0 1 13.5 13h-11a.75.75 0 0 1-.66-1.108l5.5-9.5A.75.75 0 0 1 8 2Zm0 4.5a.75.75 0 0 0-.75.75v2.5a.75.75 0 0 0 1.5 0v-2.5A.75.75 0 0 0 8 6.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" />
+        </svg>
       </span>
     );
   }
   return (
     <span
       title="Pesquisa feita — com contatos"
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30"
     >
-      ✓
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.5 8.5 6 12l7.5-8" />
+      </svg>
     </span>
   );
 }
