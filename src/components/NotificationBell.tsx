@@ -18,7 +18,8 @@ export function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{
-    top: number;
+    top?: number;
+    bottom?: number;
     width: number;
     left?: number;
     right?: number;
@@ -54,20 +55,25 @@ export function NotificationBell() {
 
       const rect = button.getBoundingClientRect();
       const margin = 8;
+      const panelMaxHeight = 320;
       const maxWidth = 320;
       const width = Math.min(maxWidth, window.innerWidth - margin * 2);
-      const top = rect.bottom + 6;
-      const buttonCenterX = (rect.left + rect.right) / 2;
 
-      if (buttonCenterX < window.innerWidth / 2) {
-        // Button on left side (sidebar) — open to the right
-        const left = Math.min(rect.left, window.innerWidth - width - margin);
-        setPanelStyle({ top, left: Math.max(margin, left), width });
-      } else {
-        // Button on right side — open to the left
-        const right = Math.max(margin, window.innerWidth - rect.right);
-        setPanelStyle({ top, right, width });
-      }
+      // Horizontal: left side (sidebar) → align left; right side → align right
+      const buttonCenterX = (rect.left + rect.right) / 2;
+      const hPos =
+        buttonCenterX < window.innerWidth / 2
+          ? { left: Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin)) }
+          : { right: Math.max(margin, window.innerWidth - rect.right) };
+
+      // Vertical: open above if not enough space below
+      const spaceBelow = window.innerHeight - rect.bottom - margin;
+      const vPos =
+        spaceBelow >= panelMaxHeight
+          ? { top: rect.bottom + 6 }
+          : { bottom: window.innerHeight - rect.top + 6 };
+
+      setPanelStyle({ ...hPos, ...vPos, width });
     }
 
     updatePosition();

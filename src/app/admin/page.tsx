@@ -8,11 +8,12 @@ import { CSV_HEADERS } from "@/lib/client-fields";
 import { TeamAdminPanel } from "@/components/TeamAdminPanel";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
+import { TeseManager } from "@/components/TeseManager";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
 type Category = { id: string; name: string };
-type Tab = "equipes" | "usuarios" | "importar" | "auditoria";
+type Tab = "equipes" | "usuarios" | "teses" | "importar" | "auditoria";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -97,9 +98,10 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: "building" | "users" | "upload" | "clipboardList" }[] = [
+  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "upload" | "clipboardList" }[] = [
     { id: "equipes", label: "Equipes", icon: "building" },
     { id: "usuarios", label: "Usuários", icon: "users" },
+    { id: "teses", label: "Teses", icon: "layers" },
     { id: "importar", label: "Importar CSV", icon: "upload" },
     { id: "auditoria", label: "Auditoria", icon: "clipboardList" },
   ];
@@ -145,6 +147,24 @@ export default function AdminPage() {
       {tab === "equipes" && <TeamAdminPanel onTeamsChange={setTeams} />}
 
       {tab === "usuarios" && <AdminUsersPanel teams={teams} />}
+
+      {tab === "teses" && (
+        <div>
+          <p className="mb-4 text-sm text-muted">
+            Gerencie as teses de cada equipe. Selecione uma equipe na aba{" "}
+            <button
+              type="button"
+              className="text-primary hover:underline"
+              onClick={() => setTab("equipes")}
+            >
+              Equipes
+            </button>{" "}
+            para depois acessar as teses da equipe correspondente, ou use o componente abaixo para
+            gerenciar as teses da sua sessão ativa.
+          </p>
+          <TeseManager />
+        </div>
+      )}
 
       {tab === "importar" && (
         <section className="industrial-panel max-w-2xl space-y-4 p-6">
