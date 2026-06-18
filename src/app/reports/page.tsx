@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ReportsGoalsPanel } from "@/components/ReportsGoalsPanel";
 import { ReportsTimelineChart } from "@/components/ReportsTimelineChart";
+import { MonthlyReportPanel } from "@/components/MonthlyReportPanel";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
+
+type Tab = "geral" | "mensal";
 
 type Stats = {
   total: number;
@@ -55,11 +58,14 @@ const METRIC_STYLES: Record<
 
 function ReportsContent() {
   const { activeTeseId, activeTese } = useTeseFilter();
+  const [tab, setTab] = useState<Tab>("geral");
   const [stats, setStats] = useState<Stats | null>(null);
   const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userTeamId, setUserTeamId] = useState<string | null>(null);
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [teses, setTeses] = useState<{ id: string; name: string }[]>([]);
   const [teamId, setTeamId] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState("");
@@ -73,8 +79,11 @@ function ReportsContent() {
       .then((r) => r.json())
       .then((d) => {
         setUserRole(d.user?.role ?? null);
-        if (d.user?.teamId) setTeamId(d.user.teamId);
+        if (d.user?.teamId) { setTeamId(d.user.teamId); setUserTeamId(d.user.teamId); }
       });
+    fetch("/api/teses")
+      .then((r) => r.json())
+      .then((d) => setTeses((d.teses ?? []).map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))));
   }, []);
 
   useEffect(() => {
@@ -160,14 +169,42 @@ function ReportsContent() {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="font-display text-xl font-semibold tracking-wide">Relatórios</h1>
         <p className="mt-1 text-sm text-muted">
-          {activeTese
-            ? `Dados filtrados pela tese: ${activeTese.name}`
-            : "Resumo geral — use o seletor de tese no topo"}
+          {activeTese ? `Filtrado pela tese: ${activeTese.name}` : "Resumo geral da equipe"}
         </p>
       </div>
+
+      {/* Tabs */}
+      <div className="-mb-px mb-6 flex gap-0 border-b border-border">
+        {(["geral", "mensal"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              tab === t
+                ? "border-primary text-primary"
+                : "border-transparent text-muted hover:border-border hover:text-foreground"
+            }`}
+          >
+            {t === "geral" ? "Visão geral" : "Relatório mensal"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "mensal" && (
+        <MonthlyReportPanel
+          teams={teams}
+          teses={teses}
+          userRole={userRole ?? "COLABORADOR"}
+          userTeamId={userTeamId}
+        />
+      )}
+
+      {tab === "geral" && (
+      <>
 
       {(isAdmin || members.length > 0) && (
         <section className="panel-solid mb-6 flex flex-wrap items-end gap-3 p-4">
@@ -295,6 +332,8 @@ function ReportsContent() {
           </a>
         </div>
       </section>
+      </>
+      )}
     </>
   );
 }
