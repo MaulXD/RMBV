@@ -8,11 +8,20 @@ import { TeseManager } from "@/components/TeseManager";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 
+const SECTIONS = [
+  { id: "teses", label: "Teses" },
+  { id: "membros", label: "Membros" },
+  { id: "kanban", label: "Kanban" },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]["id"];
+
 export default function EquipePage() {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [columns, setColumns] = useState<KanbanColumnItem[]>([]);
+  const [activeSection, setActiveSection] = useState<SectionId>("teses");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -50,26 +59,66 @@ export default function EquipePage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-wide">Minha equipe</h1>
+        <h1 className="text-xl font-bold text-foreground">Configurações</h1>
         <p className="mt-1 text-sm text-muted">
-          {canInvite
-            ? "Cadastre gerentes e colaboradores. Dados ficam isolados das outras equipes."
-            : "Membros e teses da sua equipe."}
+          Gerencie teses, membros da equipe e colunas do Kanban.
         </p>
       </div>
 
-      <TeamMembersManager canInvite={canInvite} />
+      {/* Section tabs */}
+      <div className="mb-6 flex gap-1 border-b border-border">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setActiveSection(s.id)}
+            className={`px-4 py-2 text-sm font-medium transition-colors -mb-px border-b-2 ${
+              activeSection === s.id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted hover:text-foreground"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
 
-      {canInvite && (
-        <div className="mt-8" id="teses">
-          <h2 className="mb-4 text-sm font-medium">Teses da equipe</h2>
+      {activeSection === "teses" && (
+        <div id="teses">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-foreground">Teses da equipe</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              {canInvite
+                ? "Adicione, edite ou remova teses. Clientes vinculados são migrados ao remover."
+                : "Visualize as teses da sua equipe."}
+            </p>
+          </div>
           <TeseManager />
         </div>
       )}
 
-      {canManageColumns && teamId && (
-        <div className="mt-8" id="kanban-colunas">
-          <h2 className="mb-4 text-sm font-medium">Colunas do kanban</h2>
+      {activeSection === "membros" && (
+        <div id="membros">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-foreground">Membros da equipe</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              {canInvite
+                ? "Cadastre e gerencie gerentes e colaboradores da equipe."
+                : "Membros da sua equipe."}
+            </p>
+          </div>
+          <TeamMembersManager canInvite={canInvite} />
+        </div>
+      )}
+
+      {activeSection === "kanban" && canManageColumns && teamId && (
+        <div id="kanban-colunas">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-foreground">Colunas do Kanban</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Configure as colunas do board da sua equipe.
+            </p>
+          </div>
           <KanbanColumnManager
             teamId={teamId}
             columns={columns}
@@ -81,6 +130,12 @@ export default function EquipePage() {
             }}
           />
         </div>
+      )}
+
+      {activeSection === "kanban" && !canManageColumns && (
+        <p className="text-sm text-muted">
+          Apenas ADV e Gerente podem gerenciar colunas do Kanban.
+        </p>
       )}
     </AppShell>
   );

@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Enquanto a sessão carrega (user null), mostra Minha equipe por padrão
     ...(user?.role === "ADMIN"
       ? [{ href: "/admin", label: "Administração", icon: "shield" as const }]
-      : [{ href: "/equipe", label: "Minha equipe", icon: "briefcase" as const }]),
+      : [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const }]),
   ];
 
   const sidebarContent = (
