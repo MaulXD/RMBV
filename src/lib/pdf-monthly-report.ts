@@ -117,35 +117,32 @@ function drawVerticalBars(
   const groupW = (width - gap * (items.length - 1)) / items.length;
   const barW = Math.max(6, (groupW - 2) / 2);
 
+  // Legend (drawn at current y, then chart starts below)
+  doc.rect(x, y, 10, 8).fillColor(hex2rgb(COLORS.blue)).fill();
+  doc.fontSize(7).fillColor(COLORS.muted).text("Criados", x + 13, y + 1, { lineBreak: false });
+  doc.rect(x + 65, y, 10, 8).fillColor(hex2rgb(COLORS.green)).fill();
+  doc.fontSize(7).fillColor(COLORS.muted).text("Finalizados", x + 78, y + 1, { lineBreak: false });
+  y += 18;
+
   // Axes
   doc.moveTo(x, y).lineTo(x, y + height).stroke(COLORS.border);
   doc.moveTo(x, y + height).lineTo(x + width, y + height).stroke(COLORS.border);
-
-  // Legend
-  const legendY = y - 18;
-  doc.rect(x, legendY, 10, 8).fillColor(hex2rgb(COLORS.blue)).fill();
-  doc.fontSize(7).fillColor(COLORS.muted).text("Criados", x + 13, legendY + 1);
-  doc.rect(x + 65, legendY, 10, 8).fillColor(hex2rgb(COLORS.green)).fill();
-  doc.text("Finalizados", x + 78, legendY + 1);
 
   items.forEach((item, i) => {
     const bx = x + i * (groupW + gap);
     const createdH = (item.created / max) * height;
     const finalizedH = (item.finalized / max) * height;
 
-    // created bar
     if (item.created > 0) {
       doc.rect(bx, y + height - createdH, barW, createdH).fillColor(hex2rgb(COLORS.blue)).fill();
     }
-    // finalized bar
     if (item.finalized > 0) {
       doc.rect(bx + barW + 1, y + height - finalizedH, barW, finalizedH)
         .fillColor(hex2rgb(COLORS.green)).fill();
     }
 
-    // label
     doc.fontSize(6).fillColor(COLORS.muted).text(
-      item.label.replace(" ", "\n"),
+      item.label,
       bx,
       y + height + 4,
       { width: groupW + gap - 1, align: "center" }
@@ -216,7 +213,7 @@ export async function generateMonthlyPdfReport(data: MonthlyReportData): Promise
     if (data.includeCharts.includes("month") && data.byMonth.length > 0) {
       if (y > 550) { doc.addPage(); y = 45; }
       doc.fontSize(10).font("Helvetica-Bold").fillColor("#1e293b").text("Evolução mensal", L, y);
-      y += 24;
+      y += 14;
       y = drawVerticalBars(doc, data.byMonth, L, y, W, 100);
       y += 10;
     }
