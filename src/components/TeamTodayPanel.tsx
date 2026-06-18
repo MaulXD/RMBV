@@ -32,9 +32,9 @@ export function TeamTodayPanel() {
   const s = data.summary;
   const cards = [
     { label: "Chamados abertos", value: s.openChamados, href: "/chamados", tone: "text-foreground" },
-    { label: "SLA estourado", value: s.chamadoSlaBreached, href: "/chamados", tone: "text-red-600" },
-    { label: "Tarefas atrasadas", value: s.tasksOverdue, href: "/kanban", tone: "text-red-600" },
-    { label: "Finalizações pendentes", value: s.finalizationPending, href: "/dashboard", tone: "text-amber-600" },
+    { label: "SLA estourado", value: s.chamadoSlaBreached, href: "/chamados", tone: "text-red-600 dark:text-red-400" },
+    { label: "Tarefas atrasadas", value: s.tasksOverdue, href: "/kanban", tone: "text-red-600 dark:text-red-400" },
+    { label: "Finalizações pendentes", value: s.finalizationPending, href: "/dashboard", tone: "text-amber-600 dark:text-amber-400" },
   ];
 
   return (
@@ -66,7 +66,7 @@ export function TeamTodayPanel() {
         <div className="grid gap-3 border-t border-border/70 p-4 md:grid-cols-2">
           {data.chamadoSlaBreached.length > 0 && (
             <div>
-              <p className="mb-1 text-[10px] font-bold uppercase text-red-600">Chamados com SLA</p>
+              <p className="mb-1 text-[10px] font-bold uppercase text-red-600 dark:text-red-400">Chamados com SLA</p>
               <ul className="space-y-1 text-xs">
                 {data.chamadoSlaBreached.map((c) => (
                   <li key={c.id}>
@@ -80,7 +80,7 @@ export function TeamTodayPanel() {
           )}
           {data.tasksOverdue.length > 0 && (
             <div>
-              <p className="mb-1 text-[10px] font-bold uppercase text-red-600">Tarefas atrasadas</p>
+              <p className="mb-1 text-[10px] font-bold uppercase text-red-600 dark:text-red-400">Tarefas atrasadas</p>
               <ul className="space-y-1 text-xs">
                 {data.tasksOverdue.map((t) => (
                   <li key={t.id}>
