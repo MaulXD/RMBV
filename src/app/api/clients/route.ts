@@ -66,9 +66,16 @@ export async function GET(request: Request) {
 
     const formattedRows = clients.map((client) => {
       const formatted = formatClientForApi(client);
+      const hasContacts = !!(
+        client.phone1 || client.phone2 || client.phone3 || client.phone4 ||
+        client.phone5 || client.phone6 || client.phone7 || client.phone8 ||
+        client.phone9 || client.phone10
+      );
       return {
         ...formatted,
         primaryPhone: client.phone1 ?? client.phone2 ?? null,
+        hasResearch: !!(client.pesquisa && client.pesquisa.trim().length > 0),
+        hasContacts,
       };
     });
 

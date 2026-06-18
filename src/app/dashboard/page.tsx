@@ -27,6 +27,8 @@ type ClientRow = {
   workflowStatus: ClientWorkflowStatus;
   createdAt: string;
   primaryPhone: string | null;
+  hasResearch: boolean;
+  hasContacts: boolean;
   categories: { id: string; name: string }[];
 };
 
