@@ -1,3 +1,5 @@
+"use client";
+
 const RESEARCH_USERS = [
   { name: "Ana Costa",    avg: 4.2, total: 84, color: "bg-primary" },
   { name: "Carla Mendes", avg: 3.8, total: 76, color: "bg-primary" },

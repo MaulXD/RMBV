@@ -192,15 +192,39 @@
   }
 
   @keyframes modal-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
+
+  @keyframes slide-up-fade {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes float-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(14px, -22px) scale(1.05); }
+    66%      { transform: translate(-10px, 10px) scale(0.96); }
+  }
+  @keyframes float-b {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    50%      { transform: translate(-18px, -14px) rotate(9deg); }
+  }
+  @keyframes float-c {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    40%      { transform: translate(12px, 18px) scale(1.07); }
+    80%      { transform: translate(-6px, -8px) scale(0.95); }
+  }
+  @keyframes float-d {
+    0%, 100% { transform: translate(0, 0); }
+    60%      { transform: translate(20px, -10px); }
+  }
+
+  .animate-slide-up { animation: slide-up-fade 0.65s ease-out both; }
+  .animate-float-a  { animation: float-a 13s ease-in-out infinite; }
+  .animate-float-b  { animation: float-b 9s  ease-in-out infinite; }
+  .animate-float-c  { animation: float-c 11s ease-in-out infinite; }
+  .animate-float-d  { animation: float-d 7s  ease-in-out infinite; }
 
   .industrial-input {
     @apply w-full rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
