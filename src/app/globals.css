@@ -389,6 +389,12 @@
     cursor: default;
   }
 
+  @keyframes hero-gradient {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   @keyframes orb-a {
     0%, 100% { transform: translate(0%, 0%) scale(1); }
     40%  { transform: translate(6%, -9%) scale(1.07); }

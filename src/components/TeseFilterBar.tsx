@@ -8,10 +8,12 @@ export function TeseFilterBar({
   showPdfButton = false,
   statusFilter = "",
   embedded = false,
+  variant = "bar",
 }: {
   showPdfButton?: boolean;
   statusFilter?: string;
   embedded?: boolean;
+  variant?: "bar" | "sidebar";
 }) {
   const { teses, activeTeseId, setActiveTeseId, loading, activeTese } = useTeseFilter();
 
@@ -86,6 +88,63 @@ export function TeseFilterBar({
     return (
       <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 overflow-hidden sm:gap-2 md:max-w-lg">
         {controls}
+      </div>
+    );
+  }
+
+  if (variant === "sidebar") {
+    return (
+      <div className="border-b border-border px-3 pb-3 pt-2.5">
+        <label
+          htmlFor="tese-ativa-select"
+          className="mb-1.5 block text-[10px] font-semibold tracking-widest text-muted uppercase"
+        >
+          Tese ativa
+        </label>
+        <div className="relative">
+          <select
+            id="tese-ativa-select"
+            className="industrial-input w-full appearance-none py-1.5 pr-8 text-xs"
+            value={activeTeseId ?? "all"}
+            disabled={loading}
+            onChange={(e) =>
+              setActiveTeseId(e.target.value === "all" ? null : e.target.value)
+            }
+          >
+            <option value="all">{loading ? "Carregando..." : "Todas as teses"}</option>
+            {teses.map((tese) => (
+              <option key={tese.id} value={tese.id}>
+                {tese.name}
+                {tese._count != null ? ` (${tese._count.clients})` : ""}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted">
+            <Icon name="chevronDown" className="h-3.5 w-3.5" />
+          </span>
+        </div>
+        {showPdfButton && (
+          <div className="mt-1.5 flex gap-1.5">
+            <Link
+              href="/equipe#teses"
+              className="btn-ghost flex-1 py-1 text-xs"
+              title="Gerenciar teses"
+            >
+              <Icon name="briefcase" className="h-3.5 w-3.5" />
+              Gerenciar
+            </Link>
+            <a
+              href={pdfUrl()}
+              className="btn-primary flex-1 py-1 text-xs"
+              target="_blank"
+              rel="noreferrer"
+              title={activeTese ? `PDF — ${activeTese.name}` : "Relatório PDF"}
+            >
+              <Icon name="fileDown" className="h-3.5 w-3.5" />
+              PDF
+            </a>
+          </div>
+        )}
       </div>
     );
   }
