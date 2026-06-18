@@ -149,53 +149,55 @@ function DashboardContent() {
 
       <TeamTodayPanel />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-3">
-        <select
-          className="industrial-input w-auto min-w-[160px]"
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">Todos os status</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="industrial-input w-auto min-w-[160px]"
-          value={workflowFilter}
-          onChange={(e) => {
-            setWorkflowFilter(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">Todas finalizações</option>
-          {WORKFLOW_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <div className="relative min-w-[200px] flex-1">
-          <Icon
-            name="search"
-            className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
-          />
-          <input
-            type="search"
-            className="industrial-input w-full pl-9"
-            placeholder="Nome, COD, CPF, telefone..."
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
+      <div className="mb-4 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="industrial-input min-w-[140px] flex-1"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Todos os status</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="industrial-input min-w-[140px] flex-1"
+            value={workflowFilter}
+            onChange={(e) => {
+              setWorkflowFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Todas finalizações</option>
+            {WORKFLOW_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <div className="relative min-w-[180px] flex-[2]">
+            <Icon
+              name="search"
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
+            />
+            <input
+              type="search"
+              className="industrial-input w-full pl-9"
+              placeholder="Nome, COD, CPF, telefone..."
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+          </div>
+          <button type="button" className="btn-ghost shrink-0" onClick={loadClients}>
+            Atualizar
+          </button>
         </div>
-        <button type="button" className="btn-ghost shrink-0" onClick={loadClients}>
-          Atualizar
-        </button>
       </div>
 
       {isAdmin && (
