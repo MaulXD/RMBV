@@ -113,6 +113,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
+      {/* Tese filter — integrado na sidebar */}
+      {showTeseControls && (
+        <div className="px-0 pt-3">
+          <TeseFilterBar variant="sidebar" showPdfButton />
+        </div>
+      )}
+
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Navegação principal">
         {nav.map((item) => {
@@ -241,8 +248,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
           </header>
-
-          {showTeseControls && <TeseFilterBar showPdfButton />}
 
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {user && <OnboardingTour />}

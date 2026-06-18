@@ -53,57 +53,17 @@ export function LandingPage() {
 
       <main>
         <section className="relative overflow-hidden border-b border-border">
-          {/* Animated gradient orbs */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-            <div
-              style={{
-                position: "absolute",
-                width: "650px",
-                height: "650px",
-                top: "-250px",
-                left: "-120px",
-                borderRadius: "9999px",
-                background:
-                  "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 40%, transparent) 0%, transparent 70%)",
-                opacity: 0.35,
-                filter: "blur(60px)",
-                animation: "orb-a 14s ease-in-out infinite",
-                willChange: "transform",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                width: "500px",
-                height: "500px",
-                top: "-180px",
-                right: "-80px",
-                borderRadius: "9999px",
-                background:
-                  "radial-gradient(circle, color-mix(in srgb, var(--color-accent) 35%, transparent) 0%, transparent 70%)",
-                opacity: 0.25,
-                filter: "blur(60px)",
-                animation: "orb-b 18s ease-in-out infinite",
-                willChange: "transform",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                width: "420px",
-                height: "420px",
-                bottom: "-80px",
-                left: "calc(50% - 210px)",
-                borderRadius: "9999px",
-                background:
-                  "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 30%, transparent) 0%, transparent 70%)",
-                opacity: 0.18,
-                filter: "blur(55px)",
-                animation: "orb-c 22s ease-in-out infinite",
-                willChange: "transform",
-              }}
-            />
-          </div>
+          {/* Animated gradient background */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden
+            style={{
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 22%, transparent), color-mix(in srgb, var(--color-surface) 0%, transparent) 40%, color-mix(in srgb, var(--color-accent) 18%, transparent) 70%, color-mix(in srgb, var(--color-surface) 0%, transparent))",
+              backgroundSize: "300% 300%",
+              animation: "hero-gradient 8s ease infinite",
+            }}
+          />
           <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-primary uppercase">
               Sistema de gestão jurídica
