@@ -1,0 +1,118 @@
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/api";
+import { prisma } from "@/lib/prisma";
+import { STATUS_OPTIONS } from "@/lib/client-fields";
+
+export const runtime = "nodejs";
+
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+function monthLabel(key: string) {
+  const [y, m] = key.split("-");
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleString("pt-BR", { month: "short", year: "2-digit" });
+}
+
+export async function GET(request: Request) {
+  return withAuth(async (user) => {
+    const { searchParams } = new URL(request.url);
+
+    const startRaw = searchParams.get("startDate");
+    const endRaw = searchParams.get("endDate");
+    if (!startRaw || !endRaw) {
+      return NextResponse.json({ error: "startDate e endDate obrigatórios" }, { status: 400 });
+    }
+
+    const startDate = new Date(startRaw + "T00:00:00");
+    const endDate = new Date(endRaw + "T23:59:59");
+    const teseId = searchParams.get("teseId") || undefined;
+    const teamId = user.role === "ADMIN"
+      ? (searchParams.get("teamId") || undefined)
+      : (user.teamId ?? undefined);
+
+    const clients = await prisma.client.findMany({
+      where: {
+        ...(teamId ? { teamId } : {}),
+        ...(teseId ? { teseId } : {}),
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      select: {
+        id: true,
+        name: true,
+        cod: true,
+        cpf: true,
+        tese: true,
+        status: true,
+        workflowStatus: true,
+        finalizedAt: true,
+        createdAt: true,
+        createdById: true,
+        createdBy: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Clients finalized in the period (may have been created earlier)
+    const finalized = await prisma.client.findMany({
+      where: {
+        ...(teamId ? { teamId } : {}),
+        ...(teseId ? { teseId } : {}),
+        workflowStatus: "FINALIZADO",
+        finalizedAt: { gte: startDate, lte: endDate },
+      },
+      select: { id: true, finalizedAt: true, createdById: true, createdBy: { select: { id: true, name: true } } },
+    });
+
+    // By status
+    const byStatus = STATUS_OPTIONS.map((opt) => ({
+      status: opt.value,
+      label: opt.label,
+      count: clients.filter((c) => c.status === opt.value).length,
+    }));
+
+    // By month (created)
+    const monthMap = new Map<string, { created: number; finalized: number }>();
+    for (const c of clients) {
+      const mk = monthKey(c.createdAt);
+      const entry = monthMap.get(mk) ?? { created: 0, finalized: 0 };
+      entry.created++;
+      monthMap.set(mk, entry);
+    }
+    for (const c of finalized) {
+      if (!c.finalizedAt) continue;
+      const mk = monthKey(c.finalizedAt);
+      const entry = monthMap.get(mk) ?? { created: 0, finalized: 0 };
+      entry.finalized++;
+      monthMap.set(mk, entry);
+    }
+    const byMonth = Array.from(monthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => ({ monthKey: key, label: monthLabel(key), ...val }));
+
+    // By collaborator
+    const collabMap = new Map<string, { name: string; created: number; finalized: number }>();
+    for (const c of clients) {
+      const e = collabMap.get(c.createdById) ?? { name: c.createdBy.name, created: 0, finalized: 0 };
+      e.created++;
+      collabMap.set(c.createdById, e);
+    }
+    for (const c of finalized) {
+      const e = collabMap.get(c.createdById) ?? { name: c.createdBy.name, created: 0, finalized: 0 };
+      e.finalized++;
+      collabMap.set(c.createdById, e);
+    }
+    const byCollaborator = Array.from(collabMap.values()).sort((a, b) => b.created - a.created);
+
+    return NextResponse.json({
+      period: { start: startRaw, end: endRaw },
+      summary: {
+        totalCreated: clients.length,
+        totalFinalized: finalized.length,
+        totalLocalized: clients.filter((c) => c.status === "LOCALIZADO").length,
+      },
+      byStatus,
+      byMonth,
+      byCollaborator,
+    });
+  });
+}
