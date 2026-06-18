@@ -6,6 +6,7 @@ import type { ClientProfileData } from "@/lib/client-fields";
 import { PHONE_FIELD_KEYS } from "@/lib/client-fields";
 import { PhoneCheckButtons } from "./PhoneCheckButtons";
 import { CopyButton } from "./CopyButton";
+import { WhatsAppButton } from "./WhatsAppButton";
 
 const REVIEW_SCALAR_FIELDS = [
   { key: "cod", label: "COD" },
@@ -179,6 +180,7 @@ export function ClientExtractionReview({
                   />
                   <div className="action-toolbar">
                     <CopyButton value={phone.value} label={`Copiar ${phone.label}`} compact />
+                    <WhatsAppButton value={phone.value} compact />
                     <PhoneCheckButtons
                       clientId={client.id}
                       phoneKey={phone.key}

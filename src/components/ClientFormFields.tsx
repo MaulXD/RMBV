@@ -9,6 +9,7 @@ import {
   type ClientFormValues,
 } from "@/lib/client-fields";
 import { CopyButton } from "./CopyButton";
+import { WhatsAppButton } from "./WhatsAppButton";
 import { PhoneCheckButtons } from "./PhoneCheckButtons";
 import type { PhoneCheckResult } from "@prisma/client";
 
@@ -130,6 +131,7 @@ export function ClientFormFields({
                 />
                 <div className="action-toolbar">
                   <CopyButton value={value} label={`Copiar ${label}`} compact />
+                  <WhatsAppButton value={value} compact />
                   {clientId && (
                     <PhoneCheckButtons
                       clientId={clientId}
