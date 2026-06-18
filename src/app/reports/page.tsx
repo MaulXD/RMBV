@@ -5,10 +5,11 @@ import { AppShell } from "@/components/AppShell";
 import { ReportsGoalsPanel } from "@/components/ReportsGoalsPanel";
 import { ReportsTimelineChart } from "@/components/ReportsTimelineChart";
 import { MonthlyReportPanel } from "@/components/MonthlyReportPanel";
+import { ResearchReportPanel } from "@/components/ResearchReportPanel";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
-type Tab = "geral" | "mensal";
+type Tab = "geral" | "mensal" | "pesquisa";
 
 type Stats = {
   total: number;
@@ -178,18 +179,22 @@ function ReportsContent() {
 
       {/* Tabs */}
       <div className="-mb-px mb-6 flex gap-0 border-b border-border">
-        {(["geral", "mensal"] as Tab[]).map((t) => (
+        {([
+          { key: "geral", label: "Visão geral" },
+          { key: "mensal", label: "Relatório mensal" },
+          { key: "pesquisa", label: "Pesquisa" },
+        ] as { key: Tab; label: string }[]).map((t) => (
           <button
-            key={t}
+            key={t.key}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(t.key)}
             className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === t
+              tab === t.key
                 ? "border-primary text-primary"
                 : "border-transparent text-muted hover:border-border hover:text-foreground"
             }`}
           >
-            {t === "geral" ? "Visão geral" : "Relatório mensal"}
+            {t.label}
           </button>
         ))}
       </div>
@@ -198,6 +203,14 @@ function ReportsContent() {
         <MonthlyReportPanel
           teams={teams}
           teses={teses}
+          userRole={userRole ?? "COLABORADOR"}
+          userTeamId={userTeamId}
+        />
+      )}
+
+      {tab === "pesquisa" && (
+        <ResearchReportPanel
+          teams={teams}
           userRole={userRole ?? "COLABORADOR"}
           userTeamId={userTeamId}
         />

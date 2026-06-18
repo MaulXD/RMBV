@@ -75,6 +75,7 @@ export async function PATCH(
       tese,
       statusChangeNote,
       status: newStatus,
+      pesquisa: pesquisaUpdate,
       ...data
     } = parsed.data;
     const teseData = await resolveTeseForClient({
@@ -118,6 +119,12 @@ export async function PATCH(
       }
     }
 
+    const pesquisaChanging =
+      pesquisaUpdate !== undefined &&
+      pesquisaUpdate !== null &&
+      pesquisaUpdate.trim().length > 0 &&
+      pesquisaUpdate.trim() !== (existing.pesquisa ?? "").trim();
+
     await prisma.$transaction(async (tx) => {
       await tx.client.update({
         where: { id },
@@ -125,8 +132,15 @@ export async function PATCH(
           ...data,
           ...teseData,
           ...(newStatus !== undefined ? { status: newStatus } : {}),
+          ...(pesquisaUpdate !== undefined ? { pesquisa: pesquisaUpdate } : {}),
         },
       });
+
+      if (pesquisaChanging) {
+        await tx.clientHistory.create({
+          data: { clientId: id, type: "PESQUISA_UPDATED", createdById: user.id },
+        });
+      }
 
       if (statusChanging && newStatus) {
         await tx.clientHistory.create({
