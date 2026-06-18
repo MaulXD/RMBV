@@ -188,7 +188,8 @@ function DashboardContent() {
             />
             <input
               type="search"
-              className="industrial-input w-full pl-9"
+              className="industrial-input w-full"
+              style={{ paddingLeft: "2.25rem" }}
               placeholder="Nome, COD, CPF, telefone..."
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
