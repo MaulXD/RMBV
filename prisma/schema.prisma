@@ -228,8 +228,25 @@ model Client {
   tasks          Task[]
   checklistProgress ClientChecklistProgress[]
   chamados          Chamado[]
+  relatives         ClientRelative[]
 
   @@index([teamId])
+}
+
+model ClientRelative {
+  id           String   @id @default(uuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String
+  phone1       String?
+  phone2       String?
+  phone3       String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId])
 }
 
 model ClientChecklistProgress {
