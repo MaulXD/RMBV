@@ -166,7 +166,14 @@ export function ClientsTable({
                 )}
                 <td className="px-4 py-2 text-sm text-muted">{client.cod ?? "—"}</td>
                 <td className="px-4 py-2 text-sm text-muted">{client.tese ?? "—"}</td>
-                <td className="px-4 py-2 text-sm font-semibold text-foreground">{client.name}</td>
+                <td className="px-4 py-2 text-sm font-semibold text-foreground">
+                  <Link
+                    href={`/clients/${client.id}`}
+                    className="hover:text-primary hover:underline underline-offset-2 transition-colors"
+                  >
+                    {client.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-2 text-sm text-muted">{client.cpf ?? "—"}</td>
                 <td className="px-4 py-2">
                   <StatusBadge status={client.status} />
