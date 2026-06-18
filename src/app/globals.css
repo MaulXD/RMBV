@@ -4,9 +4,9 @@
 
 /* Modo claro: azul céu — fundo #96c5ff */
 @theme {
-  --color-surface: #add2ff;
-  --color-surface-elevated: #cce3ff;
-  --color-surface-glass: rgb(204 227 255 / 0.92);
+  --color-surface: #c2ddff;
+  --color-surface-elevated: #d9ecff;
+  --color-surface-glass: rgb(217 236 255 / 0.92);
   --color-foreground: #0b1e36;
   --color-muted: #2e5b8a;
   --color-border: #6aaae0;
