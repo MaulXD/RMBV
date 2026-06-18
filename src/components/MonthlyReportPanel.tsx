@@ -37,7 +37,7 @@ function HorizontalBar({ label, value, max, color }: { label: string; value: num
   );
 }
 
-function MonthChart({ data }: { data: { label: string; created: number; finalized: number }[] }) {
+function MonthChart({ data }: { data: { monthKey?: string; label: string; created: number; finalized: number }[] }) {
   if (data.length === 0) return <p className="text-xs text-muted">Sem dados mensais.</p>;
   const max = Math.max(...data.flatMap((d) => [d.created, d.finalized]), 1);
   return (
