@@ -187,11 +187,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               )}
 
-              <form action="/api/auth/logout" method="post">
-                <button type="submit" className="btn-ghost px-2 py-1.5" title="Sair">
-                  <Icon name="logOut" className="h-4 w-4" />
-                </button>
-              </form>
+              <button
+                type="button"
+                className="btn-ghost px-2 py-1.5"
+                title="Sair"
+                onClick={() => {
+                  void fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).finally(
+                    () => {
+                      window.location.assign("/");
+                    },
+                  );
+                }}
+              >
+                <Icon name="logOut" className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </header>
