@@ -167,19 +167,14 @@ export default function ClientDetailPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
-            ← Voltar ao painel
-          </Link>
-          <h1 className="font-display mt-2 text-xl font-semibold tracking-wide">
-            Perfil do cliente
-          </h1>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
+          ← Voltar ao painel
+        </Link>
         {!isFinalized && (
           <button
             type="button"
-            className="btn-ghost"
+            className="btn-ghost text-sm"
             onClick={() => setEditMode((v) => !v)}
           >
             {editMode ? "Modo visualização" : "Editar perfil"}
