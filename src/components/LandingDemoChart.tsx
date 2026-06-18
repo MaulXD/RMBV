@@ -1,3 +1,22 @@
+const RESEARCH_USERS = [
+  { name: "Ana Costa",    avg: 4.2, total: 84, color: "bg-primary" },
+  { name: "Carla Mendes", avg: 3.8, total: 76, color: "bg-primary" },
+  { name: "Bruno Lima",   avg: 2.9, total: 58, color: "bg-primary" },
+  { name: "Diego Souza",  avg: 2.1, total: 42, color: "bg-primary" },
+  { name: "Elisa Rocha",  avg: 1.7, total: 34, color: "bg-primary" },
+] as const;
+
+// 5 semanas × 5 dias úteis = 25 células (intensidade 0–4)
+const RESEARCH_HEATMAP = [
+  2,3,4,3,2,
+  1,4,3,4,3,
+  3,2,4,3,4,
+  0,3,2,3,2,
+  4,3,3,4,2,
+] as const;
+
+const RESEARCH_SUMMARY = { total: 294, workingDays: 20, avg: 14.7 } as const;
+
 const MONTHLY = [
   { label: "Jan", created: 42, finalized: 28, localized: 35 },
   { label: "Fev", created: 38, finalized: 31, localized: 29 },
@@ -145,6 +164,91 @@ export function LandingDemoChart() {
                 );
               })}
             </ul>
+          </div>
+        </div>
+
+        {/* Research mini dashboard */}
+        <div className="mt-5 grid gap-5 lg:grid-cols-5">
+          <div className="panel-solid p-5 lg:col-span-3">
+            <h3 className="font-semibold">Pesquisas por colaborador</h3>
+            <p className="mt-1 text-xs text-muted">Média por dia útil · junho/2026</p>
+
+            <div className="mt-5 space-y-3">
+              {RESEARCH_USERS.map((u) => {
+                const pct = (u.avg / RESEARCH_USERS[0].avg) * 100;
+                return (
+                  <div key={u.name} className="flex items-center gap-3">
+                    <span className="w-28 shrink-0 truncate text-sm font-medium">{u.name}</span>
+                    <div className="flex-1 overflow-hidden rounded-full bg-border/40" style={{ height: 10 }}>
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="w-16 text-right text-xs">
+                      <span className="font-semibold text-primary">{u.avg}/dia</span>
+                    </span>
+                    <span className="w-14 text-right text-xs text-muted">{u.total} total</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border pt-4">
+              {[
+                { label: "Pesquisas no mês", value: RESEARCH_SUMMARY.total, color: "text-primary" },
+                { label: "Dias úteis", value: RESEARCH_SUMMARY.workingDays, color: "text-foreground" },
+                { label: "Média geral/dia", value: RESEARCH_SUMMARY.avg, color: "text-emerald-600 dark:text-emerald-400" },
+              ].map((c) => (
+                <div key={c.label} className="text-center">
+                  <p className={`text-2xl font-extrabold ${c.color}`}>{c.value}</p>
+                  <p className="mt-0.5 text-[10px] text-muted">{c.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel-solid p-5 lg:col-span-2">
+            <h3 className="font-semibold">Atividade diária</h3>
+            <p className="mt-1 text-xs text-muted">Dias úteis · heatmap da equipe</p>
+
+            <div className="mt-4 flex items-center gap-1.5 text-[10px] text-muted">
+              <span>Menos</span>
+              {["bg-border/40","bg-primary/20","bg-primary/45","bg-primary/70","bg-primary"].map((c,i) => (
+                <div key={i} className={`h-3 w-3 rounded-sm ${c}`} />
+              ))}
+              <span>Mais</span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-5 gap-1.5">
+              {(["Seg","Ter","Qua","Qui","Sex"] as const).map((d) => (
+                <div key={d} className="text-center text-[9px] font-medium text-muted">{d}</div>
+              ))}
+              {RESEARCH_HEATMAP.map((intensity, i) => {
+                const colors = ["bg-border/40","bg-primary/20","bg-primary/45","bg-primary/70","bg-primary"];
+                return (
+                  <div
+                    key={i}
+                    className={`aspect-square rounded-sm ${colors[intensity]}`}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="mt-5 space-y-2 border-t border-border pt-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted">Top pesquisadores</p>
+              {RESEARCH_USERS.slice(0, 3).map((u, i) => (
+                <div key={u.name} className="flex items-center gap-2">
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    i === 0 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300"
+                    : i === 1 ? "bg-primary/15 text-primary"
+                    : "bg-border/60 text-muted"
+                  }`}>{i + 1}</span>
+                  <span className="flex-1 truncate text-xs font-medium">{u.name}</span>
+                  <span className="text-xs font-semibold text-primary">{u.avg}/dia</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
