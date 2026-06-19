@@ -28,6 +28,91 @@ type ClientRow = {
 type Team = { id: string; name: string };
 type Tese = { id: string; name: string; color: string | null };
 
+const CONFIRM_WORD = "Deletar";
+
+function DeleteConfirmModal({
+  count,
+  onConfirm,
+  onCancel,
+  deleting,
+}: {
+  count: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+  deleting: boolean;
+}) {
+  const [typed, setTyped] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div className="relative w-full max-w-md rounded-xl border border-border bg-surface-elevated shadow-2xl">
+        <div className="flex items-start gap-3 border-b border-border px-6 py-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
+            <Icon name="trash" className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-foreground">Excluir clientes</h2>
+            <p className="mt-0.5 text-sm text-muted">
+              Esta ação é <span className="font-semibold text-red-500">irreversível</span>. Serão excluídos{" "}
+              <span className="font-bold text-foreground">{count.toLocaleString("pt-BR")}</span> cliente(s) e todos os seus dados associados.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="mb-2 block text-sm text-muted">
+              Digite <span className="font-mono font-bold text-foreground">{CONFIRM_WORD}</span> para confirmar:
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              className="industrial-input w-full"
+              placeholder={CONFIRM_WORD}
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && typed === CONFIRM_WORD && !deleting) onConfirm();
+                if (e.key === "Escape") onCancel();
+              }}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={onCancel}
+              disabled={deleting}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              disabled={typed !== CONFIRM_WORD || deleting}
+              onClick={onConfirm}
+            >
+              <Icon name="trash" className="h-4 w-4" />
+              {deleting ? "Excluindo..." : `Excluir ${count.toLocaleString("pt-BR")} cliente(s)`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminClientsPanel({ teams }: { teams: Team[] }) {
   const [teamId, setTeamId] = useState(teams[0]?.id ?? "");
   const [teses, setTeses] = useState<Tese[]>([]);
@@ -44,14 +129,17 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Bulk assign tese state
+  // Bulk assign tese
   const [assignTeseId, setAssignTeseId] = useState("");
   const [assigning, setAssigning] = useState(false);
-  const [assignResult, setAssignResult] = useState<string | null>(null);
+  const [actionResult, setActionResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Delete modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load teses when team changes
   useEffect(() => {
     if (!teamId) return;
     setTeses([]);
@@ -62,7 +150,6 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
       .then((d) => setTeses(d.teses ?? []));
   }, [teamId]);
 
-  // Load clients
   const loadClients = useCallback(async () => {
     if (!teamId) return;
     setLoading(true);
@@ -92,9 +179,7 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
     }
   }, [teamId, page, pageSize, statusFilter, teseFilter, noTese, searchQuery]);
 
-  useEffect(() => {
-    void loadClients();
-  }, [loadClients]);
+  useEffect(() => { void loadClients(); }, [loadClients]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -125,28 +210,48 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
   }
 
   async function handleBulkAssignTese() {
-    if (!assignTeseId && !confirm("Isso vai remover a tese dos clientes selecionados. Confirmar?")) return;
     setAssigning(true);
-    setAssignResult(null);
+    setActionResult(null);
     try {
       const res = await fetch("/api/clients/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ids: Array.from(selectedIds),
-          teseId: assignTeseId || null,
-        }),
+        body: JSON.stringify({ ids: Array.from(selectedIds), teseId: assignTeseId || null }),
       });
       const data = await res.json();
       if (res.ok) {
-        setAssignResult(`${data.updated} cliente(s) atualizados.`);
+        setActionResult({ type: "success", text: `${data.updated} cliente(s) atualizados.` });
         setSelectedIds(new Set());
         void loadClients();
       } else {
-        setAssignResult(data.error ?? "Erro ao atribuir tese.");
+        setActionResult({ type: "error", text: data.error ?? "Erro ao atribuir tese." });
       }
     } finally {
       setAssigning(false);
+    }
+  }
+
+  async function handleBulkDelete() {
+    setDeleting(true);
+    setActionResult(null);
+    try {
+      const res = await fetch("/api/clients/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionResult({ type: "success", text: `${data.deleted} cliente(s) excluídos.` });
+        setSelectedIds(new Set());
+        setDeleteModalOpen(false);
+        void loadClients();
+      } else {
+        setActionResult({ type: "error", text: data.error ?? "Erro ao excluir." });
+        setDeleteModalOpen(false);
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -154,6 +259,15 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
 
   return (
     <div className="space-y-4">
+      {deleteModalOpen && (
+        <DeleteConfirmModal
+          count={selectedIds.size}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setDeleteModalOpen(false)}
+          deleting={deleting}
+        />
+      )}
+
       {/* Filters */}
       <div className="filter-bar flex flex-wrap items-end gap-3">
         <div className="min-w-[160px]">
@@ -175,13 +289,8 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
             className="industrial-input"
             value={noTese ? "__none__" : teseFilter}
             onChange={(e) => {
-              if (e.target.value === "__none__") {
-                setNoTese(true);
-                setTeseFilter("");
-              } else {
-                setNoTese(false);
-                setTeseFilter(e.target.value);
-              }
+              if (e.target.value === "__none__") { setNoTese(true); setTeseFilter(""); }
+              else { setNoTese(false); setTeseFilter(e.target.value); }
               setPage(1);
             }}
           >
@@ -228,10 +337,10 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
       </div>
 
       {/* Summary */}
-      <div className="flex items-center justify-between text-sm text-muted">
-        <span>
-          {loading ? "Carregando..." : `${total.toLocaleString("pt-BR")} cliente(s)${noTese ? " sem tese" : teseFilter ? ` — ${teses.find((t) => t.id === teseFilter)?.name ?? ""}` : ""} em ${teamLabel}`}
-        </span>
+      <div className="text-sm text-muted">
+        {loading
+          ? "Carregando..."
+          : `${total.toLocaleString("pt-BR")} cliente(s)${noTese ? " sem tese" : teseFilter ? ` — ${teses.find((t) => t.id === teseFilter)?.name ?? ""}` : ""} em ${teamLabel}`}
       </div>
 
       {/* Bulk actions bar */}
@@ -240,18 +349,18 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
           <span className="text-sm font-medium text-foreground">
             {selectedIds.size} selecionado(s)
           </span>
-          <button
-            type="button"
-            className="btn-ghost text-xs"
-            onClick={() => setSelectedIds(new Set())}
-          >
+          <button type="button" className="btn-ghost text-xs" onClick={() => setSelectedIds(new Set())}>
             Limpar
           </button>
 
+          {actionResult && (
+            <span className={`text-xs ${actionResult.type === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+              {actionResult.text}
+            </span>
+          )}
+
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            {assignResult && (
-              <span className="text-xs text-emerald-600 dark:text-emerald-400">{assignResult}</span>
-            )}
+            {/* Assign tese */}
             <select
               className="industrial-input text-sm"
               value={assignTeseId}
@@ -270,6 +379,16 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
             >
               <Icon name="layers" className="h-4 w-4" />
               {assigning ? "Aplicando..." : assignTeseId ? "Atribuir tese" : "Remover tese"}
+            </button>
+
+            {/* Delete */}
+            <button
+              type="button"
+              className="btn-danger text-sm"
+              onClick={() => { setActionResult(null); setDeleteModalOpen(true); }}
+            >
+              <Icon name="trash" className="h-4 w-4" />
+              Excluir
             </button>
           </div>
         </div>
