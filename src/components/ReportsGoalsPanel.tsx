@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "./ui/Icon";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 type GoalRow = {
   id: string;
@@ -28,6 +30,8 @@ export function ReportsGoalsPanel({
   canManage: boolean;
   members: Member[];
 }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [monthKey, setMonthKey] = useState(currentMonthKey());
   const [assigneeId, setAssigneeId] = useState("");
@@ -73,18 +77,27 @@ export function ReportsGoalsPanel({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha ao criar meta");
       setTarget("10");
+      toast("Meta criada com sucesso.", "success");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
+      toast("Erro ao criar meta.", "error");
     } finally {
       setSaving(false);
     }
   }
 
   async function removeGoal(id: string) {
-    if (!confirm("Remover esta meta?")) return;
-    const res = await fetch(`/api/reports/goals/${id}`, { method: "DELETE" });
-    if (res.ok) await load();
+    const ok = await confirm({ message: "Remover esta meta?", danger: true });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/reports/goals/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Falha ao remover meta");
+      toast("Meta removida.", "success");
+      await load();
+    } catch {
+      toast("Erro ao remover meta.", "error");
+    }
   }
 
   return (

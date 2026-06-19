@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppConfig } from "./useAppConfig";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 type DocumentRow = {
   id: string;
@@ -49,6 +51,8 @@ export function ClientDocuments({
   clientId: string;
   isAdmin: boolean;
 }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -121,20 +125,29 @@ export function ClientDocuments({
       setSelectedTags([]);
       setCustomTag("");
       if (inputRef.current) inputRef.current.value = "";
+      toast("Documento enviado com sucesso.", "success");
       await loadDocuments();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro no upload");
+      toast("Erro ao enviar documento.", "error");
     } finally {
       setUploading(false);
     }
   }
 
   async function handleDelete(docId: string) {
-    if (!confirm("Excluir este documento permanentemente?")) return;
-    const res = await fetch(`/api/clients/${clientId}/documents/${docId}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok) { setError(data.error ?? "Não foi possível excluir"); return; }
-    await loadDocuments();
+    const ok = await confirm({ message: "Excluir este documento permanentemente?", danger: true });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/clients/${clientId}/documents/${docId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Não foi possível excluir");
+      toast("Documento excluído.", "success");
+      await loadDocuments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível excluir");
+      toast("Erro ao excluir documento.", "error");
+    }
   }
 
   const canUpload = appConfig.documentUpload;

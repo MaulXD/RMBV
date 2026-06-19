@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HOURS = Array.from({ length: 25 }, (_, i) => i);
@@ -114,6 +116,7 @@ function RuleForm({
   existingRules: AccessRule[];
   onSaved: () => void;
 }) {
+  const toast = useToast();
   const eligibleMembers = members.filter(
     (m) => m.role === "GERENTE" || m.role === "COLABORADOR"
   );
@@ -153,7 +156,10 @@ function RuleForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, allowedDays: days, startHour, endHour, enabled: true }),
       });
+      toast("Restrição salva com sucesso.", "success");
       onSaved();
+    } catch {
+      toast("Erro ao salvar restrição.", "error");
     } finally {
       setSaving(false);
     }
@@ -251,6 +257,8 @@ function RulesTab({
   canEdit: boolean;
   teamId: string | null;
 }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [rules, setRules] = useState<AccessRule[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -267,9 +275,15 @@ function RulesTab({
   useEffect(() => { void loadRules(); }, [loadRules]);
 
   async function handleDelete(id: string) {
-    if (!confirm("Remover restrição de acesso?")) return;
-    await fetch(`/api/equipe/access-rules/${id}`, { method: "DELETE" });
-    await loadRules();
+    const ok = await confirm({ message: "Remover restrição de acesso?", danger: true });
+    if (!ok) return;
+    try {
+      await fetch(`/api/equipe/access-rules/${id}`, { method: "DELETE" });
+      toast("Restrição removida.", "success");
+      await loadRules();
+    } catch {
+      toast("Erro ao remover restrição.", "error");
+    }
   }
 
   async function toggleEnabled(rule: AccessRule) {
@@ -364,6 +378,7 @@ type TeamSchedule = {
 };
 
 function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
+  const toast = useToast();
   const [schedule, setSchedule] = useState<TeamSchedule | null>(null);
   const [editing, setEditing] = useState(false);
   const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5]);
@@ -399,6 +414,9 @@ function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
       const d = await res.json() as TeamSchedule;
       setSchedule(d);
       setEditing(false);
+      toast("Horário da equipe salvo.", "success");
+    } catch {
+      toast("Erro ao salvar horário.", "error");
     } finally {
       setSaving(false);
     }

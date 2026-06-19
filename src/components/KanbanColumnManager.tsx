@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 import { Icon } from "./ui/Icon";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 function ColumnRow({
   column,
@@ -102,11 +104,13 @@ export function KanbanColumnManager({
   canManage: boolean;
   onUpdated: () => Promise<void>;
 }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function runAction(action: () => Promise<Response>) {
+  async function runAction(action: () => Promise<Response>, successMessage?: string) {
     setSaving(true);
     setError(null);
     try {
@@ -114,31 +118,37 @@ export function KanbanColumnManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha na operação");
       await onUpdated();
+      if (successMessage) toast(successMessage, "success");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
+      toast("Erro na operação.", "error");
     } finally {
       setSaving(false);
     }
   }
 
   async function updateColumn(id: string, patch: Partial<KanbanColumnItem>) {
-    await runAction(() =>
-      fetch(`/api/kanban/columns/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      })
+    await runAction(
+      () =>
+        fetch(`/api/kanban/columns/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        }),
+      "Coluna atualizada."
     );
   }
 
   async function addColumn() {
     if (!newName.trim()) return;
-    await runAction(() =>
-      fetch("/api/kanban/columns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId, name: newName.trim() }),
-      })
+    await runAction(
+      () =>
+        fetch("/api/kanban/columns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teamId, name: newName.trim() }),
+        }),
+      "Coluna adicionada."
     );
     setNewName("");
   }
@@ -162,9 +172,15 @@ export function KanbanColumnManager({
     const others = columns.filter((c) => c.id !== column.id);
     if (others.length === 0) return;
     const moveTo = others[0].id;
-    if (!confirm(`Excluir "${column.name}"? Tarefas irão para "${others[0].name}".`)) return;
-    await runAction(() =>
-      fetch(`/api/kanban/columns/${column.id}?moveTasksTo=${moveTo}`, { method: "DELETE" })
+    const ok = await confirm({
+      message: `Excluir "${column.name}"? Tarefas irão para "${others[0].name}".`,
+      danger: true,
+    });
+    if (!ok) return;
+    await runAction(
+      () =>
+        fetch(`/api/kanban/columns/${column.id}?moveTasksTo=${moveTo}`, { method: "DELETE" }),
+      "Coluna excluída."
     );
   }
 

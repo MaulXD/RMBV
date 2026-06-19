@@ -15,6 +15,7 @@ import type { ChamadoListItem } from "@/lib/chamado-fields";
 import type { ChamadoCategory, ChamadoStatus } from "@prisma/client";
 import { CHAMADO_CATEGORY_LABELS, CHAMADO_STATUS_LABELS } from "@/lib/enum-labels";
 import { Icon } from "@/components/ui/Icon";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 
 type Team = { id: string; name: string };
 type Member = { id: string; name: string };
@@ -248,7 +249,7 @@ function ChamadosContent() {
           description={isAdmin ? "Escolha a equipe para listar os chamados." : "Você não está vinculado a uma equipe."}
         />
       ) : loading ? (
-        <div className="soft-card p-8 text-center text-sm text-muted">Carregando...</div>
+        <SkeletonTable rows={6} cols={5} />
       ) : chamados.length === 0 ? (
         <EmptyState
           icon="ticket"

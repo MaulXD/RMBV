@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { useTeseFilter } from "./TeseFilterProvider";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 export function TeseManager() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const { teses, refreshTeses } = useTeseFilter();
   const [name, setName] = useState("");
   const [color, setColor] = useState("#6b7585");
@@ -24,23 +28,33 @@ export function TeseManager() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao criar tese");
       setName("");
+      toast("Tese criada com sucesso.", "success");
       await refreshTeses();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro");
+      toast("Erro ao criar tese.", "error");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta tese? Clientes ficarão sem tese vinculada.")) return;
-    const res = await fetch(`/api/teses/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json();
-      alert(data.error ?? "Não foi possível excluir");
-      return;
+    const ok = await confirm({
+      message: "Excluir esta tese? Clientes ficarão sem tese vinculada.",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/teses/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Não foi possível excluir");
+      }
+      toast("Tese excluída.", "success");
+      await refreshTeses();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Erro ao excluir tese.", "error");
     }
-    await refreshTeses();
   }
 
   return (
