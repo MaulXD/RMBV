@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -54,16 +55,22 @@ export function primeSessionCache(user: SessionUser | null) {
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(() => {
-    if (sessionCache !== undefined) return sessionCache;
+  // Start with in-memory cache only — avoids SSR/client hydration mismatch
+  const [user, setUser] = useState<SessionUser | null>(
+    sessionCache !== undefined ? sessionCache : null
+  );
+  const [loading, setLoading] = useState(sessionCache === undefined);
+
+  // Read localStorage synchronously before first paint, but AFTER hydration
+  useLayoutEffect(() => {
+    if (sessionCache !== undefined) return;
     const stored = readStorage();
-    if (stored) sessionCache = stored;
-    return stored;
-  });
-  const [loading, setLoading] = useState(() => {
-    if (sessionCache !== undefined) return false;
-    return !readStorage();
-  });
+    if (stored) {
+      sessionCache = stored;
+      setUser(stored);
+      setLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -83,7 +90,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Always validate against server — localStorage is just for instant first render
     void refresh();
   }, [refresh]);
 

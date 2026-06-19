@@ -374,8 +374,10 @@ function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
 
   useEffect(() => {
     fetch("/api/equipe/team-schedule")
-      .then((r) => r.json())
-      .then((d: TeamSchedule) => {
+      .then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json() as TeamSchedule;
+        if (!Array.isArray(d.scheduleDays)) return;
         setSchedule(d);
         setDays(d.scheduleDays);
         setStartHour(d.scheduleStart);
