@@ -11,11 +11,12 @@ import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { TeseManager } from "@/components/TeseManager";
 import { AdminClientsPanel } from "@/components/AdminClientsPanel";
+import { BackupPanel } from "@/components/BackupPanel";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
 type Category = { id: string; name: string };
-type Tab = "equipes" | "usuarios" | "teses" | "clientes" | "importar" | "auditoria";
+type Tab = "equipes" | "usuarios" | "teses" | "clientes" | "importar" | "auditoria" | "backup";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -25,6 +26,9 @@ export default function AdminPage() {
   const [categoryId, setCategoryId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [importTeses, setImportTeses] = useState<{ id: string; name: string }[]>([]);
+  const [importTeseId, setImportTeseId] = useState("");
+  const [importTeseName, setImportTeseName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -57,6 +61,16 @@ export default function AdminPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!teamId) return;
+    setImportTeses([]);
+    setImportTeseId("");
+    setImportTeseName("");
+    fetch(`/api/teses?teamId=${teamId}`)
+      .then((r) => r.json())
+      .then((d) => setImportTeses(d.teses ?? []));
+  }, [teamId]);
+
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!file || !categoryId || !teamId) return;
@@ -69,6 +83,8 @@ export default function AdminPage() {
     formData.append("file", file);
     formData.append("categoryId", categoryId);
     formData.append("teamId", teamId);
+    if (importTeseId) formData.append("teseId", importTeseId);
+    else if (importTeseName.trim()) formData.append("teseName", importTeseName.trim());
 
     try {
       const res = await fetch("/api/admin/import-csv", {
@@ -97,12 +113,13 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "dashboard" | "upload" | "clipboardList" }[] = [
+  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "dashboard" | "upload" | "clipboardList" | "fileDown" }[] = [
     { id: "equipes", label: "Equipes", icon: "building" },
     { id: "usuarios", label: "Usuários", icon: "users" },
     { id: "teses", label: "Teses", icon: "layers" },
     { id: "clientes", label: "Clientes", icon: "dashboard" },
     { id: "importar", label: "Importar CSV", icon: "upload" },
+    { id: "backup", label: "Backup", icon: "fileDown" },
     { id: "auditoria", label: "Auditoria", icon: "clipboardList" },
   ];
 
@@ -183,18 +200,44 @@ export default function AdminPage() {
             <form onSubmit={handleUpload} className="space-y-4">
               <SelectField label="Equipe" value={teamId} onChange={setTeamId} required>
                 {teams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </SelectField>
               <SelectField label="Categoria" value={categoryId} onChange={setCategoryId} required>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </SelectField>
+
+              {/* Tese selector */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">
+                  Tese <span className="text-muted/60">(obrigatório — selecione ou crie)</span>
+                </label>
+                <select
+                  className="industrial-input"
+                  value={importTeseId}
+                  onChange={(e) => { setImportTeseId(e.target.value); setImportTeseName(""); }}
+                >
+                  <option value="">Nova tese (digitar nome abaixo)</option>
+                  {importTeses.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                {!importTeseId && (
+                  <input
+                    className="industrial-input mt-2"
+                    placeholder="Nome da nova tese (será criada se não existir)"
+                    value={importTeseName}
+                    onChange={(e) => setImportTeseName(e.target.value)}
+                    required
+                  />
+                )}
+                <p className="mt-1 text-xs text-muted">
+                  Todos os clientes deste CSV serão vinculados a esta tese. Substitui a coluna TESE do arquivo.
+                </p>
+              </div>
+
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Arquivo CSV</label>
                 <input
@@ -205,7 +248,7 @@ export default function AdminPage() {
                   required
                 />
               </div>
-              <button type="submit" className="btn-primary" disabled={loading || !file}>
+              <button type="submit" className="btn-primary" disabled={loading || !file || (!importTeseId && !importTeseName.trim())}>
                 <Icon name="upload" className="h-4 w-4" />
                 {loading ? "Importando..." : "Subir CSV"}
               </button>
@@ -215,6 +258,8 @@ export default function AdminPage() {
           {error && <p className="alert alert-error">{error}</p>}
         </section>
       )}
+
+      {tab === "backup" && <BackupPanel teams={teams} />}
 
       {tab === "auditoria" && <AuditLogPanel />}
     </AppShell>
