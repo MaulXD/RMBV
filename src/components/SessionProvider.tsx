@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -54,29 +53,29 @@ export function primeSessionCache(user: SessionUser | null) {
   writeStorage(user);
 }
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  // Start with in-memory cache only — avoids SSR/client hydration mismatch
-  const [user, setUser] = useState<SessionUser | null>(
-    sessionCache !== undefined ? sessionCache : null
-  );
-  const [loading, setLoading] = useState(sessionCache === undefined);
+/**
+ * Leitura síncrona do cache — garante que o primeiro render já tem o user correto,
+ * eliminando o flash "Configurações → Administração" causado pela janela
+ * onde sessionLoading=false mas user ainda era null.
+ */
+function getInitialUser(): SessionUser | null {
+  if (sessionCache !== undefined) return sessionCache;
+  const stored = readStorage();
+  // Marca o cache como resolvido (null = não autenticado, objeto = autenticado)
+  sessionCache = stored;
+  return stored;
+}
 
-  // Read localStorage synchronously before first paint, but AFTER hydration
-  useLayoutEffect(() => {
-    if (sessionCache !== undefined) return;
-    const stored = readStorage();
-    if (stored) {
-      sessionCache = stored;
-      setUser(stored);
-      setLoading(false);
-    }
-  }, []);
+export function SessionProvider({ children }: { children: ReactNode }) {
+  // useState com lazy initializer: lê cache/localStorage de forma síncrona
+  // Garante que o primeiro render já tem o user correto — sem flash
+  const [user, setUser] = useState<SessionUser | null>(getInitialUser);
+  const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me");
       if (res.status === 401) {
-        // Sessão expirada ou token inválido — logout explícito
         sessionCache = null;
         writeStorage(null);
         setUser(null);
