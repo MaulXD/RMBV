@@ -6,21 +6,26 @@ import { AppShell } from "@/components/AppShell";
 import { TeamMembersManager } from "@/components/TeamMembersManager";
 import { TeseManager } from "@/components/TeseManager";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
+import { AccessControlPanel } from "@/components/AccessControlPanel";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 
 const SECTIONS = [
   { id: "teses", label: "Teses" },
   { id: "membros", label: "Membros" },
   { id: "kanban", label: "Kanban" },
+  { id: "acesso", label: "Acesso" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
+
+type Member = { id: string; name: string; role: string; isActive: boolean };
 
 export default function EquipePage() {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [columns, setColumns] = useState<KanbanColumnItem[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [activeSection, setActiveSection] = useState<SectionId>("teses");
 
   useEffect(() => {
@@ -40,9 +45,10 @@ export default function EquipePage() {
     if (!teamId) return;
     fetch(`/api/kanban/columns?teamId=${teamId}`)
       .then((r) => r.json())
-      .then((d) => {
-        if (d.columns) setColumns(d.columns);
-      });
+      .then((d) => { if (d.columns) setColumns(d.columns); });
+    fetch(`/api/teams/members`)
+      .then((r) => r.json())
+      .then((d) => { if (d.members) setMembers(d.members); });
   }, [teamId]);
 
   if (!role) {
@@ -136,6 +142,22 @@ export default function EquipePage() {
         <p className="text-sm text-muted">
           Apenas ADV e Gerente podem gerenciar colunas do Kanban.
         </p>
+      )}
+
+      {activeSection === "acesso" && (
+        <div id="acesso">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-foreground">Controle de acesso</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Histórico de logins e restrições de horário por colaborador.
+            </p>
+          </div>
+          <AccessControlPanel
+            members={members}
+            canEdit={canInvite}
+            teamId={teamId}
+          />
+        </div>
       )}
     </AppShell>
   );
