@@ -10,6 +10,7 @@ import { KanbanCommandPalette, useKanbanCommandPalette } from "@/components/Kanb
 import { KanbanListView } from "@/components/KanbanListView";
 import { KanbanTaskModal, type TaskFormValues } from "@/components/KanbanTaskModal";
 import { PageHeader } from "@/components/PageHeader";
+import { TeseFilterBar } from "@/components/TeseFilterBar";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 import { groupTasksByColumn } from "@/lib/task-query";
@@ -268,13 +269,10 @@ function KanbanContent() {
       <PageHeader
         icon="kanban"
         title="Kanban de tarefas"
-        subtitle={
-          activeTese
-            ? `Tese: ${activeTese.name}`
-            : "Arraste cards, use checklist na descrição e Ctrl+K para buscar"
-        }
+        subtitle="Arraste cards, use checklist na descrição e Ctrl+K para buscar"
         actions={
           <>
+            <TeseFilterBar embedded />
             <button
               type="button"
               className="btn-ghost hidden sm:inline-flex"

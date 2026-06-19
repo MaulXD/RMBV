@@ -96,23 +96,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navGroups: NavGroup[] = [
     {
-      label: "Principal",
+      label: "Trabalho",
       items: [
-        { href: "/dashboard", label: "Clientes", icon: "dashboard", color: "text-blue-500" },
+        { href: "/dashboard", label: "Clientes", icon: "users", color: "text-blue-500" },
         { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
-        ...(!isPesquisador
-          ? [{ href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" }]
-          : []),
-      ],
-    },
-    {
-      label: "Operações",
-      items: [
-        ...(!isPesquisador
-          ? [{ href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" }]
-          : []),
-        { href: "/chamados", label: "Chamados", icon: "ticket" as const, color: "text-amber-500" },
-        { href: "/apa", label: "APA", icon: "fileText" as const, color: "text-teal-500", comingSoon: true },
+        { href: "/chamados", label: "Chamados", icon: "messageSquare" as const, color: "text-amber-500" },
+        ...(!isPesquisador ? [
+          { href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" },
+          { href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" },
+        ] : []),
+        { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
       ],
     },
     ...(user && user.role !== "COLABORADOR" && !isPesquisador ? [{

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 import { StatusBadge } from "./StatusBadge";
 import { WorkflowBadge } from "./WorkflowBadge";
+import { Icon } from "./ui/Icon";
 
 type ClientRow = {
   id: string;
@@ -178,6 +179,7 @@ export function ClientsTable({
             <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">
               Pesquisa
             </th>
+            <th className="w-10" />
           </tr>
         </thead>
         <tbody>
@@ -221,6 +223,15 @@ export function ClientsTable({
                 <td className="px-4 py-2 text-sm text-muted">{client.primaryPhone ?? "—"}</td>
                 <td className="px-4 py-2 text-center">
                   <ResearchBadge hasResearch={client.hasResearch} hasContacts={client.hasContacts} />
+                </td>
+                <td className="px-2 py-2 text-right opacity-0 transition-opacity group-hover:opacity-100">
+                  <Link
+                    href={`/clients/${client.id}`}
+                    className="btn-icon"
+                    title="Editar cliente"
+                  >
+                    <Icon name="clipboardPen" className="h-3.5 w-3.5" />
+                  </Link>
                 </td>
               </tr>
             );
