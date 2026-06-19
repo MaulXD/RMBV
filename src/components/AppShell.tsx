@@ -187,15 +187,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-primary/10 text-foreground"
-                      : "text-foreground/70 hover:bg-surface/50 hover:text-foreground"
-                  }`}
+                  className={`sidebar-nav-link ${active ? "active" : ""}`}
                 >
                   <Icon
                     name={item.icon}
-                    className={`h-4 w-4 shrink-0 ${item.color} ${active ? "opacity-100" : "opacity-70"}`}
+                    className={`h-4 w-4 shrink-0 transition-opacity duration-150 ${item.color} ${active ? "opacity-100" : "opacity-60"}`}
                   />
                   <span className="flex-1">{item.label}</span>
                   {showBadge && (
@@ -273,7 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="absolute inset-y-0 left-0 w-60">
+            <div className="sidebar-mobile absolute inset-y-0 left-0 w-60">
               {sidebarContent}
             </div>
           </div>
@@ -309,7 +305,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="page-enter flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {user && <OnboardingTour />}
             {children}
           </main>
