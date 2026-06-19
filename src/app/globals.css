@@ -263,6 +263,22 @@
     opacity: 0.55;
   }
 
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border px-4 py-2.5 text-sm font-semibold transition-colors duration-150;
+    border-color: theme(colors.red.600);
+    background: theme(colors.red.600);
+    color: #fff;
+  }
+
+  .btn-danger:hover {
+    background: theme(colors.red.700);
+    border-color: theme(colors.red.700);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.55;
+  }
+
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground transition-colors;
     border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
