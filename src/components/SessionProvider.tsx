@@ -30,6 +30,11 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 /** Evita piscar a navbar ao trocar de rota (AppShell remonta por página). */
 let sessionCache: SessionUser | null | undefined;
 
+/** Pré-popula o cache após login para evitar flash na navegação. */
+export function primeSessionCache(user: SessionUser | null) {
+  sessionCache = user;
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(() =>
     sessionCache === undefined ? null : sessionCache

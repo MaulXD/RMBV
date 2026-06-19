@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { primeSessionCache, type SessionUser } from "@/components/SessionProvider";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,9 +55,9 @@ export default function LoginPage() {
             : "";
         throw new Error((data.error ?? "Falha no login") + hint);
       }
+      primeSessionCache(data.user as SessionUser);
       const from = searchParams.get("from") ?? "/dashboard";
       router.push(from);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro no login");
     } finally {
