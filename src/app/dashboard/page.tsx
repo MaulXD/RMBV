@@ -8,6 +8,7 @@ import { ClientsTable } from "@/components/ClientsTable";
 import { ClientBulkActionsBar } from "@/components/ClientBulkActionsBar";
 import { ClientsListPagination } from "@/components/ClientsListPagination";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
+import { TeseFilterBar } from "@/components/TeseFilterBar";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 import {
   DEFAULT_CLIENT_PAGE_SIZE,
@@ -30,7 +31,6 @@ type ClientRow = {
   primaryPhone: string | null;
   hasResearch: boolean;
   hasContacts: boolean;
-  categories: { id: string; name: string }[];
 };
 
 function DashboardContent() {
@@ -134,17 +134,15 @@ function DashboardContent() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Painel de clientes</h1>
-          <p className="page-subtitle">
-            {teamLabel && <span className="block">Equipe: {teamLabel}</span>}
-            {activeTese
-              ? `Tese: ${activeTese.name}`
-              : "Todas as teses — selecione uma no topo"}
-          </p>
+          {teamLabel && <p className="page-subtitle">Equipe: {teamLabel}</p>}
         </div>
-        <Link href="/clients/new" className="btn-primary">
-          <Icon name="userPlus" className="h-4 w-4" />
-          Novo cliente
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <TeseFilterBar embedded />
+          <Link href="/clients/new" className="btn-primary">
+            <Icon name="userPlus" className="h-4 w-4" />
+            Novo cliente
+          </Link>
+        </div>
       </div>
 
       <TeamTodayPanel />

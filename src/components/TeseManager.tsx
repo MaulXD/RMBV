@@ -5,32 +5,45 @@ import { useTeseFilter } from "./TeseFilterProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ToastProvider";
 
-export function TeseManager() {
+const PRESET_COLORS = [
+  "#6366f1", "#8b5cf6", "#a855f7", "#ec4899",
+  "#f43f5e", "#ef4444", "#f97316", "#f59e0b",
+  "#eab308", "#22c55e", "#10b981", "#14b8a6",
+  "#0ea5e9", "#3b82f6", "#64748b", "#78716c",
+];
+
+export function TeseManager({
+  teams,
+}: {
+  teams?: { id: string; name: string }[];
+}) {
   const confirm = useConfirm();
   const toast = useToast();
   const { teses, refreshTeses } = useTeseFilter();
-  const PRESET_COLORS = [
-    "#6366f1", "#8b5cf6", "#a855f7", "#ec4899",
-    "#f43f5e", "#ef4444", "#f97316", "#f59e0b",
-    "#eab308", "#22c55e", "#10b981", "#14b8a6",
-    "#0ea5e9", "#3b82f6", "#64748b", "#78716c",
-  ];
 
+  const isAdmin = Array.isArray(teams);
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]!);
+  const [teamId, setTeamId] = useState(teams?.[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (isAdmin && !teamId) {
+      setError("Selecione uma equipe.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
+      const body: Record<string, string> = { name: name.trim(), color };
+      if (isAdmin && teamId) body.teamId = teamId;
       const res = await fetch("/api/teses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), color }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao criar tese");
@@ -39,7 +52,6 @@ export function TeseManager() {
       await refreshTeses();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro");
-      toast("Erro ao criar tese.", "error");
     } finally {
       setLoading(false);
     }
@@ -93,6 +105,18 @@ export function TeseManager() {
       </ul>
 
       <form onSubmit={handleCreate} className="space-y-3">
+        {isAdmin && teams && teams.length > 0 && (
+          <select
+            className="industrial-input"
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+          >
+            <option value="">Selecione a equipe</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        )}
         <div className="flex flex-wrap gap-2">
           <input
             className="industrial-input min-w-[200px] flex-1"
@@ -121,7 +145,7 @@ export function TeseManager() {
           ))}
         </div>
       </form>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
     </section>
   );
 }
