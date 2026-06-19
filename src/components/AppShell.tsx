@@ -191,7 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <Icon
                     name={item.icon}
-                    className={`h-4 w-4 shrink-0 transition-opacity duration-150 ${item.color} ${active ? "opacity-100" : "opacity-60"}`}
+                    className={`h-4 w-4 shrink-0 transition-opacity duration-150 ${item.color} ${active ? "opacity-100" : "opacity-80"}`}
                   />
                   <span className="flex-1">{item.label}</span>
                   {showBadge && (
@@ -256,10 +256,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TeseFilterProvider>
-      <div className="relative flex min-h-screen bg-surface">
+      <div className="relative flex min-h-screen">
 
         {/* Dark mode atmosphere — orbs + grid (same DNA as login page) */}
-        <div className="pointer-events-none fixed inset-0 -z-10 hidden dark:block">
+        <div className="pointer-events-none fixed inset-0 hidden dark:block" style={{ zIndex: 0 }}>
           <div className="absolute -top-40 left-1/3 h-[600px] w-[600px] rounded-full bg-indigo-700/20 blur-[160px]" />
           <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-violet-700/15 blur-[140px]" />
           <div className="absolute left-0 top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-blue-800/10 blur-[120px]" />
@@ -272,7 +272,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
         </div>
         {/* Desktop sidebar — sticky, full viewport height */}
-        <div className="sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto lg:flex lg:flex-col">
+        <div className="relative sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto lg:flex lg:flex-col" style={{ zIndex: 1 }}>
           {sidebarContent}
         </div>
 
@@ -290,7 +290,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Content column */}
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-screen min-w-0 flex-1 flex-col" style={{ zIndex: 1 }}>
           {/* Mobile top bar */}
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-elevated/95 px-4 backdrop-blur-md dark:border-white/[0.07] dark:bg-[rgb(8_12_24_/_0.85)] lg:hidden">
             <button
@@ -319,7 +319,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="page-enter flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {user && <OnboardingTour />}
             {children}
           </main>
