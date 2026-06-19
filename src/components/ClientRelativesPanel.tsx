@@ -260,7 +260,11 @@ export function ClientRelativesPanel({ clientId }: { clientId: string }) {
     const ok = await confirm({ message: "Remover este parente?", danger: true });
     if (!ok) return;
     try {
-      await fetch(`/api/clients/${clientId}/relatives/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/clients/${clientId}/relatives/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast("Erro ao remover parente.", "error");
+        return;
+      }
       toast("Parente removido.", "success");
       await load();
     } catch {
