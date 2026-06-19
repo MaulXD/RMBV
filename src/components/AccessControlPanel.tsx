@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HOURS = Array.from({ length: 25 }, (_, i) => i);
@@ -254,7 +254,7 @@ function RulesTab({
   const [rules, setRules] = useState<AccessRule[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadRules() {
+  const loadRules = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (teamId) params.set("teamId", teamId);
@@ -262,9 +262,9 @@ function RulesTab({
     const d = await res.json();
     setRules(d.rules ?? []);
     setLoading(false);
-  }
+  }, [teamId]);
 
-  useEffect(() => { void loadRules(); }, [teamId]);
+  useEffect(() => { void loadRules(); }, [loadRules]);
 
   async function handleDelete(id: string) {
     if (!confirm("Remover restrição de acesso?")) return;

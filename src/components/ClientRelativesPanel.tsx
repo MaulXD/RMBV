@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CopyButton } from "./CopyButton";
 import { WhatsAppButton } from "./WhatsAppButton";
 
@@ -194,11 +194,7 @@ export function ClientRelativesPanel({ clientId }: { clientId: string }) {
   const [identifying, setIdentifying] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
-  useEffect(() => {
-    void load();
-  }, [clientId]);
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/clients/${clientId}/relatives`);
@@ -206,7 +202,11 @@ export function ClientRelativesPanel({ clientId }: { clientId: string }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [clientId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function handleAdd(form: FormState) {
     setSaving(true);

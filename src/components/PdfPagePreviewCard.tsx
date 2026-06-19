@@ -172,6 +172,7 @@ export function PdfPagePreviewCard({
           </div>
         )}
         {thumb && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={thumb}
             alt={`Página ${page.pageIndex + 1}`}

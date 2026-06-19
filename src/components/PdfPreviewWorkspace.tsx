@@ -287,6 +287,7 @@ function ImagePreviewItem({
   return (
     <article className="soft-card overflow-hidden">
       <div className="relative aspect-[3/4] bg-slate-200/80 dark:bg-slate-800/80">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         {src && <img src={src} alt={file.name} className="h-full w-full object-contain" />}
         <span className="absolute left-2 top-2 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">
           {index + 1}
