@@ -533,17 +533,13 @@ export function AccessControlPanel({
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-1 border-b border-border">
+      <div className="app-tabs">
         {(["sessoes", "horarios"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t
-                ? "border-primary text-primary"
-                : "border-transparent text-muted hover:text-foreground"
-            }`}
+            className={`app-tab ${tab === t ? "app-tab-active" : ""}`}
           >
             {t === "sessoes" ? "Histórico de logins" : "Controle de horários"}
           </button>

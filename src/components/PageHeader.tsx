@@ -16,7 +16,13 @@ export function PageHeader({
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="flex min-w-0 items-start gap-3">
         {icon && (
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/22 to-primary/6 text-primary shadow-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-primary"
+            style={{
+              background: "color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-elevated))",
+              borderColor: "color-mix(in srgb, var(--color-primary) 25%, transparent)",
+              boxShadow: "0 1px 4px color-mix(in srgb, var(--color-primary) 12%, transparent)",
+            }}
+          >
             <Icon name={icon} className="h-5 w-5" strokeWidth={1.65} />
           </span>
         )}

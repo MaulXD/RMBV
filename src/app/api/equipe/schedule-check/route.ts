@@ -23,7 +23,7 @@ export async function GET() {
     });
 
     if (individual && individual.enabled) {
-      const days: number[] = JSON.parse(individual.allowedDays);
+      const days: number[] = (() => { try { return JSON.parse(individual.allowedDays) as number[]; } catch { return [1,2,3,4,5]; } })();
       const allowed = isWithinSchedule(days, individual.startHour, individual.endHour);
       return NextResponse.json({
         allowed,
@@ -41,7 +41,7 @@ export async function GET() {
         select: { scheduleEnabled: true, scheduleDays: true, scheduleStart: true, scheduleEnd: true },
       });
       if (team && team.scheduleEnabled) {
-        const days: number[] = JSON.parse(team.scheduleDays);
+        const days: number[] = (() => { try { return JSON.parse(team.scheduleDays) as number[]; } catch { return [1,2,3,4,5]; } })();
         const allowed = isWithinSchedule(days, team.scheduleStart, team.scheduleEnd);
         return NextResponse.json({
           allowed,

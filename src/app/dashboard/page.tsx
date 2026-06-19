@@ -131,12 +131,10 @@ function DashboardContent() {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="page-header">
         <div>
-          <h1 className="font-display text-xl font-semibold tracking-wide">
-            Painel de clientes
-          </h1>
-          <p className="mt-1 text-sm text-muted">
+          <h1 className="page-title">Painel de clientes</h1>
+          <p className="page-subtitle">
             {teamLabel && <span className="block">Equipe: {teamLabel}</span>}
             {activeTese
               ? `Tese: ${activeTese.name}`
@@ -151,7 +149,7 @@ function DashboardContent() {
 
       <TeamTodayPanel />
 
-      <div className="mb-4 rounded-[var(--radius-ui)] border border-border bg-surface-elevated p-3">
+      <div className="filter-bar">
         <div className="flex flex-wrap items-center gap-2">
           <select
             className="industrial-input min-w-[140px] flex-1"

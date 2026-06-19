@@ -57,11 +57,7 @@ export function ClientProfileTabs({
 
   return (
     <div className="space-y-0">
-      <div
-        className="-mb-px scrollbar-none flex gap-0 overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label="Seções do cliente"
-      >
+      <div className="app-tabs" role="tablist" aria-label="Seções do cliente">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -69,11 +65,7 @@ export function ClientProfileTabs({
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "border-primary text-primary"
-                : "border-transparent text-muted hover:border-border hover:text-foreground"
-            }`}
+            className={`app-tab ${tab === t.id ? "app-tab-active" : ""}`}
           >
             {t.label}
           </button>

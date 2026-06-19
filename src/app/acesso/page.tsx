@@ -65,12 +65,10 @@ export default function AcessoPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Controle de acesso</h1>
-          <p className="mt-1 text-sm text-muted">
-            Histórico de logins e restrições de horário por colaborador.
-          </p>
+          <h1 className="page-title">Controle de acesso</h1>
+          <p className="page-subtitle">Histórico de logins e restrições de horário por colaborador.</p>
         </div>
 
         {/* Team selector for ADMIN */}

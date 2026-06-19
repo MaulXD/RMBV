@@ -106,17 +106,20 @@ export default function AdminPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Icon name="shield" className="h-6 w-6 text-primary" />
-            <h1 className="font-display text-xl font-semibold tracking-wide">
-              Painel administrativo
-            </h1>
+      <div className="page-header">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-rose-500"
+            style={{
+              background: "color-mix(in srgb, #f43f5e 10%, var(--color-surface-elevated))",
+              borderColor: "color-mix(in srgb, #f43f5e 25%, transparent)",
+            }}
+          >
+            <Icon name="shield" className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="page-title">Painel administrativo</h1>
+            <p className="page-subtitle">Equipes, usuários e importação — visão global do sistema</p>
           </div>
-          <p className="mt-1 text-sm text-muted">
-            Equipes, usuários e importação — visão global do sistema
-          </p>
         </div>
         <Link href="/clients/new" className="btn-primary">
           <Icon name="userPlus" className="h-4 w-4" />
@@ -124,17 +127,13 @@ export default function AdminPage() {
         </Link>
       </div>
 
-      <div className="-mb-px scrollbar-none mb-6 flex flex-wrap gap-0 overflow-x-auto border-b border-border">
+      <div className="app-tabs">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`-mb-px inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "border-primary text-primary"
-                : "border-transparent text-muted hover:border-border hover:text-foreground"
-            }`}
+            className={`app-tab ${tab === t.id ? "app-tab-active" : ""}`}
           >
             <Icon name={t.icon} className="h-4 w-4" />
             {t.label}

@@ -60,25 +60,19 @@ export default function EquipePage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Configurações</h1>
-        <p className="mt-1 text-sm text-muted">
-          Gerencie teses, membros da equipe e colunas do Kanban.
-        </p>
+      <div className="mb-5">
+        <h1 className="page-title">Configurações</h1>
+        <p className="page-subtitle">Gerencie teses, membros da equipe e colunas do Kanban.</p>
       </div>
 
       {/* Section tabs */}
-      <div className="mb-6 flex gap-1 border-b border-border">
+      <div className="app-tabs">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
             type="button"
             onClick={() => setActiveSection(s.id)}
-            className={`px-4 py-2 text-sm font-medium transition-colors -mb-px border-b-2 ${
-              activeSection === s.id
-                ? "border-primary text-primary"
-                : "border-transparent text-muted hover:text-foreground"
-            }`}
+            className={`app-tab ${activeSection === s.id ? "app-tab-active" : ""}`}
           >
             {s.label}
           </button>
