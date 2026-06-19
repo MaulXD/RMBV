@@ -11,7 +11,7 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
-  role: "ADV" | "GERENTE" | "COLABORADOR";
+  role: "ADV" | "GERENTE" | "COLABORADOR" | "PESQUISADOR";
   isActive: boolean;
   team: { id: string; name: string } | null;
 };
@@ -36,7 +36,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"ADV" | "GERENTE" | "COLABORADOR">("COLABORADOR");
+  const [role, setRole] = useState<"ADV" | "GERENTE" | "COLABORADOR" | "PESQUISADOR">("COLABORADOR");
   const [teamId, setTeamId] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -163,6 +163,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
               <option value="ADV">ADV</option>
               <option value="GERENTE">Gerente</option>
               <option value="COLABORADOR">Colaborador</option>
+              <option value="PESQUISADOR">Pesquisador</option>
             </SelectField>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Nome *</label>
@@ -214,6 +215,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
                       <option value="ADV">ADV</option>
                       <option value="GERENTE">Gerente</option>
                       <option value="COLABORADOR">Colaborador</option>
+                      <option value="PESQUISADOR">Pesquisador</option>
                     </select>
                     <select className="industrial-input" value={editForm.teamId} onChange={(e) => setEditForm((p) => ({ ...p, teamId: e.target.value }))}>
                       {teams.map((t) => (

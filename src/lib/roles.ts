@@ -2,13 +2,15 @@ import { Role } from "@prisma/client";
 import type { SessionUser } from "./auth";
 
 const ROLE_RANK: Record<Role, number> = {
-  COLABORADOR: 1,
-  GERENTE: 2,
-  ADV: 3,
-  ADMIN: 4,
+  PESQUISADOR: 1,
+  COLABORADOR: 2,
+  GERENTE: 3,
+  ADV: 4,
+  ADMIN: 5,
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
+  PESQUISADOR: "Pesquisador",
   COLABORADOR: "Colaborador",
   GERENTE: "Gerente",
   ADV: "ADV",

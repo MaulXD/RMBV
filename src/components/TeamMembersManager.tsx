@@ -30,7 +30,7 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"GERENTE" | "COLABORADOR">("COLABORADOR");
+  const [role, setRole] = useState<"GERENTE" | "COLABORADOR" | "PESQUISADOR">("COLABORADOR");
   const [saving, setSaving] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
 
@@ -108,7 +108,7 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
     return <p className="text-sm text-muted">Carregando equipe...</p>;
   }
 
-  const editableRoles = ["GERENTE", "COLABORADOR"] as const;
+  const editableRoles = ["GERENTE", "COLABORADOR", "PESQUISADOR"] as const;
   const canEdit = canInvite;
 
   return (
@@ -233,10 +233,11 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
             <SelectField
               label="Papel"
               value={role}
-              onChange={(v) => setRole(v as "GERENTE" | "COLABORADOR")}
+              onChange={(v) => setRole(v as "GERENTE" | "COLABORADOR" | "PESQUISADOR")}
             >
               <option value="GERENTE">Gerente</option>
               <option value="COLABORADOR">Colaborador</option>
+              <option value="PESQUISADOR">Pesquisador</option>
             </SelectField>
             <div className="sm:col-span-2 flex justify-end">
               <button type="submit" className="btn-primary" disabled={saving}>

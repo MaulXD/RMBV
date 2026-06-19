@@ -13,7 +13,7 @@ import { NotificationBell } from "./NotificationBell";
 import { OnboardingTour } from "./OnboardingTour";
 import { AccessBlockedScreen } from "./AccessBlockedScreen";
 
-type NavItem = { href: string; label: string; icon: IconName; color: string };
+type NavItem = { href: string; label: string; icon: IconName; color: string; comingSoon?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
 
 function userInitial(name: string) {
@@ -97,23 +97,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
+  const isPesquisador = user?.role === "PESQUISADOR";
+
   const navGroups: NavGroup[] = [
     {
       label: "Principal",
       items: [
         { href: "/dashboard", label: "Clientes", icon: "dashboard", color: "text-blue-500" },
         { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
-        { href: "/reports", label: "Relatórios", icon: "reports", color: "text-emerald-500" },
+        ...(!isPesquisador
+          ? [{ href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" }]
+          : []),
       ],
     },
     {
       label: "Operações",
       items: [
-        { href: "/ferramentas", label: "Ferramentas", icon: "wrench", color: "text-orange-500" },
-        { href: "/chamados", label: "Chamados", icon: "ticket", color: "text-amber-500" },
+        ...(!isPesquisador
+          ? [{ href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" }]
+          : []),
+        { href: "/chamados", label: "Chamados", icon: "ticket" as const, color: "text-amber-500" },
+        { href: "/apa", label: "APA", icon: "fileText" as const, color: "text-teal-500", comingSoon: true },
       ],
     },
-    ...(user && user.role !== "COLABORADOR" ? [{
+    ...(user && user.role !== "COLABORADOR" && !isPesquisador ? [{
       label: "Sistema",
       items: [
         { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
@@ -183,6 +190,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {group.items.map((item) => {
               const active = pathname.startsWith(item.href);
               const showBadge = item.href === "/kanban" && kanbanOverdueCount > 0;
+
+              if (item.comingSoon) {
+                return (
+                  <span key={item.href} className="sidebar-nav-link cursor-default opacity-50">
+                    <Icon name={item.icon} className={`h-4 w-4 shrink-0 ${item.color} opacity-60`} />
+                    <span className="flex-1">{item.label}</span>
+                    <span className="rounded px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-muted uppercase" style={{ background: "color-mix(in srgb, var(--color-border) 50%, transparent)" }}>
+                      Em breve
+                    </span>
+                  </span>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}

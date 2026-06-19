@@ -12,6 +12,7 @@ enum Role {
   ADV
   GERENTE
   COLABORADOR
+  PESQUISADOR
 }
 
 enum ClientWorkflowStatus {

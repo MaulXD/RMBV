@@ -49,7 +49,7 @@ export function canManageTeamMembers(user: SessionUser) {
 
 export function canCreateTeamMemberRole(creator: SessionUser, targetRole: Role) {
   if (!canManageTeamMembers(creator)) return false;
-  return targetRole === Role.GERENTE || targetRole === Role.COLABORADOR;
+  return targetRole === Role.GERENTE || targetRole === Role.COLABORADOR || targetRole === Role.PESQUISADOR;
 }
 
 export async function resolveTeamIdForCreate(

@@ -9,8 +9,15 @@ export function TeseManager() {
   const confirm = useConfirm();
   const toast = useToast();
   const { teses, refreshTeses } = useTeseFilter();
+  const PRESET_COLORS = [
+    "#6366f1", "#8b5cf6", "#a855f7", "#ec4899",
+    "#f43f5e", "#ef4444", "#f97316", "#f59e0b",
+    "#eab308", "#22c55e", "#10b981", "#14b8a6",
+    "#0ea5e9", "#3b82f6", "#64748b", "#78716c",
+  ];
+
   const [name, setName] = useState("");
-  const [color, setColor] = useState("#6b7585");
+  const [color, setColor] = useState(PRESET_COLORS[0]!);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,23 +92,34 @@ export function TeseManager() {
         ))}
       </ul>
 
-      <form onSubmit={handleCreate} className="flex flex-wrap gap-2">
-        <input
-          className="industrial-input min-w-[200px] flex-1"
-          placeholder="Nome da nova tese"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          type="color"
-          className="h-10 w-12 cursor-pointer rounded-[var(--radius-ui)] border border-border"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          title="Cor do botão"
-        />
-        <button type="submit" className="btn-primary" disabled={loading}>
-          Adicionar tese
-        </button>
+      <form onSubmit={handleCreate} className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="industrial-input min-w-[200px] flex-1"
+            placeholder="Nome da nova tese"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button type="submit" className="btn-primary" disabled={loading}>
+            Adicionar tese
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESET_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              title={c}
+              className="h-6 w-6 rounded-md border-2 transition-transform hover:scale-110"
+              style={{
+                backgroundColor: c,
+                borderColor: color === c ? "#ffffff" : "transparent",
+                boxShadow: color === c ? `0 0 0 2px ${c}` : "none",
+              }}
+            />
+          ))}
+        </div>
       </form>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </section>
