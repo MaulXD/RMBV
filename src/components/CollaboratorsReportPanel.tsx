@@ -421,7 +421,7 @@ export function CollaboratorsReportPanel({
       )}
 
       {data.length === 0 && !loading && !error && (
-        <p className="text-sm text-muted">Configure o período e clique em "Gerar relatório".</p>
+        <p className="text-sm text-muted">Configure o período e clique em &quot;Gerar relatório&quot;.</p>
       )}
     </div>
   );
