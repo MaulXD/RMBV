@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { ChamadoFormModal, type ChamadoFormValues } from "@/components/ChamadoFormModal";
 import { ChamadoListCard } from "@/components/ChamadoListCard";
 import { CategoryBadge } from "@/components/CategoryBadge";
@@ -28,9 +29,10 @@ export default function ChamadosPage() {
 
 function ChamadosContent() {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user } = useSession();
+  const isAdmin = user?.role === "ADMIN";
   const [teams, setTeams] = useState<Team[]>([]);
-  const [teamId, setTeamId] = useState("");
+  const [teamId, setTeamId] = useState(() => (!isAdmin ? (user?.teamId ?? "") : ""));
   const [members, setMembers] = useState<Member[]>([]);
   const [chamados, setChamados] = useState<ChamadoListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,14 +46,8 @@ function ChamadosContent() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        const admin = d.user?.role === "ADMIN";
-        setIsAdmin(admin);
-        if (!admin && d.user?.teamId) setTeamId(d.user.teamId);
-      });
-  }, []);
+    if (!isAdmin && user?.teamId && !teamId) setTeamId(user.teamId);
+  }, [user, isAdmin, teamId]);
 
   useEffect(() => {
     if (!isAdmin) return;

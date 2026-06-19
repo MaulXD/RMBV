@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { TeamMembersManager } from "@/components/TeamMembersManager";
 import { TeseManager } from "@/components/TeseManager";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
@@ -22,24 +23,19 @@ type Member = { id: string; name: string; role: string; isActive: boolean };
 
 export default function EquipePage() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [teamId, setTeamId] = useState<string | null>(null);
+  const { user } = useSession();
+  const role = user?.role ?? null;
+  const teamId = user?.teamId ?? null;
   const [columns, setColumns] = useState<KanbanColumnItem[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [activeSection, setActiveSection] = useState<SectionId>("teses");
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.user || d.user.role === "ADMIN") {
-          router.replace("/admin");
-          return;
-        }
-        setRole(d.user.role);
-        setTeamId(d.user.teamId ?? null);
-      });
-  }, [router]);
+    if (user === undefined) return;
+    if (!user || user.role === "ADMIN") {
+      router.replace("/admin");
+    }
+  }, [user, router]);
 
   useEffect(() => {
     if (!teamId) return;
@@ -51,7 +47,7 @@ export default function EquipePage() {
       .then((d) => { if (d.members) setMembers(d.members); });
   }, [teamId]);
 
-  if (!role) {
+  if (!role || role === "ADMIN") {
     return (
       <AppShell>
         <p className="text-sm text-muted">Carregando...</p>

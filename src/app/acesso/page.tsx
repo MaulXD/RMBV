@@ -4,28 +4,23 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { AccessControlPanel } from "@/components/AccessControlPanel";
+import { useSession } from "@/components/SessionProvider";
 
 type Member = { id: string; name: string; role: string; isActive: boolean };
 
 export default function AcessoPage() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [teamId, setTeamId] = useState<string | null>(null);
+  const { user } = useSession();
+  const role = user?.role ?? null;
+  const teamId = user?.teamId ?? null;
   const [members, setMembers] = useState<Member[]>([]);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        const userRole = d.user?.role;
-        if (!userRole || userRole === "COLABORADOR") {
-          router.replace("/dashboard");
-          return;
-        }
-        setRole(userRole);
-        setTeamId(d.user.teamId ?? null);
-      });
-  }, [router]);
+    if (user === undefined) return;
+    if (!role || role === "COLABORADOR") {
+      router.replace("/dashboard");
+    }
+  }, [user, role, router]);
 
   useEffect(() => {
     if (!teamId) return;
@@ -34,7 +29,7 @@ export default function AcessoPage() {
       .then((d) => { if (d.members) setMembers(d.members); });
   }, [teamId]);
 
-  if (!role) {
+  if (!role || role === "COLABORADOR") {
     return (
       <AppShell>
         <p className="text-sm text-muted">Carregando...</p>

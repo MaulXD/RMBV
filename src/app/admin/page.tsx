@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { CSV_HEADERS } from "@/lib/client-fields";
 import { TeamAdminPanel } from "@/components/TeamAdminPanel";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
@@ -17,7 +18,7 @@ type Tab = "equipes" | "usuarios" | "teses" | "importar" | "auditoria";
 
 export default function AdminPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ role: string } | null>(null);
+  const { user } = useSession();
   const [tab, setTab] = useState<Tab>("equipes");
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
@@ -29,15 +30,12 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.user?.role !== "ADMIN") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(d.user);
-      });
+    if (user === null || (user && user.role !== "ADMIN")) {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
+
+  useEffect(() => {
     fetch("/api/categories")
       .then((r) => r.json())
       .then((d) => {
@@ -56,7 +54,7 @@ export default function AdminPage() {
         if (list[0]) setTeamId(list[0].id);
       })
       .catch(() => {});
-  }, [router]);
+  }, []);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -90,7 +88,7 @@ export default function AdminPage() {
     }
   }
 
-  if (!user) {
+  if (!user || user.role !== "ADMIN") {
     return (
       <AppShell>
         <p className="text-sm text-muted">Verificando permissões...</p>
