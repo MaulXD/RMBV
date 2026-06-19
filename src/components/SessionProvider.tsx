@@ -75,15 +75,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me");
-      const data = await res.json();
-      const next = (data.user ?? null) as SessionUser | null;
-      sessionCache = next;
-      writeStorage(next);
-      setUser(next);
+      if (res.status === 401) {
+        // Sessão expirada ou token inválido — logout explícito
+        sessionCache = null;
+        writeStorage(null);
+        setUser(null);
+      } else if (res.ok) {
+        const data = await res.json();
+        const next = (data.user ?? null) as SessionUser | null;
+        sessionCache = next;
+        writeStorage(next);
+        setUser(next);
+      }
+      // 4xx/5xx que não sejam 401: preserva sessão em cache
     } catch {
-      sessionCache = null;
-      writeStorage(null);
-      setUser(null);
+      // Erro de rede: preserva sessão em cache, não desloga
     } finally {
       setLoading(false);
     }

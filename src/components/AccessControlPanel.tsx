@@ -151,11 +151,12 @@ function RuleForm({
     if (!userId || days.length === 0 || startHour >= endHour) return;
     setSaving(true);
     try {
-      await fetch("/api/equipe/access-rules", {
+      const res = await fetch("/api/equipe/access-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, allowedDays: days, startHour, endHour, enabled: true }),
       });
+      if (!res.ok) throw new Error("HTTP " + res.status);
       toast("Restrição salva com sucesso.", "success");
       onSaved();
     } catch {
@@ -287,18 +288,23 @@ function RulesTab({
   }
 
   async function toggleEnabled(rule: AccessRule) {
-    await fetch("/api/equipe/access-rules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: rule.userId,
-        allowedDays: JSON.parse(rule.allowedDays),
-        startHour: rule.startHour,
-        endHour: rule.endHour,
-        enabled: !rule.enabled,
-      }),
-    });
-    await loadRules();
+    try {
+      const res = await fetch("/api/equipe/access-rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: rule.userId,
+          allowedDays: JSON.parse(rule.allowedDays),
+          startHour: rule.startHour,
+          endHour: rule.endHour,
+          enabled: !rule.enabled,
+        }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      await loadRules();
+    } catch {
+      toast("Erro ao alterar restrição.", "error");
+    }
   }
 
   return (
@@ -377,7 +383,7 @@ type TeamSchedule = {
   scheduleEnd: number;
 };
 
-function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
+function TeamScheduleSection({ canEdit, teamId }: { canEdit: boolean; teamId: string | null }) {
   const toast = useToast();
   const [schedule, setSchedule] = useState<TeamSchedule | null>(null);
   const [editing, setEditing] = useState(false);
@@ -387,8 +393,11 @@ function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const teamParam = teamId ? `?teamId=${teamId}` : "";
+
   useEffect(() => {
-    fetch("/api/equipe/team-schedule")
+    if (!teamId) return;
+    fetch(`/api/equipe/team-schedule${teamParam}`)
       .then(async (r) => {
         if (!r.ok) return;
         const d = await r.json() as TeamSchedule;
@@ -400,13 +409,13 @@ function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
         setEnabled(d.scheduleEnabled);
       })
       .catch(() => {});
-  }, []);
+  }, [teamId, teamParam]);
 
   async function handleSave() {
     if (startHour >= endHour || days.length === 0) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/equipe/team-schedule", {
+      const res = await fetch(`/api/equipe/team-schedule${teamParam}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scheduleEnabled: enabled, scheduleDays: days, scheduleStart: startHour, scheduleEnd: endHour }),
@@ -545,7 +554,7 @@ export function AccessControlPanel({
         <SessionsTab teamId={teamId} />
       ) : (
         <div className="space-y-6">
-          <TeamScheduleSection canEdit={canEdit} />
+          <TeamScheduleSection canEdit={canEdit} teamId={teamId} />
           <RulesTab members={members} canEdit={canEdit} teamId={teamId} />
         </div>
       )}
