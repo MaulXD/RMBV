@@ -117,9 +117,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       label: "Sistema",
       items: [
         { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
-        user.role === "ADMIN"
-          ? { href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }
-          : { href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" },
+        { href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" },
+        ...(user.role === "ADMIN"
+          ? [{ href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }]
+          : []),
       ],
     }] : []),
   ];
