@@ -6,11 +6,11 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 const bulkDeleteSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(500),
+  ids: z.array(z.string().uuid()).min(1).max(50000),
 });
 
 const bulkAssignTeseSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(500),
+  ids: z.array(z.string().uuid()).min(1).max(50000),
   teseId: z.string().uuid().nullable(),
 });
 
