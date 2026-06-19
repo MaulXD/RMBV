@@ -356,6 +356,141 @@ function RulesTab({
   );
 }
 
+type TeamSchedule = {
+  scheduleEnabled: boolean;
+  scheduleDays: number[];
+  scheduleStart: number;
+  scheduleEnd: number;
+};
+
+function TeamScheduleSection({ canEdit }: { canEdit: boolean }) {
+  const [schedule, setSchedule] = useState<TeamSchedule | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [startHour, setStartHour] = useState(8);
+  const [endHour, setEndHour] = useState(19);
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/equipe/team-schedule")
+      .then((r) => r.json())
+      .then((d: TeamSchedule) => {
+        setSchedule(d);
+        setDays(d.scheduleDays);
+        setStartHour(d.scheduleStart);
+        setEndHour(d.scheduleEnd);
+        setEnabled(d.scheduleEnabled);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleSave() {
+    if (startHour >= endHour || days.length === 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/equipe/team-schedule", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduleEnabled: enabled, scheduleDays: days, scheduleStart: startHour, scheduleEnd: endHour }),
+      });
+      const d = await res.json() as TeamSchedule;
+      setSchedule(d);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!schedule) return <p className="text-xs text-muted">Carregando horário da equipe...</p>;
+
+  const daysStr = (schedule.scheduleDays).map((d) => DAY_LABELS[d]).join(", ");
+
+  return (
+    <div className={`panel-solid p-5 ${!schedule.scheduleEnabled ? "opacity-60" : ""}`}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-foreground">Horário padrão da equipe</h3>
+          <p className="mt-0.5 text-xs text-muted">
+            Aplica-se a todos os colaboradores sem regra individual.
+          </p>
+        </div>
+        {canEdit && !editing && (
+          <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={() => setEditing(true)}>
+            Editar
+          </button>
+        )}
+      </div>
+
+      {!editing ? (
+        <div className="flex flex-wrap items-center gap-4">
+          <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${schedule.scheduleEnabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-border/60 text-muted"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${schedule.scheduleEnabled ? "bg-emerald-500" : "bg-muted"}`} />
+            {schedule.scheduleEnabled ? "Ativo" : "Desativado"}
+          </div>
+          {schedule.scheduleEnabled && (
+            <>
+              <span className="text-sm font-semibold text-foreground">
+                {String(schedule.scheduleStart).padStart(2, "0")}h – {String(schedule.scheduleEnd).padStart(2, "0")}h
+              </span>
+              <span className="text-sm text-muted">{daysStr}</span>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+            <span className="text-foreground">Controle de horário ativo</span>
+          </label>
+
+          {enabled && (
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted">Horário:</label>
+                <select className="industrial-input" value={startHour} onChange={(e) => setStartHour(Number(e.target.value))}>
+                  {HOURS.slice(0, 24).map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+                </select>
+                <span className="text-xs text-muted">até</span>
+                <select className="industrial-input" value={endHour} onChange={(e) => setEndHour(Number(e.target.value))}>
+                  {HOURS.slice(1).map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-xs text-muted">Dias:</label>
+                <div className="flex flex-wrap gap-2">
+                  {DAY_LABELS.map((label, i) => (
+                    <button key={i} type="button"
+                      onClick={() => setDays((p) => p.includes(i) ? p.filter((x) => x !== i) : [...p, i].sort())}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${days.includes(i) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted hover:border-primary/40"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {startHour >= endHour && <p className="text-xs text-red-500">Hora final deve ser maior que a inicial.</p>}
+
+          <div className="flex gap-2">
+            <button type="button" className="btn-primary" onClick={() => void handleSave()} disabled={saving || (enabled && (startHour >= endHour || days.length === 0))}>
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => {
+              setEditing(false);
+              setDays(schedule.scheduleDays);
+              setStartHour(schedule.scheduleStart);
+              setEndHour(schedule.scheduleEnd);
+              setEnabled(schedule.scheduleEnabled);
+            }}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AccessControlPanel({
   members,
   canEdit,
@@ -389,7 +524,10 @@ export function AccessControlPanel({
       {tab === "sessoes" ? (
         <SessionsTab teamId={teamId} />
       ) : (
-        <RulesTab members={members} canEdit={canEdit} teamId={teamId} />
+        <div className="space-y-6">
+          <TeamScheduleSection canEdit={canEdit} />
+          <RulesTab members={members} canEdit={canEdit} teamId={teamId} />
+        </div>
       )}
     </div>
   );

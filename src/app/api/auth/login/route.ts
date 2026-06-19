@@ -34,25 +34,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check access time rule (skip for ADMIN and ADV)
-    if (user.role !== "ADMIN" && user.role !== "ADV") {
-      const rule = await prisma.userAccessRule.findUnique({
-        where: { userId: user.id },
-      });
-      if (rule && rule.enabled) {
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0=Sun..6=Sat
-        const hour = now.getHours();
-        const allowedDays: number[] = JSON.parse(rule.allowedDays);
-        if (!allowedDays.includes(dayOfWeek) || hour < rule.startHour || hour >= rule.endHour) {
-          const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    // Check access time rule (skip for ADMIN, ADV, GERENTE)
+    if (user.role === "COLABORADOR") {
+      const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const hour = now.getHours();
+
+      const individual = await prisma.userAccessRule.findUnique({ where: { userId: user.id } });
+
+      if (individual && individual.enabled) {
+        const allowedDays: number[] = JSON.parse(individual.allowedDays);
+        if (!allowedDays.includes(dayOfWeek) || hour < individual.startHour || hour >= individual.endHour) {
           const daysStr = allowedDays.map((d) => dayNames[d]).join(", ");
           return NextResponse.json(
-            {
-              error: `Acesso bloqueado fora do horário permitido. Permitido: ${daysStr}, ${rule.startHour}h–${rule.endHour}h.`,
-            },
+            { error: `Acesso bloqueado. Seu horário permitido: ${daysStr}, ${individual.startHour}h–${individual.endHour}h.` },
             { status: 403 }
           );
+        }
+      } else if (user.teamId) {
+        const team = await prisma.team.findUnique({
+          where: { id: user.teamId },
+          select: { scheduleEnabled: true, scheduleDays: true, scheduleStart: true, scheduleEnd: true },
+        });
+        if (team && team.scheduleEnabled) {
+          const allowedDays: number[] = JSON.parse(team.scheduleDays);
+          if (!allowedDays.includes(dayOfWeek) || hour < team.scheduleStart || hour >= team.scheduleEnd) {
+            const daysStr = allowedDays.map((d) => dayNames[d]).join(", ");
+            return NextResponse.json(
+              { error: `Acesso bloqueado. Horário da equipe: ${daysStr}, ${team.scheduleStart}h–${team.scheduleEnd}h.` },
+              { status: 403 }
+            );
+          }
         }
       }
     }

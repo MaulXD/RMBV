@@ -11,6 +11,7 @@ import { useSession, primeSessionCache } from "./SessionProvider";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "./GlobalSearchPalette";
 import { NotificationBell } from "./NotificationBell";
 import { OnboardingTour } from "./OnboardingTour";
+import { AccessBlockedScreen } from "./AccessBlockedScreen";
 
 type NavItem = { href: string; label: string; icon: IconName; color: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -27,6 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [scheduleBlock, setScheduleBlock] = useState<{ startHour: number; endHour: number; allowedDays: number[] } | null>(null);
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   useGlobalSearchShortcut(openSearch);
@@ -62,6 +64,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       clearInterval(interval);
     };
   }, [user, pathname]);
+
+  // Schedule enforcement for COLABORADOR
+  useEffect(() => {
+    if (!user || user.role !== "COLABORADOR") return;
+
+    let cancelled = false;
+
+    const checkSchedule = () => {
+      fetch("/api/equipe/schedule-check")
+        .then((r) => r.json())
+        .then((d: { allowed: boolean; startHour?: number; endHour?: number; allowedDays?: number[] }) => {
+          if (cancelled) return;
+          if (!d.allowed && d.startHour !== undefined && d.endHour !== undefined) {
+            setScheduleBlock({ startHour: d.startHour, endHour: d.endHour, allowedDays: d.allowedDays ?? [1,2,3,4,5] });
+          } else {
+            setScheduleBlock(null);
+          }
+        })
+        .catch(() => {});
+    };
+
+    checkSchedule();
+    const interval = setInterval(checkSchedule, 60_000);
+    const onFocus = () => checkSchedule();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user]);
 
   const navGroups: NavGroup[] = [
     {
@@ -282,6 +316,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       {user && <GlobalSearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />}
+      {scheduleBlock && (
+        <AccessBlockedScreen
+          startHour={scheduleBlock.startHour}
+          endHour={scheduleBlock.endHour}
+          allowedDays={scheduleBlock.allowedDays}
+        />
+      )}
     </TeseFilterProvider>
   );
 }
