@@ -32,7 +32,7 @@ export async function GET(
         originalName: doc.originalName,
         mimeType: doc.mimeType,
         size: doc.size,
-        tags: JSON.parse(doc.tags ?? "[]") as string[],
+        tags: (() => { try { return JSON.parse(doc.tags ?? "[]") as string[]; } catch { return []; } })(),
         createdAt: doc.createdAt.toISOString(),
         uploadedBy: doc.uploadedBy,
         downloadUrl: `/api/clients/${clientId}/documents/${doc.id}`,
@@ -59,7 +59,10 @@ export async function POST(
     }
 
     const tagsRaw = formData.get("tags");
-    const tags = tagsRaw ? JSON.stringify(JSON.parse(tagsRaw as string)) : "[]";
+    let tags = "[]";
+    if (tagsRaw) {
+      try { tags = JSON.stringify(JSON.parse(tagsRaw as string)); } catch { tags = "[]"; }
+    }
 
     try {
       const { storedName } = await saveClientDocument(clientId, file);

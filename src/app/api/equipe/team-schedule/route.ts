@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     if (!team) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({
       scheduleEnabled: team.scheduleEnabled,
-      scheduleDays: JSON.parse(team.scheduleDays) as number[],
+      scheduleDays: (() => { try { return JSON.parse(team.scheduleDays) as number[]; } catch { return [1,2,3,4,5]; } })(),
       scheduleStart: team.scheduleStart,
       scheduleEnd: team.scheduleEnd,
     });
@@ -60,7 +60,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({
       scheduleEnabled: updated.scheduleEnabled,
-      scheduleDays: JSON.parse(updated.scheduleDays) as number[],
+      scheduleDays: (() => { try { return JSON.parse(updated.scheduleDays) as number[]; } catch { return [1,2,3,4,5]; } })(),
       scheduleStart: updated.scheduleStart,
       scheduleEnd: updated.scheduleEnd,
     });

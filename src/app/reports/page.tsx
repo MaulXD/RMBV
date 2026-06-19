@@ -171,15 +171,15 @@ function ReportsContent() {
 
   return (
     <>
-      <div className="mb-4">
-        <h1 className="font-display text-xl font-semibold tracking-wide">Relatórios</h1>
-        <p className="mt-1 text-sm text-muted">
+      <div className="mb-5">
+        <h1 className="page-title">Relatórios</h1>
+        <p className="page-subtitle">
           {activeTese ? `Filtrado pela tese: ${activeTese.name}` : "Resumo geral da equipe"}
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="-mb-px mb-6 flex gap-0 border-b border-border">
+      <div className="app-tabs">
         {([
           { key: "geral", label: "Visão geral" },
           { key: "mensal", label: "Relatório mensal" },
@@ -190,11 +190,7 @@ function ReportsContent() {
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === t.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted hover:border-border hover:text-foreground"
-            }`}
+            className={`app-tab ${tab === t.key ? "app-tab-active" : ""}`}
           >
             {t.label}
           </button>
@@ -283,13 +279,7 @@ function ReportsContent() {
 
       {stats && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <div
-            className={`panel-solid flex flex-col gap-2 p-5 ${
-              METRIC_STYLES.total.accentBorder
-                ? "border-primary/30 bg-gradient-to-br from-surface-elevated to-primary/5"
-                : ""
-            }`}
-          >
+          <div className="panel-solid stat-card-base stat-card-primary">
             <span className="text-[11px] font-semibold tracking-widest text-muted uppercase">
               Total
             </span>
