@@ -127,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const sidebarContent = (
-    <aside className="flex h-full flex-col border-r border-border bg-surface-elevated">
+    <aside className="sidebar-glass flex h-full flex-col">
       {/* Brand */}
       <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
         <Link
@@ -256,7 +256,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TeseFilterProvider>
-      <div className="flex bg-surface">
+      <div className="relative flex min-h-screen bg-surface">
+
+        {/* Dark mode atmosphere — orbs + grid (same DNA as login page) */}
+        <div className="pointer-events-none fixed inset-0 -z-10 hidden dark:block">
+          <div className="absolute -top-40 left-1/3 h-[600px] w-[600px] rounded-full bg-indigo-700/20 blur-[160px]" />
+          <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-violet-700/15 blur-[140px]" />
+          <div className="absolute left-0 top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-blue-800/10 blur-[120px]" />
+          <div
+            className="absolute inset-0 opacity-[0.025]"
+            style={{
+              backgroundImage: "linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)",
+              backgroundSize: "60px 60px",
+            }}
+          />
+        </div>
         {/* Desktop sidebar — sticky, full viewport height */}
         <div className="sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto lg:flex lg:flex-col">
           {sidebarContent}
@@ -278,7 +292,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Content column */}
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           {/* Mobile top bar */}
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-elevated/95 px-4 backdrop-blur-md lg:hidden">
+          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-elevated/95 px-4 backdrop-blur-md dark:border-white/[0.07] dark:bg-[rgb(8_12_24_/_0.85)] lg:hidden">
             <button
               type="button"
               className="btn-ghost px-2 py-1.5"
