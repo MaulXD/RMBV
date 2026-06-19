@@ -98,6 +98,10 @@ model Team {
   documentTemplates DocumentTemplate[]
   chamadoSlaConfigs ChamadoSlaConfig[]
   accessRules       UserAccessRule[]
+  scheduleEnabled   Boolean  @default(true)
+  scheduleDays      String   @default("[1,2,3,4,5]")
+  scheduleStart     Int      @default(8)
+  scheduleEnd       Int      @default(19)
 }
 
 model TeseChecklistItem {
