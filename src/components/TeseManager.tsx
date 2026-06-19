@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTeseFilter } from "./TeseFilterProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ToastProvider";
+import { Icon } from "./ui/Icon";
 
 const PRESET_COLORS = [
   "#6366f1", "#8b5cf6", "#a855f7", "#ec4899",
@@ -27,6 +28,12 @@ export function TeseManager({
   const [teamId, setTeamId] = useState(teams?.[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Merge state
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSourceId, setMergeSourceId] = useState("");
+  const [mergeTargetId, setMergeTargetId] = useState("");
+  const [merging, setMerging] = useState(false);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -76,12 +83,93 @@ export function TeseManager({
     }
   }
 
+  async function handleMerge(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mergeSourceId || !mergeTargetId || mergeSourceId === mergeTargetId) {
+      toast("Selecione origem e destino diferentes.", "error");
+      return;
+    }
+    const source = teses.find((t) => t.id === mergeSourceId);
+    const target = teses.find((t) => t.id === mergeTargetId);
+    const ok = await confirm({
+      message: `Fundir "${source?.name}" → "${target?.name}"? Todos os clientes da origem serão movidos para o destino e a tese origem será excluída.`,
+      danger: true,
+    });
+    if (!ok) return;
+    setMerging(true);
+    try {
+      const res = await fetch("/api/admin/teses/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceTeseId: mergeSourceId, targetTeseId: mergeTargetId, deleteSource: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro ao fundir teses");
+      toast(`${data.merged} cliente(s) movidos para "${target?.name}". Tese "${source?.name}" removida.`, "success");
+      setMergeSourceId("");
+      setMergeTargetId("");
+      setMergeMode(false);
+      await refreshTeses();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Erro ao fundir teses.", "error");
+    } finally {
+      setMerging(false);
+    }
+  }
+
   return (
     <section id="teses" className="industrial-panel max-w-xl space-y-4 p-6">
-      <h2 className="text-sm font-medium">Categorias de tese</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">Categorias de tese</h2>
+        <button
+          type="button"
+          className={`btn-ghost text-xs ${mergeMode ? "text-primary" : ""}`}
+          onClick={() => setMergeMode((v) => !v)}
+        >
+          <Icon name="layers" className="h-3.5 w-3.5" />
+          {mergeMode ? "Cancelar fusão" : "Fundir teses"}
+        </button>
+      </div>
       <p className="text-xs text-muted">
         Use os botões no topo do sistema para filtrar e trabalhar só na tese selecionada.
       </p>
+
+      {/* Merge form */}
+      {mergeMode && (
+        <form onSubmit={handleMerge} className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+            Todos os clientes da tese origem serão movidos para o destino. A origem será excluída.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Origem (será excluída)</label>
+              <select className="industrial-input w-full" value={mergeSourceId} onChange={(e) => setMergeSourceId(e.target.value)}>
+                <option value="">Selecionar</option>
+                {teses.filter((t) => t.id !== mergeTargetId).map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t._count?.clients ?? 0})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Destino (ficará ativa)</label>
+              <select className="industrial-input w-full" value={mergeTargetId} onChange={(e) => setMergeTargetId(e.target.value)}>
+                <option value="">Selecionar</option>
+                {teses.filter((t) => t.id !== mergeSourceId).map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t._count?.clients ?? 0})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="btn-danger text-sm"
+            disabled={merging || !mergeSourceId || !mergeTargetId}
+          >
+            <Icon name="layers" className="h-4 w-4" />
+            {merging ? "Fundindo..." : "Confirmar fusão"}
+          </button>
+        </form>
+      )}
 
       <ul className="space-y-2">
         {teses.map((t) => (
