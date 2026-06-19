@@ -74,7 +74,14 @@ export async function buildClientWhere(
   };
 }
 
+// Lightweight include for list views — no heavy user JOINs
 export const clientListInclude = {
+  categories: { include: { category: { select: { id: true, name: true } } } },
+  teseRef: { select: { id: true, name: true, color: true } },
+} as const;
+
+// Full include for profile/finalization routes that need user relations
+export const clientDetailInclude = {
   categories: { include: { category: { select: { id: true, name: true } } } },
   teseRef: { select: { id: true, name: true, color: true } },
   finalizationRequestedBy: { select: { id: true, name: true, email: true } },
