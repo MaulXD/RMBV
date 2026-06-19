@@ -60,6 +60,10 @@
   select {
     @apply cursor-pointer;
   }
+
+  .dark select {
+    color-scheme: dark;
+  }
 }
 
 @layer utilities {
