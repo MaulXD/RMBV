@@ -113,6 +113,13 @@ export function KanbanTaskModal({
     };
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   function searchClients(query: string) {
     setClientQuery(query);
     setForm((prev) => ({ ...prev, clientId: "", clientLabel: "" }));
