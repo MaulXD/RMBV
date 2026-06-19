@@ -7,7 +7,7 @@ import {
 } from "@/lib/permissions";
 import { getClientIfAllowed } from "@/lib/client-access";
 import { formatClientForApi } from "@/lib/client-fields";
-import { clientListInclude } from "@/lib/client-query";
+import { clientDetailInclude as clientListInclude } from "@/lib/client-query";
 import { syncClientTasksOnFinalizationRequest } from "@/lib/task-finalization-sync";
 import { runAutomations } from "@/lib/automations";
 export const runtime = "nodejs";

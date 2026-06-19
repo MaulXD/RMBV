@@ -132,28 +132,6 @@ async function main() {
     });
   }
 
-  const defaultTeses = [
-    { name: "Tese Principal", color: "#45454d", sortOrder: 0 },
-    { name: "Tese Secundária", color: "#6b7585", sortOrder: 1 },
-    { name: "Tese Urgente", color: "#b45309", sortOrder: 2 },
-  ];
-
-  for (const t of defaultTeses) {
-    const existing = await prisma.tese.findFirst({
-      where: { name: t.name, teamId: defaultTeam.id },
-    });
-    if (existing) {
-      await prisma.tese.update({
-        where: { id: existing.id },
-        data: { color: t.color, sortOrder: t.sortOrder, teamId: defaultTeam.id },
-      });
-    } else {
-      await prisma.tese.create({
-        data: { ...t, teamId: defaultTeam.id },
-      });
-    }
-  }
-
   const clients = await prisma.client.findMany({
     where: { tese: { not: null }, teseId: null },
     select: { id: true, tese: true },

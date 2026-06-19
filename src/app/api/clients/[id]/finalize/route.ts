@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { getClientIfAllowed } from "@/lib/client-access";
 import { formatClientForApi } from "@/lib/client-fields";
-import { clientListInclude } from "@/lib/client-query";
+import { clientDetailInclude as clientListInclude } from "@/lib/client-query";
 import { canFinalizeClients } from "@/lib/roles";
 import { syncClientTasksOnFinalizationComplete } from "@/lib/task-finalization-sync";
 export const runtime = "nodejs";

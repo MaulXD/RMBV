@@ -5,7 +5,7 @@ import {
   assertCategoryPermission,
   PermissionDeniedError,
 } from "@/lib/permissions";
-import { clientListInclude } from "@/lib/client-query";
+import { clientDetailInclude as clientListInclude } from "@/lib/client-query";
 import { getClientIfAllowed } from "@/lib/client-access";
 import { resolveTeseForClient } from "@/lib/tese-sync";
 import { clientUpdateSchema } from "@/lib/client-schema";

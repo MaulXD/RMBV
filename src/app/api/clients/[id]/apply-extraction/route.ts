@@ -7,7 +7,7 @@ import {
   assertCategoryPermission,
   PermissionDeniedError,
 } from "@/lib/permissions";
-import { clientListInclude } from "@/lib/client-query";
+import { clientDetailInclude as clientListInclude } from "@/lib/client-query";
 import { formatClientForApi } from "@/lib/client-fields";
 import { clientUpdateSchema } from "@/lib/client-schema";
 import { isPhoneFieldKey } from "@/lib/client-history";
