@@ -13,7 +13,7 @@ function isWithinSchedule(days: number[], startHour: number, endHour: number): b
 
 export async function GET() {
   return withAuth(async (user) => {
-    if (user.role !== "COLABORADOR") {
+    if (user.role !== "COLABORADOR" && user.role !== "PESQUISADOR") {
       return NextResponse.json({ allowed: true });
     }
 

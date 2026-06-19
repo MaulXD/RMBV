@@ -19,7 +19,7 @@ const createMemberSchema = z.object({
   name: z.string().min(2),
   email: loginIdSchema,
   password: z.string().min(6),
-  role: z.enum(["GERENTE", "COLABORADOR"]),
+  role: z.enum(["GERENTE", "COLABORADOR", "PESQUISADOR"]),
 });
 
 export async function GET() {

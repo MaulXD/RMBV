@@ -14,7 +14,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "ADV" | "GERENTE" | "COLABORADOR";
+  role: "ADMIN" | "ADV" | "GERENTE" | "COLABORADOR" | "PESQUISADOR";
   teamId: string | null;
   teamName: string | null;
 };
