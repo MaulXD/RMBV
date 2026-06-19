@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SessionProvider } from "@/components/SessionProvider";
+import { ToastProvider } from "@/components/ToastProvider";
+import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialog";
 import "./globals.css";
 
 const inter = Inter({
@@ -53,7 +55,13 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${playfair.variable} font-sans`}>
         <ThemeProvider>
-          <SessionProvider>{children}</SessionProvider>
+          <SessionProvider>
+            <ToastProvider>
+              <ConfirmDialogProvider>
+                {children}
+              </ConfirmDialogProvider>
+            </ToastProvider>
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

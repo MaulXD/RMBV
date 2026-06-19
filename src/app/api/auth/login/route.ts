@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authenticateUser, createSessionToken, setSessionCookie } from "@/lib/auth";
 import { assertAuthEnv, getAuthErrorMessage } from "@/lib/auth-errors";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,15 @@ function getClientIp(request: Request): string {
 export async function POST(request: Request) {
   try {
     assertAuthEnv();
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(`login:${ip}`);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: `Muitas tentativas. Tente novamente em ${Math.ceil(rl.retryAfterSecs / 60)} minuto(s).` },
+        { status: 429 }
+      );
+    }
 
     const body = await request.json();
     const login = String(body.login ?? body.email ?? "").trim();
@@ -33,6 +43,9 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    // Reset rate limit on success
+    resetRateLimit(`login:${ip}`);
 
     // Check access time rule (skip for ADMIN, ADV, GERENTE)
     if (user.role === "COLABORADOR") {

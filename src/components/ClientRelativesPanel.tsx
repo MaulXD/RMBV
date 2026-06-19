@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { CopyButton } from "./CopyButton";
 import { WhatsAppButton } from "./WhatsAppButton";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ToastProvider";
 
 const RELATIONSHIP_OPTIONS = [
   "Mãe", "Pai", "Filho", "Filha", "Irmão", "Irmã",
@@ -186,6 +188,8 @@ function RelativeCard({
 }
 
 export function ClientRelativesPanel({ clientId }: { clientId: string }) {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [relatives, setRelatives] = useState<Relative[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -218,8 +222,13 @@ export function ClientRelativesPanel({ clientId }: { clientId: string }) {
       });
       if (res.ok) {
         setAdding(false);
+        toast("Parente adicionado.", "success");
         await load();
+      } else {
+        toast("Erro ao adicionar parente.", "error");
       }
+    } catch {
+      toast("Erro ao adicionar parente.", "error");
     } finally {
       setSaving(false);
     }
@@ -235,17 +244,28 @@ export function ClientRelativesPanel({ clientId }: { clientId: string }) {
       });
       if (res.ok) {
         setEditingId(null);
+        toast("Parente atualizado.", "success");
         await load();
+      } else {
+        toast("Erro ao atualizar parente.", "error");
       }
+    } catch {
+      toast("Erro ao atualizar parente.", "error");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Remover este parente?")) return;
-    await fetch(`/api/clients/${clientId}/relatives/${id}`, { method: "DELETE" });
-    await load();
+    const ok = await confirm({ message: "Remover este parente?", danger: true });
+    if (!ok) return;
+    try {
+      await fetch(`/api/clients/${clientId}/relatives/${id}`, { method: "DELETE" });
+      toast("Parente removido.", "success");
+      await load();
+    } catch {
+      toast("Erro ao remover parente.", "error");
+    }
   }
 
   async function handleIdentify() {
