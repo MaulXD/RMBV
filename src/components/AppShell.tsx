@@ -23,7 +23,7 @@ function userInitial(name: string) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
-  const { user } = useSession();
+  const { user, loading: sessionLoading } = useSession();
   const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/chamados", label: "Chamados", icon: "ticket", color: "text-amber-500" },
       ],
     },
-    {
+    ...(!sessionLoading ? [{
       label: "Sistema",
       items: [
         ...(user?.role === "ADV" || user?.role === "GERENTE" || user?.role === "ADMIN"
@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ? { href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }
           : { href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" },
       ],
-    },
+    }] : []),
   ];
 
   const sidebarContent = (
