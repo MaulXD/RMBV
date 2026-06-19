@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { KanbanAlertsBanner } from "@/components/KanbanAlertsBanner";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
@@ -35,10 +36,11 @@ export default function KanbanPage() {
 
 function KanbanContent() {
   const { activeTeseId, activeTese } = useTeseFilter();
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user } = useSession();
+  const userRole = user?.role ?? null;
+  const isAdmin = user?.role === "ADMIN";
   const [teams, setTeams] = useState<Team[]>([]);
-  const [teamId, setTeamId] = useState<string>("");
+  const [teamId, setTeamId] = useState<string>(() => (!isAdmin ? (user?.teamId ?? "") : ""));
   const [members, setMembers] = useState<Member[]>([]);
   const [columns, setColumns] = useState<KanbanColumnItem[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState("");
@@ -64,17 +66,8 @@ function KanbanContent() {
     userRole === "ADMIN" || userRole === "ADV" || userRole === "GERENTE";
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        setUserRole(d.user?.role ?? null);
-        const admin = d.user?.role === "ADMIN";
-        setIsAdmin(admin);
-        if (!admin && d.user?.teamId) {
-          setTeamId(d.user.teamId);
-        }
-      });
-  }, []);
+    if (!isAdmin && user?.teamId && !teamId) setTeamId(user.teamId);
+  }, [user, isAdmin, teamId]);
 
   useEffect(() => {
     if (!isAdmin) return;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { ClientsTable } from "@/components/ClientsTable";
 import { ClientBulkActionsBar } from "@/components/ClientBulkActionsBar";
 import { ClientsListPagination } from "@/components/ClientsListPagination";
@@ -34,7 +35,12 @@ type ClientRow = {
 
 function DashboardContent() {
   const { activeTeseId, activeTese } = useTeseFilter();
-  const [teamLabel, setTeamLabel] = useState<string | null>(null);
+  const { user } = useSession();
+  const isAdmin = user?.role === "ADMIN";
+  const [teamLabel, setTeamLabel] = useState<string | null>(() => {
+    if (user?.role === "ADMIN") return "Todas as equipes";
+    return user?.teamName ?? null;
+  });
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
@@ -45,9 +51,13 @@ function DashboardContent() {
   const [pageSize, setPageSize] = useState<ClientPageSize>(DEFAULT_CLIENT_PAGE_SIZE);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (user?.role === "ADMIN") setTeamLabel("Todas as equipes");
+    else if (user?.teamName) setTeamLabel(user.teamName);
+  }, [user]);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -76,16 +86,6 @@ function DashboardContent() {
   useEffect(() => {
     loadClients();
   }, [loadClients]);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        setIsAdmin(d.user?.role === "ADMIN");
-        if (d.user?.role === "ADMIN") setTeamLabel("Todas as equipes");
-        else if (d.user?.teamName) setTeamLabel(d.user.teamName);
-      });
-  }, []);
 
   useEffect(() => {
     setSelectedIds(new Set());

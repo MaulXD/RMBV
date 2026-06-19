@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { PdfOrganizerTool } from "@/components/PdfOrganizerTool";
 import { TeseChecklistTool } from "@/components/ChecklistTools";
 import { CpfCnpjValidatorTool } from "@/components/CpfCnpjValidatorTool";
@@ -82,27 +83,19 @@ const TOOLS: {
 
 export default function FerramentasPage() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [teamId, setTeamId] = useState<string | null>(null);
-  const [checking, setChecking] = useState(true);
+  const { user, loading } = useSession();
+  const role = user?.role ?? null;
+  const teamId = user?.teamId ?? null;
   const [activeTool, setActiveTool] = useState<ToolId | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        const userRole = d.user?.role ?? null;
-        setRole(userRole);
-        setTeamId(d.user?.teamId ?? null);
-        if (!userRole) {
-          router.replace("/login");
-          return;
-        }
-      })
-      .finally(() => setChecking(false));
-  }, [router]);
+    if (loading) return;
+    if (!role) {
+      router.replace("/login");
+    }
+  }, [loading, role, router]);
 
-  if (checking) {
+  if (loading) {
     return (
       <AppShell>
         <p className="text-sm text-muted">Carregando...</p>

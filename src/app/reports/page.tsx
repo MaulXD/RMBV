@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { ReportsGoalsPanel } from "@/components/ReportsGoalsPanel";
 import { ReportsTimelineChart } from "@/components/ReportsTimelineChart";
 import { MonthlyReportPanel } from "@/components/MonthlyReportPanel";
@@ -60,15 +61,16 @@ const METRIC_STYLES: Record<
 
 function ReportsContent() {
   const { activeTeseId, activeTese } = useTeseFilter();
+  const { user } = useSession();
+  const userRole = user?.role ?? null;
+  const userTeamId = user?.teamId ?? null;
   const [tab, setTab] = useState<Tab>("geral");
   const [stats, setStats] = useState<Stats | null>(null);
   const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [userTeamId, setUserTeamId] = useState<string | null>(null);
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [teses, setTeses] = useState<{ id: string; name: string }[]>([]);
-  const [teamId, setTeamId] = useState("");
+  const [teamId, setTeamId] = useState(() => user?.teamId ?? "");
   const [members, setMembers] = useState<Member[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState("");
 
@@ -77,12 +79,10 @@ function ReportsContent() {
   const effectiveTeamId = teamId;
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        setUserRole(d.user?.role ?? null);
-        if (d.user?.teamId) { setTeamId(d.user.teamId); setUserTeamId(d.user.teamId); }
-      });
+    if (!isAdmin && user?.teamId && !teamId) setTeamId(user.teamId);
+  }, [user, isAdmin, teamId]);
+
+  useEffect(() => {
     fetch("/api/teses")
       .then((r) => r.json())
       .then((d) => setTeses((d.teses ?? []).map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))));

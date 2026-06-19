@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Role, PhoneCheckResult } from "@prisma/client";
 import { AppShell } from "@/components/AppShell";
+import { useSession } from "@/components/SessionProvider";
 import { ClientProfileForm } from "@/components/ClientProfileForm";
 import { ClientProfileView } from "@/components/ClientProfileView";
 import { ClientDocuments } from "@/components/ClientDocuments";
@@ -30,12 +31,13 @@ type Category = { id: string; name: string };
 export default function ClientDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const { user } = useSession();
+  const isAdmin = user?.role === "ADMIN";
+  const userRole = (user?.role ?? null) as Role | null;
   const [client, setClient] = useState<ClientProfileData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userRole, setUserRole] = useState<Role | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [latestPhoneChecks, setLatestPhoneChecks] = useState<
     Partial<Record<string, PhoneCheckResult>>
@@ -68,12 +70,9 @@ export default function ClientDetailPage() {
       loadClient(),
       loadHistoryMeta(),
       fetch("/api/categories").then((r) => r.json()),
-      fetch("/api/auth/me").then((r) => r.json()),
     ])
-      .then(([, , catData, meData]) => {
+      .then(([, , catData]) => {
         setCategories(catData.categories ?? []);
-        setIsAdmin(meData.user?.role === "ADMIN");
-        setUserRole(meData.user?.role ?? null);
       })
       .finally(() => setLoading(false));
   }, [loadClient, loadHistoryMeta]);
