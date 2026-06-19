@@ -2,19 +2,19 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Modo claro: azul céu — fundo #96c5ff */
+/* Modo claro: azul-ardósia suave — tem personalidade, não ofusca */
 @theme {
-  --color-surface: #c2ddff;
-  --color-surface-elevated: #d9ecff;
-  --color-surface-glass: rgb(217 236 255 / 0.92);
-  --color-foreground: #0b1e36;
-  --color-muted: #2e5b8a;
-  --color-border: #6aaae0;
-  --color-primary: #2563eb;
+  --color-surface: #dce3ef;
+  --color-surface-elevated: #edf1f8;
+  --color-surface-glass: rgb(237 241 248 / 0.92);
+  --color-foreground: #1a2035;
+  --color-muted: #56637a;
+  --color-border: #bfc9db;
+  --color-primary: #4f46e5;
   --color-primary-foreground: #ffffff;
-  --color-accent: #1d4ed8;
+  --color-accent: #4338ca;
   --color-success: #059669;
-  --color-danger: #e11d48;
+  --color-danger: #dc2626;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-playfair), ui-serif, Georgia, serif;
@@ -82,7 +82,7 @@
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 70%, transparent);
     outline-offset: 2px;
     border-radius: var(--radius-ui);
   }
@@ -365,8 +365,8 @@
 
   .industrial-input {
     @apply w-full rounded-[var(--radius-ui)] border px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow];
-    border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
-    background: color-mix(in srgb, #ffffff 90%, var(--color-border));
+    border-color: var(--color-border);
+    background: var(--color-surface-elevated);
   }
 
   .dark .industrial-input {
@@ -380,18 +380,29 @@
   }
 
   .industrial-panel .industrial-input {
-    background-color: var(--color-surface);
+    background-color: var(--color-surface-elevated);
   }
 
   .industrial-input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 28%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
   }
 
   .dark .industrial-input:focus {
     border-color: rgb(99 102 241 / 0.60);
     background: rgb(255 255 255 / 0.08);
     box-shadow: 0 0 0 3px rgb(99 102 241 / 0.15);
+  }
+
+  /* Select option dropdown colors */
+  select option {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-foreground);
+  }
+
+  .dark select option {
+    background-color: #0f1428;
+    color: #e2e4f0;
   }
 
   .btn-primary {
@@ -568,6 +579,47 @@
     transition: background 0.13s ease, color 0.13s ease, transform 0.1s ease;
     background: transparent;
     color: var(--color-muted);
+  }
+
+  /* WhatsApp button — verde evidente */
+  .btn-whatsapp {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-[var(--radius-ui)] border px-2.5 py-1.5 text-xs font-medium;
+    transition: background 0.13s ease, border-color 0.13s ease, transform 0.1s ease;
+    background: rgb(37 211 102 / 0.12);
+    border-color: rgb(37 211 102 / 0.35);
+    color: #16a34a;
+  }
+
+  .dark .btn-whatsapp {
+    background: rgb(37 211 102 / 0.10);
+    border-color: rgb(37 211 102 / 0.30);
+    color: #4ade80;
+  }
+
+  .btn-whatsapp:hover {
+    background: rgb(37 211 102 / 0.20);
+    border-color: rgb(37 211 102 / 0.55);
+    transform: translateY(-1px);
+  }
+
+  .btn-whatsapp-compact {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-lg border;
+    transition: background 0.13s ease, border-color 0.13s ease, transform 0.1s ease;
+    background: rgb(37 211 102 / 0.12);
+    border-color: rgb(37 211 102 / 0.35);
+    color: #16a34a;
+  }
+
+  .dark .btn-whatsapp-compact {
+    background: rgb(37 211 102 / 0.10);
+    border-color: rgb(37 211 102 / 0.30);
+    color: #4ade80;
+  }
+
+  .btn-whatsapp-compact:hover {
+    background: rgb(37 211 102 / 0.20);
+    border-color: rgb(37 211 102 / 0.55);
+    transform: scale(1.08);
   }
 
   .btn-icon-bordered:hover:not(:disabled) {
