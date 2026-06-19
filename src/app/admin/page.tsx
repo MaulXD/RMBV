@@ -10,11 +10,12 @@ import { TeamAdminPanel } from "@/components/TeamAdminPanel";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { TeseManager } from "@/components/TeseManager";
+import { AdminClientsPanel } from "@/components/AdminClientsPanel";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
 type Category = { id: string; name: string };
-type Tab = "equipes" | "usuarios" | "teses" | "importar" | "auditoria";
+type Tab = "equipes" | "usuarios" | "teses" | "clientes" | "importar" | "auditoria";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -96,10 +97,11 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "upload" | "clipboardList" }[] = [
+  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "dashboard" | "upload" | "clipboardList" }[] = [
     { id: "equipes", label: "Equipes", icon: "building" },
     { id: "usuarios", label: "Usuários", icon: "users" },
     { id: "teses", label: "Teses", icon: "layers" },
+    { id: "clientes", label: "Clientes", icon: "dashboard" },
     { id: "importar", label: "Importar CSV", icon: "upload" },
     { id: "auditoria", label: "Auditoria", icon: "clipboardList" },
   ];
@@ -161,6 +163,10 @@ export default function AdminPage() {
           </p>
           <TeseManager teams={teams} />
         </div>
+      )}
+
+      {tab === "clientes" && teams.length > 0 && (
+        <AdminClientsPanel teams={teams} />
       )}
 
       {tab === "importar" && (

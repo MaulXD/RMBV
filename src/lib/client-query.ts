@@ -6,6 +6,7 @@ import { teamScopeWhere } from "./team-access";
 export type ClientListFilters = {
   status?: string | null;
   teseId?: string | null;
+  noTese?: boolean;
   workflowStatus?: string | null;
   teamId?: string | null;
   search?: string | null;
@@ -61,7 +62,7 @@ export async function buildClientWhere(
             | "TENTE_NOVAMENTE",
         }
       : {}),
-    ...(filters.teseId ? { teseId: filters.teseId } : {}),
+    ...(filters.noTese ? { teseId: null } : filters.teseId ? { teseId: filters.teseId } : {}),
     ...(filters.workflowStatus
       ? {
           workflowStatus: filters.workflowStatus as
