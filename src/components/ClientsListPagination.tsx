@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  CLIENT_PAGE_SIZE_OPTIONS,
-  type ClientPageSize,
-} from "@/lib/client-pagination";
+import { useEffect, useState } from "react";
+import { CLIENT_PAGE_SIZE_OPTIONS } from "@/lib/client-pagination";
 
 export function ClientsListPagination({
   page,
@@ -15,26 +13,39 @@ export function ClientsListPagination({
   disabled,
 }: {
   page: number;
-  pageSize: ClientPageSize;
+  pageSize: number;
   total: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  onPageSizeChange: (pageSize: ClientPageSize) => void;
+  onPageSizeChange: (pageSize: number) => void;
   disabled?: boolean;
 }) {
+  const [inputValue, setInputValue] = useState(String(pageSize));
+
+  useEffect(() => {
+    setInputValue(String(pageSize));
+  }, [pageSize]);
+
   if (total === 0) return null;
 
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   const pages = buildPageList(page, totalPages);
 
+  function applyCustomSize(raw: string) {
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n) && n >= 1) {
+      onPageSizeChange(n);
+    } else {
+      setInputValue(String(pageSize));
+    }
+  }
+
   return (
     <div className="mt-2 flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-muted">
         Mostrando{" "}
-        <span className="font-medium text-foreground">
-          {from}–{to}
-        </span>{" "}
+        <span className="font-medium text-foreground">{from}–{to}</span>{" "}
         de <span className="font-medium text-foreground">{total}</span> cliente(s)
       </p>
 
@@ -50,9 +61,7 @@ export function ClientsListPagination({
 
         {pages.map((item, index) =>
           item === "…" ? (
-            <span key={`gap-${index}`} className="px-1 text-sm text-muted">
-              …
-            </span>
+            <span key={`gap-${index}`} className="px-1 text-sm text-muted">…</span>
           ) : (
             <button
               key={item}
@@ -81,21 +90,41 @@ export function ClientsListPagination({
         </button>
       </nav>
 
-      <label className="flex items-center justify-end gap-2 text-sm text-muted">
-        Por página
-        <select
-          className="industrial-input w-auto min-w-[72px] py-1"
-          value={pageSize}
+      <div className="flex items-center justify-end gap-2 text-sm text-muted">
+        <span>Por página</span>
+        <input
+          type="number"
+          min={1}
+          max={total}
+          className="industrial-input w-[72px] py-1 text-center"
+          value={inputValue}
           disabled={disabled}
-          onChange={(e) => onPageSizeChange(Number(e.target.value) as ClientPageSize)}
+          onChange={(e) => setInputValue(e.target.value)}
+          onBlur={(e) => applyCustomSize(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") applyCustomSize((e.target as HTMLInputElement).value);
+          }}
+        />
+        <span className="text-muted/50">ou</span>
+        <button
+          type="button"
+          className="btn-ghost py-1 text-xs"
+          disabled={disabled || pageSize >= total}
+          onClick={() => onPageSizeChange(total)}
         >
-          {CLIENT_PAGE_SIZE_OPTIONS.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-      </label>
+          Ver todos
+        </button>
+        {!CLIENT_PAGE_SIZE_OPTIONS.includes(pageSize as typeof CLIENT_PAGE_SIZE_OPTIONS[number]) && pageSize < total && (
+          <button
+            type="button"
+            className="btn-ghost py-1 text-xs"
+            disabled={disabled}
+            onClick={() => onPageSizeChange(30)}
+          >
+            Resetar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
