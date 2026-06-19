@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "./ThemeProvider";
 import { TeseFilterProvider } from "./TeseFilterProvider";
-import { TeseFilterBar } from "./TeseFilterBar";
 import { Icon, type IconName } from "./ui/Icon";
 import { useSession, primeSessionCache } from "./SessionProvider";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "./GlobalSearchPalette";
@@ -33,10 +32,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const openSearch = useCallback(() => setSearchOpen(true), []);
   useGlobalSearchShortcut(openSearch);
 
-  const showTeseControls =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/reports") ||
-    pathname.startsWith("/kanban");
 
   useEffect(() => {
     if (!user) {
@@ -170,13 +165,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="flex-1 text-left">Buscar...</span>
             <kbd className="text-[10px] opacity-40">⌘K</kbd>
           </button>
-        </div>
-      )}
-
-      {/* Tese filter — integrado na sidebar */}
-      {showTeseControls && (
-        <div className="px-0 pt-3">
-          <TeseFilterBar variant="sidebar" showPdfButton />
         </div>
       )}
 

@@ -159,7 +159,7 @@ export default function AdminPage() {
             para depois acessar as teses da equipe correspondente, ou use o componente abaixo para
             gerenciar as teses da sua sessão ativa.
           </p>
-          <TeseManager />
+          <TeseManager teams={teams} />
         </div>
       )}
 

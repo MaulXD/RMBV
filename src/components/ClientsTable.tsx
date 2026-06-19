@@ -17,7 +17,6 @@ type ClientRow = {
   primaryPhone: string | null;
   hasResearch: boolean;
   hasContacts: boolean;
-  categories: { id: string; name: string }[];
 };
 
 function ResearchBadge({ hasResearch, hasContacts }: { hasResearch: boolean; hasContacts: boolean }) {
@@ -174,9 +173,6 @@ export function ClientsTable({
               Finalização
             </th>
             <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Categorias
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
               Telefone
             </th>
             <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">
@@ -221,18 +217,6 @@ export function ClientsTable({
                 </td>
                 <td className="px-4 py-2">
                   <WorkflowBadge status={client.workflowStatus} />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex flex-wrap gap-1">
-                    {client.categories.map((cat) => (
-                      <span
-                        key={cat.id}
-                        className="rounded-[var(--radius-ui)] border border-border px-2 py-0.5 text-xs text-muted"
-                      >
-                        {cat.name}
-                      </span>
-                    ))}
-                  </div>
                 </td>
                 <td className="px-4 py-2 text-sm text-muted">{client.primaryPhone ?? "—"}</td>
                 <td className="px-4 py-2 text-center">
