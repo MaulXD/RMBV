@@ -6,10 +6,11 @@ import { ReportsGoalsPanel } from "@/components/ReportsGoalsPanel";
 import { ReportsTimelineChart } from "@/components/ReportsTimelineChart";
 import { MonthlyReportPanel } from "@/components/MonthlyReportPanel";
 import { ResearchReportPanel } from "@/components/ResearchReportPanel";
+import { CollaboratorsReportPanel } from "@/components/CollaboratorsReportPanel";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
-type Tab = "geral" | "mensal" | "pesquisa";
+type Tab = "geral" | "mensal" | "pesquisa" | "colaboradores";
 
 type Stats = {
   total: number;
@@ -183,6 +184,7 @@ function ReportsContent() {
           { key: "geral", label: "Visão geral" },
           { key: "mensal", label: "Relatório mensal" },
           { key: "pesquisa", label: "Pesquisa" },
+          { key: "colaboradores", label: "Colaboradores" },
         ] as { key: Tab; label: string }[]).map((t) => (
           <button
             key={t.key}
@@ -210,6 +212,14 @@ function ReportsContent() {
 
       {tab === "pesquisa" && (
         <ResearchReportPanel
+          teams={teams}
+          userRole={userRole ?? "COLABORADOR"}
+          userTeamId={userTeamId}
+        />
+      )}
+
+      {tab === "colaboradores" && (
+        <CollaboratorsReportPanel
           teams={teams}
           userRole={userRole ?? "COLABORADOR"}
           userTeamId={userTeamId}
