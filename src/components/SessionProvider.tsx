@@ -27,19 +27,43 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-/** Evita piscar a navbar ao trocar de rota (AppShell remonta por página). */
+const STORAGE_KEY = "gestao_user_v1";
+
+function readStorage(): SessionUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as SessionUser | null;
+  } catch { return null; }
+}
+
+function writeStorage(u: SessionUser | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+}
+
+/** In-memory cache: persists across soft navigations within the same tab. */
 let sessionCache: SessionUser | null | undefined;
 
-/** Pré-popula o cache após login para evitar flash na navegação. */
+/** Pré-popula o cache após login e persiste no localStorage. */
 export function primeSessionCache(user: SessionUser | null) {
   sessionCache = user;
+  writeStorage(user);
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(() =>
-    sessionCache === undefined ? null : sessionCache
-  );
-  const [loading, setLoading] = useState(sessionCache === undefined);
+  const [user, setUser] = useState<SessionUser | null>(() => {
+    if (sessionCache !== undefined) return sessionCache;
+    const stored = readStorage();
+    if (stored) sessionCache = stored;
+    return stored;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (sessionCache !== undefined) return false;
+    return !readStorage();
+  });
 
   const refresh = useCallback(async () => {
     try {
@@ -47,9 +71,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       const next = (data.user ?? null) as SessionUser | null;
       sessionCache = next;
+      writeStorage(next);
       setUser(next);
     } catch {
       sessionCache = null;
+      writeStorage(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -57,11 +83,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (sessionCache === undefined) {
-      void refresh();
-    } else {
-      setLoading(false);
-    }
+    // Always validate against server — localStorage is just for instant first render
+    void refresh();
   }, [refresh]);
 
   const value = useMemo(

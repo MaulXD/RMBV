@@ -7,7 +7,7 @@ import { useTheme } from "./ThemeProvider";
 import { TeseFilterProvider } from "./TeseFilterProvider";
 import { TeseFilterBar } from "./TeseFilterBar";
 import { Icon, type IconName } from "./ui/Icon";
-import { useSession } from "./SessionProvider";
+import { useSession, primeSessionCache } from "./SessionProvider";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "./GlobalSearchPalette";
 import { NotificationBell } from "./NotificationBell";
 import { OnboardingTour } from "./OnboardingTour";
@@ -208,6 +208,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="btn-icon"
               title="Sair"
               onClick={() => {
+                primeSessionCache(null);
                 void fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).finally(
                   () => {
                     window.location.assign("/");
