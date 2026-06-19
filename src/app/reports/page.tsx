@@ -9,6 +9,7 @@ import { MonthlyReportPanel } from "@/components/MonthlyReportPanel";
 import { ResearchReportPanel } from "@/components/ResearchReportPanel";
 import { CollaboratorsReportPanel } from "@/components/CollaboratorsReportPanel";
 import { useTeseFilter } from "@/components/TeseFilterProvider";
+import { TeseFilterBar } from "@/components/TeseFilterBar";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
 
 type Tab = "geral" | "mensal" | "pesquisa" | "colaboradores";
@@ -171,11 +172,12 @@ function ReportsContent() {
 
   return (
     <>
-      <div className="mb-5">
-        <h1 className="page-title">Relatórios</h1>
-        <p className="page-subtitle">
-          {activeTese ? `Filtrado pela tese: ${activeTese.name}` : "Resumo geral da equipe"}
-        </p>
+      <div className="page-header mb-5">
+        <div>
+          <h1 className="page-title">Relatórios</h1>
+          <p className="page-subtitle">Resumo geral da equipe</p>
+        </div>
+        <TeseFilterBar embedded showPdfButton />
       </div>
 
       {/* Tabs */}

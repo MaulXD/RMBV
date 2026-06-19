@@ -199,13 +199,16 @@ function DashboardContent() {
         </div>
       </div>
 
-      {isAdmin && (
+      {selectedIds.size > 0 && (
         <ClientBulkActionsBar
           selectedCount={selectedIds.size}
           totalCount={clients.length}
+          selectedIds={selectedIds}
           onSelectAll={toggleSelectAll}
           onClear={() => setSelectedIds(new Set())}
           exportCsvHref={bulkExportHref}
+          canDelete={user?.role === "ADV" || user?.role === "ADMIN"}
+          onDeleteSuccess={loadClients}
         />
       )}
 
@@ -217,7 +220,7 @@ function DashboardContent() {
             ? "Nenhum cliente encontrado para esta busca."
             : "Nenhum cliente cadastrado."
         }
-        selectable={isAdmin}
+        selectable
         selectedIds={selectedIds}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
