@@ -101,6 +101,7 @@ export default function ClientDetailPage() {
         role: userRole,
         teamId: null,
         teamName: null,
+        avatarUrl: null,
       })
     : false;
   const canRequest = client.workflowStatus === "EM_ANDAMENTO";

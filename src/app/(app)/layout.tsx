@@ -10,6 +10,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { AccessBlockedScreen } from "@/components/AccessBlockedScreen";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "@/components/GlobalSearchPalette";
 import { useSession } from "@/components/SessionProvider";
+import { ChatFloating } from "@/components/ChatFloating";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
@@ -142,6 +143,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {user && <GlobalSearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />}
+      {user && <ChatFloating />}
       {scheduleBlock && (
         <AccessBlockedScreen
           startHour={scheduleBlock.startHour}

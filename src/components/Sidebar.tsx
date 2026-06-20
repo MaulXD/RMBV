@@ -17,9 +17,34 @@ type NavItem = {
 };
 type NavGroup = { label: string; items: NavItem[] };
 
-function userInitial(name: string) {
-  const t = name.trim();
-  return t ? t[0]!.toUpperCase() : "?";
+function userInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .slice(0, 2)
+    .join("");
+}
+
+function UserAvatar({ user, size = 32 }: { user: { name: string; avatarUrl: string | null }; size?: number }) {
+  if (user.avatarUrl) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt={user.name}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 font-bold"
+      style={{ width: size, height: size, fontSize: size * 0.38 }}
+    >
+      {userInitials(user.name)}
+    </div>
+  );
 }
 
 function useSidebarCollapsed() {
@@ -89,6 +114,8 @@ export function Sidebar({
         ]
       : []),
   ];
+
+  const perfilActive = pathname.startsWith("/perfil");
 
   return (
     <aside
@@ -230,9 +257,14 @@ export function Sidebar({
         {!collapsed ? (
           <div className="flex items-center gap-2">
             {user && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
-                {userInitial(user.name)}
-              </div>
+              <Link
+                href="/perfil"
+                onClick={onMobileClose}
+                className={`shrink-0 rounded-full ring-2 transition-all ${perfilActive ? "ring-primary" : "ring-transparent hover:ring-primary/40"}`}
+                title="Meu perfil"
+              >
+                <UserAvatar user={user} size={32} />
+              </Link>
             )}
             {user && (
               <div className="min-w-0 flex-1">
@@ -268,9 +300,14 @@ export function Sidebar({
         ) : (
           <div className="flex flex-col items-center gap-1">
             {user && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary" title={user.name}>
-                {userInitial(user.name)}
-              </div>
+              <Link
+                href="/perfil"
+                onClick={onMobileClose}
+                className={`rounded-full ring-2 transition-all ${perfilActive ? "ring-primary" : "ring-transparent hover:ring-primary/40"}`}
+                title="Meu perfil"
+              >
+                <UserAvatar user={user} size={32} />
+              </Link>
             )}
             {user && <NotificationBell />}
             <button
