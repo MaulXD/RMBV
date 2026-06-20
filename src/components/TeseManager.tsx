@@ -166,7 +166,7 @@ export function TeseManager({
             disabled={merging || !mergeSourceId || !mergeTargetId}
           >
             <Icon name="layers" className="h-4 w-4" />
-            {merging ? "Fundindo..." : "Confirmar fusão"}
+            {merging ? "Unindo..." : "Confirmar união"}
           </button>
         </form>
       )}

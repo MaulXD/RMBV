@@ -23,6 +23,7 @@ export function ClientHistoryComposer({
 }) {
   const [type, setType] = useState<"CALL" | "WHATSAPP" | "NOTE">("NOTE");
   const [note, setNote] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
@@ -47,14 +48,19 @@ export function ClientHistoryComposer({
     setPosting(true);
     setError(null);
     try {
+      const followUpAt = followUpDate
+        ? new Date(`${followUpDate}T12:00:00`).toISOString()
+        : null;
+
       const res = await fetch(`/api/clients/${clientId}/history/note`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, note: note.trim() }),
+        body: JSON.stringify({ type, note: note.trim(), followUpAt }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha ao salvar");
       setNote("");
+      setFollowUpDate("");
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro");
@@ -113,6 +119,31 @@ export function ClientHistoryComposer({
           disabled={disabled || posting}
           onChange={(e) => setNote(e.target.value)}
         />
+
+        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-ui)] border border-border bg-muted/5 px-3 py-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted">
+            <Icon name="bell" className="h-3.5 w-3.5" />
+            <label htmlFor="follow-up-date" className="shrink-0">Retornar em:</label>
+          </div>
+          <input
+            id="follow-up-date"
+            type="date"
+            className="industrial-input flex-1 text-xs"
+            value={followUpDate}
+            disabled={disabled || posting}
+            onChange={(e) => setFollowUpDate(e.target.value)}
+          />
+          {followUpDate && (
+            <button
+              type="button"
+              className="text-xs text-muted hover:text-foreground"
+              onClick={() => setFollowUpDate("")}
+              title="Remover lembrete"
+            >
+              <Icon name="x" className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button
