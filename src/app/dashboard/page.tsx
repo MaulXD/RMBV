@@ -44,6 +44,7 @@ function DashboardContent() {
   });
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [workflowFilter, setWorkflowFilter] = useState("");
   const [followUpDue, setFollowUpDue] = useState(false);
@@ -56,6 +57,7 @@ function DashboardContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchAbort = useRef<AbortController | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (user?.role === "ADMIN") setTeamLabel("Todas as equipes");
@@ -63,15 +65,15 @@ function DashboardContent() {
   }, [user]);
 
   const loadClients = useCallback(async () => {
-    // Aguarda o TeseFilterProvider ler o localStorage antes de buscar
     if (!teseHydrated) return;
 
-    // Cancela requisição anterior se ainda estiver em voo
     fetchAbort.current?.abort();
+    if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
     const controller = new AbortController();
     fetchAbort.current = controller;
 
     setLoading(true);
+    setFetchError(false);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
@@ -83,15 +85,22 @@ function DashboardContent() {
       params.set("pageSize", String(pageSize));
 
       const res = await fetch(`/api/clients?${params}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (res.ok) {
-        setClients(data.clients ?? []);
-        setTotal(data.total ?? 0);
-        setTotalPages(data.totalPages ?? 1);
-        if (data.page && data.page !== page) setPage(data.page);
-      }
+      setClients(data.clients ?? []);
+      setTotal(data.total ?? 0);
+      setTotalPages(data.totalPages ?? 1);
+      if (data.page && data.page !== page) setPage(data.page);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
+      // Retry automático uma vez após 2s (cobre cold start do Neon)
+      if (!controller.signal.aborted) {
+        setFetchError(true);
+        retryTimer.current = setTimeout(() => {
+          retryTimer.current = null;
+          void loadClients();
+        }, 2000);
+      }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -108,6 +117,8 @@ function DashboardContent() {
   useEffect(() => {
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      fetchAbort.current?.abort();
     };
   }, []);
 
@@ -224,6 +235,16 @@ function DashboardContent() {
           </button>
         </div>
       </div>
+
+      {fetchError && !loading && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+          <Icon name="alert" className="h-4 w-4 shrink-0" />
+          <span className="flex-1">Erro ao carregar clientes. Tentando novamente...</span>
+          <button type="button" className="btn-ghost text-xs" onClick={loadClients}>
+            Tentar agora
+          </button>
+        </div>
+      )}
 
       {selectedIds.size > 0 && (
         <ClientBulkActionsBar
