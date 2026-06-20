@@ -55,6 +55,8 @@ import {
   Minus,
   Trash2,
   Bell,
+  Camera,
+  ScanFace,
   type LucideIcon,
 } from "lucide-react";
 
@@ -115,6 +117,8 @@ const icons = {
   minus: Minus,
   trash: Trash2,
   bell: Bell,
+  camera: Camera,
+  scanFace: ScanFace,
 } as const;
 
 export type IconName = keyof typeof icons;

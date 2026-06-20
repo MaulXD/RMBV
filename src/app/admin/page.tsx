@@ -12,11 +12,12 @@ import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { TeseManager } from "@/components/TeseManager";
 import { AdminClientsPanel } from "@/components/AdminClientsPanel";
 import { BackupPanel } from "@/components/BackupPanel";
+import { FaceEnrollment } from "@/components/FaceEnrollment";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
 type Category = { id: string; name: string };
-type Tab = "equipes" | "usuarios" | "teses" | "clientes" | "importar" | "auditoria" | "backup";
+type Tab = "equipes" | "usuarios" | "teses" | "clientes" | "importar" | "auditoria" | "backup" | "ponto";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -113,7 +114,7 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "dashboard" | "upload" | "clipboardList" | "fileDown" }[] = [
+  const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "dashboard" | "upload" | "clipboardList" | "fileDown" | "scanFace" }[] = [
     { id: "equipes", label: "Equipes", icon: "building" },
     { id: "usuarios", label: "Usuários", icon: "users" },
     { id: "teses", label: "Teses", icon: "layers" },
@@ -121,6 +122,7 @@ export default function AdminPage() {
     { id: "importar", label: "Importar CSV", icon: "upload" },
     { id: "backup", label: "Backup", icon: "fileDown" },
     { id: "auditoria", label: "Auditoria", icon: "clipboardList" },
+    { id: "ponto", label: "Ponto facial", icon: "scanFace" },
   ];
 
   return (
@@ -262,6 +264,58 @@ export default function AdminPage() {
       {tab === "backup" && <BackupPanel teams={teams} />}
 
       {tab === "auditoria" && <AuditLogPanel />}
+
+      {tab === "ponto" && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-emerald-500"
+              style={{
+                background: "color-mix(in srgb, #10b981 10%, var(--color-surface-elevated))",
+                borderColor: "color-mix(in srgb, #10b981 25%, transparent)",
+              }}
+            >
+              <Icon name="scanFace" className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold">Ponto eletrônico facial</h2>
+              <p className="text-xs text-muted">Cadastre o rosto de cada colaborador para o reconhecimento automático</p>
+            </div>
+          </div>
+
+          {teams.length === 0 ? (
+            <p className="alert alert-warn">Crie uma equipe antes de cadastrar rostos.</p>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Equipe</label>
+                <select
+                  className="industrial-input max-w-xs"
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                >
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              {teamId && (
+                <div className="space-y-4">
+                  <FaceEnrollment teamId={teamId} />
+                  <div className="industrial-panel max-w-2xl p-4">
+                    <p className="text-xs font-medium text-muted mb-1">Link do quiosque de ponto</p>
+                    <code className="block rounded bg-surface px-3 py-2 text-xs break-all">
+                      {typeof window !== "undefined" ? window.location.origin : ""}/ponto/kiosk?teamId={teamId}
+                    </code>
+                    <p className="mt-2 text-xs text-muted">
+                      Abra este link no celular ou tablet da equipe. A câmera iniciará automaticamente.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </AppShell>
   );
 }

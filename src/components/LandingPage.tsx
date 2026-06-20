@@ -68,7 +68,23 @@ const FEATURES = [
     description: "Identifique telefones e endereços no texto e marque verificações.",
     color: "#f472b6",
   },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        <path d="M21 21v-2a4 4 0 0 0-3-3.87"/>
+      </svg>
+    ),
+    title: "Ponto eletrônico facial",
+    description: "Colaboradores registram entrada e saída pelo celular com reconhecimento facial — sem cartão, sem senha.",
+    color: "#10b981",
+    badge: "Diferencial",
+  },
 ];
+
+type Feature = typeof FEATURES[number];
 
 const STATS = [
   { value: "100%", label: "Baseado em equipes" },
@@ -313,12 +329,21 @@ export function LandingPage() {
             </ScrollAnimate>
 
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((f, i) => (
+              {FEATURES.map((f: Feature, i: number) => (
                 <ScrollAnimate key={f.title} as="li" delay={i * 60}>
                   <div
-                    className="group flex h-full flex-col gap-4 rounded-2xl border border-white/[0.08] p-5 transition-all duration-200 hover:border-white/15 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
-                    style={{ background:"rgba(255,255,255,0.04)", backdropFilter:"blur(16px)" }}
+                    className="group relative flex h-full flex-col gap-4 rounded-2xl border p-5 transition-all duration-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+                    style={{
+                      background: "badge" in f ? `linear-gradient(135deg,rgba(16,185,129,0.08),rgba(255,255,255,0.04))` : "rgba(255,255,255,0.04)",
+                      backdropFilter:"blur(16px)",
+                      borderColor: "badge" in f ? "rgba(16,185,129,0.25)" : "rgba(255,255,255,0.08)",
+                    }}
                   >
+                    {"badge" in f && (
+                      <span className="absolute right-3 top-3 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-400 uppercase">
+                        {(f as Feature & {badge:string}).badge}
+                      </span>
+                    )}
                     <span
                       className="flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 group-hover:scale-110"
                       style={{ background:`${f.color}22`, color:f.color, boxShadow:`0 0 20px ${f.color}30` }}
@@ -333,6 +358,84 @@ export function LandingPage() {
                 </ScrollAnimate>
               ))}
             </ul>
+          </section>
+
+          {/* ── Ponto Eletrônico destaque ── */}
+          <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+            <div
+              className="relative overflow-hidden rounded-3xl border border-emerald-500/20 p-8 sm:p-12"
+              style={{ background:"linear-gradient(135deg,rgba(16,185,129,0.07) 0%,rgba(255,255,255,0.03) 60%,rgba(6,78,59,0.08) 100%)", backdropFilter:"blur(20px)" }}
+            >
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px]" />
+              <div className="pointer-events-none absolute -bottom-10 left-1/3 h-40 w-40 rounded-full bg-teal-500/10 blur-[60px]" />
+
+              <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2">
+                <div>
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ boxShadow:"0 0 6px #34d399" }} />
+                    <span className="text-[11px] font-semibold tracking-wide text-emerald-400">Diferencial exclusivo</span>
+                  </div>
+                  <h2 className="text-3xl font-black text-white sm:text-4xl">
+                    Ponto eletrônico<br />
+                    <span style={{ color:"#34d399" }}>sem hardware.</span>
+                  </h2>
+                  <p className="mt-4 max-w-md text-base leading-relaxed text-white/40">
+                    Colaboradores registram entrada e saída direto pelo celular. O sistema reconhece o rosto automaticamente — sem cartão, sem leitor biométrico, sem custo de equipamento.
+                  </p>
+                  <ul className="mt-6 space-y-2.5">
+                    {[
+                      "Funciona em qualquer celular com câmera",
+                      "Reconhecimento facial gratuito, sem API externa",
+                      "Relatório de ponto por equipe no admin",
+                      "Dados nunca saem do seu servidor",
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-2.5 text-sm text-white/60">
+                        <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-emerald-400" fill="currentColor">
+                          <path d="M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0Z"/>
+                        </svg>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Mock kiosk card */}
+                <div className="flex justify-center">
+                  <div
+                    className="w-64 rounded-2xl border border-white/10 p-5"
+                    style={{ background:"rgba(255,255,255,0.05)", backdropFilter:"blur(20px)", boxShadow:"0 20px 60px rgba(0,0,0,0.4)" }}
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-xs font-semibold tracking-wide text-white/40 uppercase">Ponto — 08:47</p>
+                      <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">Ao vivo</span>
+                    </div>
+                    <div className="mb-3 flex aspect-square items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                      <svg viewBox="0 0 24 24" className="h-16 w-16 text-emerald-500/40" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+                    <div className="space-y-1.5">
+                      {[
+                        { name:"Ana Lima",   time:"08:02", type:"Entrada" },
+                        { name:"Carlos M.", time:"08:31", type:"Entrada" },
+                        { name:"Julia S.",  time:"08:45", type:"Entrada" },
+                      ].map((r) => (
+                        <div key={r.name} className="flex items-center justify-between rounded-lg bg-white/[0.04] px-2.5 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                              <span className="text-[8px] font-bold text-emerald-400">{r.name[0]}</span>
+                            </div>
+                            <span className="text-[10px] text-white/60">{r.name}</span>
+                          </div>
+                          <span className="text-[10px] text-white/30">{r.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* ── CTA ── */}
