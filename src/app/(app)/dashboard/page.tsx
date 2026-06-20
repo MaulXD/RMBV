@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { ClientsTable } from "@/components/ClientsTable";
 import { ClientBulkActionsBar } from "@/components/ClientBulkActionsBar";
@@ -93,7 +92,6 @@ function DashboardContent() {
       if (data.page && data.page !== page) setPage(data.page);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      // Retry automático uma vez após 2s (cobre cold start do Neon)
       if (!controller.signal.aborted) {
         setFetchError(true);
         retryTimer.current = setTimeout(() => {
@@ -290,9 +288,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    <AppShell>
-      <DashboardContent />
-    </AppShell>
-  );
+  return <DashboardContent />;
 }

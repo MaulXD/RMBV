@@ -13,7 +13,7 @@ function KioskContent() {
       <div className="flex min-h-dvh items-center justify-center bg-gray-950 text-white">
         <div className="text-center">
           <p className="text-lg font-semibold text-white/60">Equipe não especificada.</p>
-          <p className="mt-2 text-sm text-white/30">Use: /ponto/kiosk?teamId=SEU_TEAM_ID</p>
+          <p className="mt-2 text-sm text-white/30">Use: /kiosk?teamId=SEU_TEAM_ID</p>
         </div>
       </div>
     );

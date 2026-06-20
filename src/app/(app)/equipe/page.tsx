@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { TeamMembersManager } from "@/components/TeamMembersManager";
 import { TeseManager } from "@/components/TeseManager";
@@ -48,24 +47,19 @@ export default function EquipePage() {
   }, [teamId]);
 
   if (!role || role === "ADMIN") {
-    return (
-      <AppShell>
-        <p className="text-sm text-muted">Carregando...</p>
-      </AppShell>
-    );
+    return <p className="text-sm text-muted">Carregando...</p>;
   }
 
   const canInvite = role === "ADV";
   const canManageColumns = role === "ADV" || role === "GERENTE";
 
   return (
-    <AppShell>
+    <>
       <div className="mb-5">
         <h1 className="page-title">Configurações</h1>
         <p className="page-subtitle">Gerencie teses, membros da equipe e colunas do Kanban.</p>
       </div>
 
-      {/* Section tabs */}
       <div className="app-tabs">
         {SECTIONS.map((s) => (
           <button
@@ -149,6 +143,6 @@ export default function EquipePage() {
           />
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

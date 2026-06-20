@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { PdfOrganizerTool } from "@/components/PdfOrganizerTool";
 import { TeseChecklistTool } from "@/components/ChecklistTools";
@@ -96,11 +95,7 @@ export default function FerramentasPage() {
   }, [loading, role, router]);
 
   if (loading) {
-    return (
-      <AppShell>
-        <p className="text-sm text-muted">Carregando...</p>
-      </AppShell>
-    );
+    return <p className="text-sm text-muted">Carregando...</p>;
   }
 
   if (!role) {
@@ -110,7 +105,7 @@ export default function FerramentasPage() {
   const activeMeta = TOOLS.find((t) => t.id === activeTool);
 
   return (
-    <AppShell>
+    <>
       <div className="mb-8">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
@@ -165,6 +160,6 @@ export default function FerramentasPage() {
           {activeTool === "pdf-extract" && <PdfExtractTool />}
         </section>
       )}
-    </AppShell>
+    </>
   );
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { CSV_HEADERS } from "@/lib/client-fields";
 import { TeamAdminPanel } from "@/components/TeamAdminPanel";
@@ -107,11 +106,7 @@ export default function AdminPage() {
   }
 
   if (!user || user.role !== "ADMIN") {
-    return (
-      <AppShell>
-        <p className="text-sm text-muted">Verificando permissões...</p>
-      </AppShell>
-    );
+    return <p className="text-sm text-muted">Verificando permissões...</p>;
   }
 
   const tabs: { id: Tab; label: string; icon: "building" | "users" | "layers" | "dashboard" | "upload" | "clipboardList" | "fileDown" | "scanFace" }[] = [
@@ -126,7 +121,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <AppShell>
+    <>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-rose-500"
@@ -211,7 +206,6 @@ export default function AdminPage() {
                 ))}
               </SelectField>
 
-              {/* Tese selector */}
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">
                   Tese <span className="text-muted/60">(obrigatório — selecione ou crie)</span>
@@ -304,7 +298,7 @@ export default function AdminPage() {
                   <div className="industrial-panel max-w-2xl p-4">
                     <p className="text-xs font-medium text-muted mb-1">Link do quiosque de ponto</p>
                     <code className="block rounded bg-surface px-3 py-2 text-xs break-all">
-                      {typeof window !== "undefined" ? window.location.origin : ""}/ponto/kiosk?teamId={teamId}
+                      {typeof window !== "undefined" ? window.location.origin : ""}/kiosk?teamId={teamId}
                     </code>
                     <p className="mt-2 text-xs text-muted">
                       Abra este link no celular ou tablet da equipe. A câmera iniciará automaticamente.
@@ -316,6 +310,6 @@ export default function AdminPage() {
           )}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
