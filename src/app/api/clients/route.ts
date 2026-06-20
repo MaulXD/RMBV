@@ -40,6 +40,7 @@ export async function GET(request: Request) {
     const workflowStatus = searchParams.get("workflowStatus");
     const teamId = searchParams.get("teamId");
     const search = searchParams.get("search");
+    const followUpDue = searchParams.get("followUpDue") === "true";
     const page = normalizeClientPage(searchParams.get("page"));
     const pageSize = normalizeClientPageSize(
       searchParams.get("pageSize") ?? DEFAULT_CLIENT_PAGE_SIZE
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
       workflowStatus,
       teamId,
       search,
+      followUpDue,
     });
 
     const total = await prisma.client.count({ where });
@@ -78,6 +80,7 @@ export async function GET(request: Request) {
         primaryPhone: client.phone1 ?? client.phone2 ?? null,
         hasResearch: !!(client.pesquisa && client.pesquisa.trim().length > 0),
         hasContacts,
+        followUpAt: client.followUpAt?.toISOString() ?? null,
       };
     });
 

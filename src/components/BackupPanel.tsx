@@ -90,7 +90,7 @@ export function BackupPanel({ teams }: { teams: Team[] }) {
           ))}
         </ul>
         <p className="pt-1 text-xs text-muted">
-          Recomendado: baixar um backup antes de operações em lote (deletar, fundir teses, importar CSV em massa).
+          Recomendado: baixar um backup antes de operações em lote (deletar, unir teses, importar CSV em massa).
         </p>
       </div>
     </div>

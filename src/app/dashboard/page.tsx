@@ -31,6 +31,7 @@ type ClientRow = {
   primaryPhone: string | null;
   hasResearch: boolean;
   hasContacts: boolean;
+  followUpAt?: string | null;
 };
 
 function DashboardContent() {
@@ -45,6 +46,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [workflowFilter, setWorkflowFilter] = useState("");
+  const [followUpDue, setFollowUpDue] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -66,6 +68,7 @@ function DashboardContent() {
       if (statusFilter) params.set("status", statusFilter);
       if (activeTeseId) params.set("teseId", activeTeseId);
       if (workflowFilter) params.set("workflowStatus", workflowFilter);
+      if (followUpDue) params.set("followUpDue", "true");
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
@@ -81,7 +84,7 @@ function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, workflowFilter, activeTeseId, searchQuery, page, pageSize]);
+  }, [statusFilter, workflowFilter, followUpDue, activeTeseId, searchQuery, page, pageSize]);
 
   useEffect(() => {
     loadClients();
@@ -89,7 +92,7 @@ function DashboardContent() {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [activeTeseId, statusFilter, workflowFilter, searchQuery, page, pageSize]);
+  }, [activeTeseId, statusFilter, workflowFilter, followUpDue, searchQuery, page, pageSize]);
 
   useEffect(() => {
     return () => {
@@ -179,6 +182,18 @@ function DashboardContent() {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              setFollowUpDue((v) => !v);
+              setPage(1);
+            }}
+            className={`btn-ghost shrink-0 text-xs ${followUpDue ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400" : ""}`}
+            title="Mostrar apenas clientes com retorno vencido ou de hoje"
+          >
+            <Icon name="bell" className="h-3.5 w-3.5" />
+            {followUpDue ? "Follow-ups ativos" : "Follow-ups"}
+          </button>
           <div className="relative min-w-[180px] flex-[2]">
             <Icon
               name="search"

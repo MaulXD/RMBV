@@ -224,6 +224,7 @@ model Client {
   finalizedById             String?
   finalizedBy               User?                  @relation("FinalizationApproved", fields: [finalizedById], references: [id])
   pesquisa                  String?                @map("rawExtractText")
+  followUpAt                DateTime?
   createdAt                 DateTime               @default(now())
   updatedAt      DateTime         @updatedAt
   teamId         String?

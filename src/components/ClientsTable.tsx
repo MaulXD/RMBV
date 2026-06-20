@@ -18,7 +18,41 @@ type ClientRow = {
   primaryPhone: string | null;
   hasResearch: boolean;
   hasContacts: boolean;
+  followUpAt?: string | null;
 };
+
+function FollowUpBadge({ followUpAt }: { followUpAt: string | null | undefined }) {
+  if (!followUpAt) return null;
+  const due = new Date(followUpAt);
+  const now = new Date();
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const isOverdue = due < now && due.toDateString() !== now.toDateString();
+  const isToday = due <= todayEnd && due >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const label = due.toLocaleDateString("pt-BR");
+  if (isOverdue) {
+    return (
+      <span title={`Retorno vencido: ${label}`} className="inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+        <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>
+        {label}
+      </span>
+    );
+  }
+  if (isToday) {
+    return (
+      <span title={`Retorno hoje: ${label}`} className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 2v2m0 8v2M2 8h2m8 0h2M4.22 4.22l1.42 1.42m4.72 4.72 1.42 1.42M4.22 11.78l1.42-1.42m4.72-4.72 1.42-1.42"/><circle cx="8" cy="8" r="3"/></svg>
+        Hoje
+      </span>
+    );
+  }
+  return (
+    <span title={`Retorno agendado: ${label}`} className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+      <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1.5v3M11 1.5v3M2 7h12"/></svg>
+      {label}
+    </span>
+  );
+}
 
 function ResearchBadge({ hasResearch, hasContacts }: { hasResearch: boolean; hasContacts: boolean }) {
   if (!hasResearch) {
@@ -87,6 +121,7 @@ export function ClientsTable({
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">CPF</th>
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Status</th>
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Finalização</th>
+              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Retorno</th>
               <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Pesquisa</th>
             </tr>
           </thead>
@@ -116,7 +151,7 @@ export function ClientsTable({
                 <td className="px-4 py-2">
                   <div className="skeleton h-5 w-24 rounded-full" />
                 </td>
-                <td className="px-4 py-2" colSpan={3} />
+                <td className="px-4 py-2" colSpan={4} />
               </tr>
             ))}
           </tbody>
@@ -176,6 +211,9 @@ export function ClientsTable({
             <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
               Telefone
             </th>
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
+              Retorno
+            </th>
             <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">
               Pesquisa
             </th>
@@ -221,6 +259,9 @@ export function ClientsTable({
                   <WorkflowBadge status={client.workflowStatus} />
                 </td>
                 <td className="px-4 py-2 text-sm text-muted">{client.primaryPhone ?? "—"}</td>
+                <td className="px-4 py-2">
+                  <FollowUpBadge followUpAt={client.followUpAt} />
+                </td>
                 <td className="px-4 py-2 text-center">
                   <ResearchBadge hasResearch={client.hasResearch} hasContacts={client.hasContacts} />
                 </td>

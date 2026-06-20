@@ -10,6 +10,7 @@ export type ClientListFilters = {
   workflowStatus?: string | null;
   teamId?: string | null;
   search?: string | null;
+  followUpDue?: boolean;
 };
 
 function buildClientSearchWhere(search: string): Prisma.ClientWhereInput {
@@ -71,6 +72,7 @@ export async function buildClientWhere(
             | "FINALIZADO",
         }
       : {}),
+    ...(filters.followUpDue ? { followUpAt: { lte: new Date() } } : {}),
   };
 }
 
