@@ -48,10 +48,17 @@ function writeStorage(u: SessionUser | null) {
 /** In-memory cache: persists across soft navigations within the same tab. */
 let sessionCache: SessionUser | null | undefined;
 
+/**
+ * Subscriber set by the mounted SessionProvider so primeSessionCache
+ * can update React state immediately — without requiring a full page reload.
+ */
+let sessionSubscriber: ((u: SessionUser | null) => void) | null = null;
+
 /** Pré-popula o cache após login e persiste no localStorage. */
 export function primeSessionCache(user: SessionUser | null) {
   sessionCache = user;
   writeStorage(user);
+  sessionSubscriber?.(user);
 }
 
 /**
@@ -72,6 +79,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Garante que o primeiro render já tem o user correto — sem flash
   const [user, setUser] = useState<SessionUser | null>(getInitialUser);
   const [loading, setLoading] = useState(false);
+
+  // Register as the subscriber so primeSessionCache can push updates
+  // into React state immediately (e.g. right after login + router.push)
+  useEffect(() => {
+    sessionSubscriber = setUser;
+    return () => {
+      if (sessionSubscriber === setUser) sessionSubscriber = null;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
