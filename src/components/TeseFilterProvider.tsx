@@ -32,11 +32,36 @@ type TeseFilterContextValue = {
 const TeseFilterContext = createContext<TeseFilterContextValue | null>(null);
 const STORAGE_KEY = "gestao-tese-ativa";
 
+// Cache de módulo: persiste durante toda a sessão do browser, sobrevive a
+// remontagens do TeseFilterProvider causadas por navegação entre páginas.
+// undefined = ainda não lido; null = "Todas"; string = ID da tese ativa.
+let _cachedTeseId: string | null | undefined = undefined;
+
+function readStoredTeseId(): string | null {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    return s && s !== "all" ? s : null;
+  } catch { return null; }
+}
+
 export function TeseFilterProvider({ children }: { children: ReactNode }) {
   const [teses, setTeses] = useState<TeseItem[]>([]);
-  const [activeTeseId, setActiveTeseIdState] = useState<string | null>(null);
+
+  // Leitura síncrona do cache de módulo: em navegações subsequentes,
+  // _cachedTeseId já está preenchido → hydrated=true imediatamente,
+  // eliminando o delay e o possível fetch duplo.
+  const [activeTeseId, setActiveTeseIdState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;   // SSR
+    if (_cachedTeseId !== undefined) return _cachedTeseId;
+    return null; // primeira carga: será lido no useEffect
+  });
+
+  const [hydrated, setHydrated] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return _cachedTeseId !== undefined; // true em navegações subsequentes
+  });
+
   const [loading, setLoading] = useState(true);
-  const [hydrated, setHydrated] = useState(false);
 
   const refreshTeses = useCallback(async () => {
     const res = await fetch("/api/teses");
@@ -44,9 +69,14 @@ export function TeseFilterProvider({ children }: { children: ReactNode }) {
     if (res.ok) setTeses(data.teses ?? []);
   }, []);
 
+  // Roda apenas uma vez por montagem; em navegações subsequentes
+  // _cachedTeseId já está preenchido, então apenas confirma hydrated=true.
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setActiveTeseIdState(stored === "all" ? null : stored);
+    if (_cachedTeseId === undefined) {
+      const id = readStoredTeseId();
+      _cachedTeseId = id;
+      setActiveTeseIdState(id);
+    }
     setHydrated(true);
   }, []);
 
@@ -55,6 +85,7 @@ export function TeseFilterProvider({ children }: { children: ReactNode }) {
   }, [refreshTeses]);
 
   const setActiveTeseId = useCallback((id: string | null) => {
+    _cachedTeseId = id; // mantém o cache em sincronia
     setActiveTeseIdState(id);
     localStorage.setItem(STORAGE_KEY, id ?? "all");
   }, []);
