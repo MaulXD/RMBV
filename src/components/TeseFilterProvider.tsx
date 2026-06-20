@@ -26,6 +26,7 @@ type TeseFilterContextValue = {
   setActiveTeseId: (id: string | null) => void;
   refreshTeses: () => Promise<void>;
   loading: boolean;
+  hydrated: boolean;
 };
 
 const TeseFilterContext = createContext<TeseFilterContextValue | null>(null);
@@ -71,6 +72,7 @@ export function TeseFilterProvider({ children }: { children: ReactNode }) {
       setActiveTeseId,
       refreshTeses,
       loading,
+      hydrated,
     }),
     [teses, activeTeseId, activeTese, setActiveTeseId, refreshTeses, loading, hydrated]
   );

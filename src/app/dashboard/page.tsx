@@ -35,7 +35,7 @@ type ClientRow = {
 };
 
 function DashboardContent() {
-  const { activeTeseId, activeTese } = useTeseFilter();
+  const { activeTeseId, activeTese, hydrated: teseHydrated } = useTeseFilter();
   const { user } = useSession();
   const isAdmin = user?.role === "ADMIN";
   const [teamLabel, setTeamLabel] = useState<string | null>(() => {
@@ -55,6 +55,7 @@ function DashboardContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchAbort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (user?.role === "ADMIN") setTeamLabel("Todas as equipes");
@@ -62,6 +63,14 @@ function DashboardContent() {
   }, [user]);
 
   const loadClients = useCallback(async () => {
+    // Aguarda o TeseFilterProvider ler o localStorage antes de buscar
+    if (!teseHydrated) return;
+
+    // Cancela requisição anterior se ainda estiver em voo
+    fetchAbort.current?.abort();
+    const controller = new AbortController();
+    fetchAbort.current = controller;
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -73,7 +82,7 @@ function DashboardContent() {
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
 
-      const res = await fetch(`/api/clients?${params}`);
+      const res = await fetch(`/api/clients?${params}`, { signal: controller.signal });
       const data = await res.json();
       if (res.ok) {
         setClients(data.clients ?? []);
@@ -81,10 +90,12 @@ function DashboardContent() {
         setTotalPages(data.totalPages ?? 1);
         if (data.page && data.page !== page) setPage(data.page);
       }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [statusFilter, workflowFilter, followUpDue, activeTeseId, searchQuery, page, pageSize]);
+  }, [teseHydrated, statusFilter, workflowFilter, followUpDue, activeTeseId, searchQuery, page, pageSize]);
 
   useEffect(() => {
     loadClients();
