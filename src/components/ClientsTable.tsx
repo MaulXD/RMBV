@@ -175,7 +175,58 @@ export function ClientsTable({
     clients.every((c) => selectedIds.has(c.id));
 
   return (
-    <div className="industrial-panel overflow-x-auto">
+    <div className="industrial-panel">
+      {/* Mobile: card list */}
+      <div className="sm:hidden divide-y divide-border/60">
+        {clients.map((client) => {
+          const selected = selectedIds?.has(client.id) ?? false;
+          return (
+            <Link
+              key={client.id}
+              href={`/clients/${client.id}`}
+              className={`flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.03] ${selected ? "bg-primary/10" : ""}`}
+            >
+              {selectable && (
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 shrink-0 rounded border-border accent-primary"
+                  checked={selected}
+                  onChange={(e) => { e.stopPropagation(); onToggleSelect?.(client.id); }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-semibold text-sm text-foreground">{client.name}</span>
+                  <StatusBadge status={client.status} />
+                </div>
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                  {client.cod && <span>#{client.cod}</span>}
+                  {client.cod && client.tese && <span>·</span>}
+                  {client.tese && <span className="truncate max-w-[120px]">{client.tese}</span>}
+                  {client.primaryPhone && (
+                    <>
+                      {(client.cod || client.tese) && <span>·</span>}
+                      <span>{client.primaryPhone}</span>
+                    </>
+                  )}
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <WorkflowBadge status={client.workflowStatus} />
+                  {client.followUpAt && <FollowUpBadge followUpAt={client.followUpAt} />}
+                  <span className="ml-auto shrink-0">
+                    <ResearchBadge hasResearch={client.hasResearch} hasContacts={client.hasContacts} />
+                  </span>
+                </div>
+              </div>
+              <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted/40" />
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block overflow-x-auto">
       <table className="w-full min-w-[900px] text-left text-sm">
         <thead>
           <tr className="border-b border-border bg-surface-elevated/50">
@@ -279,6 +330,7 @@ export function ClientsTable({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
