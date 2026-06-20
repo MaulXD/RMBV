@@ -126,7 +126,7 @@ export type ClientProfileData = {
   finalizedAt: string | null;
   finalizedBy: { id: string; name: string; email: string } | null;
   pesquisa: string | null;
-  followUpAt: string | null;
+  followUpAt?: string | null;
   createdAt: string;
   updatedAt: string;
   categories: { id: string; name: string }[];
@@ -302,7 +302,6 @@ export function formatClientForApi(
     finalizedAt: Date | null;
     finalizedBy?: { id: string; name: string; email: string } | null;
     pesquisa: string | null;
-    followUpAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
     categories: { category: { id: string; name: string } }[];
@@ -340,7 +339,6 @@ export function formatClientForApi(
     finalizedAt: client.finalizedAt?.toISOString() ?? null,
     finalizedBy: client.finalizedBy ?? null,
     pesquisa: client.pesquisa,
-    followUpAt: client.followUpAt?.toISOString() ?? null,
     createdAt: client.createdAt.toISOString(),
     updatedAt: client.updatedAt.toISOString(),
     categories: client.categories.map((c) => ({
