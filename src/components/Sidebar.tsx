@@ -91,6 +91,9 @@ export function Sidebar({
               { href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" },
             ]
           : []),
+        ...(user?.role === "COLABORADOR" || isPesquisador
+          ? [{ href: "/ponto", label: "Ponto facial", icon: "scanFace" as const, color: "text-emerald-500" }]
+          : []),
         { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
       ],
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 
@@ -20,6 +20,177 @@ const ROLE_LABELS: Record<string, string> = {
   COLABORADOR: "Colaborador",
   PESQUISADOR: "Pesquisador",
 };
+
+function SelfFaceEnrollment({ userId }: { userId: string }) {
+  const [hasFace, setHasFace] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const checkStatus = useCallback(async () => {
+    const r = await fetch(`/api/users/${userId}/face`);
+    const d = await r.json() as { hasDescriptor?: boolean };
+    setHasFace(d.hasDescriptor ?? false);
+  }, [userId]);
+
+  useEffect(() => { void checkStatus(); }, [checkStatus]);
+
+  useEffect(() => {
+    async function load() {
+      const faceapi = await import("@vladmandic/face-api");
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+        faceapi.nets.faceLandmark68TinyNet.loadFromUri("/models"),
+        faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+      ]);
+      setModelsLoaded(true);
+    }
+    void load();
+  }, []);
+
+  async function openCamera() {
+    setStatusMsg("");
+    setCameraOpen(true);
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    streamRef.current = stream;
+    if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+  }
+
+  function closeCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraOpen(false);
+    setStatusMsg("");
+  }
+
+  async function capture() {
+    if (!videoRef.current || !modelsLoaded) return;
+    setCapturing(true);
+    setStatusMsg("Detectando rosto...");
+    try {
+      const faceapi = await import("@vladmandic/face-api");
+      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const detection = await faceapi
+        .detectSingleFace(videoRef.current, options)
+        .withFaceLandmarks(true)
+        .withFaceDescriptor();
+      if (!detection) { setStatusMsg("Nenhum rosto detectado. Tente novamente."); setCapturing(false); return; }
+
+      setSaving(true);
+      const res = await fetch(`/api/users/${userId}/face`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descriptor: Array.from(detection.descriptor) }),
+      });
+      if (!res.ok) throw new Error("Falha ao salvar");
+      setStatusMsg("Rosto cadastrado com sucesso!");
+      setHasFace(true);
+      setTimeout(closeCamera, 1500);
+    } catch {
+      setStatusMsg("Erro ao processar. Tente novamente.");
+    } finally {
+      setCapturing(false);
+      setSaving(false);
+    }
+  }
+
+  async function removeFace() {
+    setRemoving(true);
+    await fetch(`/api/users/${userId}/face`, { method: "DELETE" });
+    setHasFace(false);
+    setRemoving(false);
+  }
+
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Icon name="scanFace" className="h-4 w-4 text-emerald-500" />
+          <span className="text-sm font-semibold text-foreground">Reconhecimento facial</span>
+        </div>
+        <span className={`flex items-center gap-1.5 text-xs font-medium ${hasFace ? "text-emerald-600" : "text-muted"}`}>
+          <span className={`h-2 w-2 rounded-full ${hasFace ? "bg-emerald-500" : "bg-muted/40"}`} />
+          {hasFace ? "Cadastrado" : "Não cadastrado"}
+        </span>
+      </div>
+      <p className="text-xs text-muted mb-3">
+        {hasFace
+          ? "Seu rosto está cadastrado. Você pode usar o quiosque de ponto eletrônico."
+          : "Cadastre seu rosto para usar o ponto eletrônico facial."}
+      </p>
+      {!modelsLoaded && (
+        <p className="text-xs text-muted mb-2">Carregando modelos de reconhecimento...</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={!modelsLoaded}
+          onClick={() => void openCamera()}
+          className="btn-ghost flex items-center gap-2 text-sm disabled:opacity-50"
+        >
+          <Icon name="camera" className="h-4 w-4" />
+          {hasFace ? "Recadastrar" : "Cadastrar via câmera"}
+        </button>
+        {hasFace && (
+          <button
+            type="button"
+            disabled={removing}
+            onClick={() => void removeFace()}
+            className="btn-ghost flex items-center gap-2 text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
+          >
+            <Icon name="trash" className="h-4 w-4" />
+            Remover
+          </button>
+        )}
+      </div>
+
+      {cameraOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="industrial-panel w-full max-w-sm space-y-4 p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Cadastro facial</h3>
+              <button type="button" onClick={closeCamera} className="btn-ghost p-1">
+                <Icon name="x" className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4/3" }}>
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                playsInline muted autoPlay
+                style={{ transform: "scaleX(-1)" }}
+              />
+              <div className="absolute top-2 left-2 h-6 w-6 border-t-2 border-l-2 border-white/60 rounded-tl-md" />
+              <div className="absolute top-2 right-2 h-6 w-6 border-t-2 border-r-2 border-white/60 rounded-tr-md" />
+              <div className="absolute bottom-2 left-2 h-6 w-6 border-b-2 border-l-2 border-white/60 rounded-bl-md" />
+              <div className="absolute bottom-2 right-2 h-6 w-6 border-b-2 border-r-2 border-white/60 rounded-br-md" />
+            </div>
+            <p className="text-center text-xs text-muted">Centralize o rosto e clique em Capturar</p>
+            {statusMsg && (
+              <p className={`text-center text-xs ${statusMsg.includes("sucesso") ? "text-emerald-500" : statusMsg.includes("Erro") || statusMsg.includes("Nenhum") ? "text-red-500" : "text-muted"}`}>
+                {statusMsg}
+              </p>
+            )}
+            <button
+              type="button"
+              className="btn-primary w-full"
+              disabled={capturing || saving}
+              onClick={() => void capture()}
+            >
+              <Icon name="camera" className="h-4 w-4" />
+              {capturing ? "Processando..." : saving ? "Salvando..." : "Capturar rosto"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PerfilPage() {
   const { user, refresh } = useSession();
@@ -158,6 +329,8 @@ export default function PerfilPage() {
             </div>
           )}
         </div>
+
+        <SelfFaceEnrollment userId={user.id} />
       </div>
     </div>
   );
