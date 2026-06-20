@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { ChamadoFormModal, type ChamadoFormValues } from "@/components/ChamadoFormModal";
 import { ChamadoListCard } from "@/components/ChamadoListCard";
@@ -21,11 +20,7 @@ type Team = { id: string; name: string };
 type Member = { id: string; name: string };
 
 export default function ChamadosPage() {
-  return (
-    <AppShell>
-      <ChamadosContent />
-    </AppShell>
-  );
+  return <ChamadosContent />;
 }
 
 function ChamadosContent() {

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AppShell } from "@/components/AppShell";
 import { ClientManualCreateForm } from "@/components/ClientManualCreateForm";
 
 type Category = { id: string; name: string };
@@ -19,7 +18,7 @@ export default function NewClientPage() {
   }, []);
 
   return (
-    <AppShell>
+    <>
       <div className="mb-6">
         <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
           ← Voltar ao painel
@@ -37,6 +36,6 @@ export default function NewClientPage() {
       ) : (
         <ClientManualCreateForm categories={categories} />
       )}
-    </AppShell>
+    </>
   );
 }

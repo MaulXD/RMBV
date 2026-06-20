@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { KanbanAlertsBanner } from "@/components/KanbanAlertsBanner";
 import { KanbanBoard } from "@/components/KanbanBoard";
@@ -28,11 +27,7 @@ function dueAtToIso(date: string): string | null {
 }
 
 export default function KanbanPage() {
-  return (
-    <AppShell>
-      <KanbanContent />
-    </AppShell>
-  );
+  return <KanbanContent />;
 }
 
 function KanbanContent() {

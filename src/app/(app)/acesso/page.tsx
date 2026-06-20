@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/AppShell";
 import { AccessControlPanel } from "@/components/AccessControlPanel";
 import { useSession } from "@/components/SessionProvider";
 
@@ -19,13 +18,11 @@ export default function AcessoPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [members,        setMembers]        = useState<Member[]>([]);
 
-  /* Auth guard */
   useEffect(() => {
     if (loading) return;
     if (!role || role === "COLABORADOR") router.replace("/dashboard");
   }, [loading, role, router]);
 
-  /* For ADMIN: load all teams */
   useEffect(() => {
     if (!isAdmin) return;
     fetch("/api/teams")
@@ -38,10 +35,8 @@ export default function AcessoPage() {
       .catch(() => {});
   }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* For ADV/GERENTE: use own teamId */
   const effectiveTeamId = isAdmin ? selectedTeamId : (user?.teamId ?? "");
 
-  /* Load members whenever team changes */
   useEffect(() => {
     if (!effectiveTeamId) return;
     const endpoint = isAdmin
@@ -54,24 +49,19 @@ export default function AcessoPage() {
   }, [effectiveTeamId, isAdmin]);
 
   if (loading || !role || role === "COLABORADOR") {
-    return (
-      <AppShell>
-        <p className="text-sm text-muted">Carregando...</p>
-      </AppShell>
-    );
+    return <p className="text-sm text-muted">Carregando...</p>;
   }
 
   const canEdit = role === "ADV" || role === "ADMIN";
 
   return (
-    <AppShell>
+    <>
       <div className="page-header">
         <div>
           <h1 className="page-title">Controle de acesso</h1>
           <p className="page-subtitle">Histórico de logins e restrições de horário por colaborador.</p>
         </div>
 
-        {/* Team selector for ADMIN */}
         {isAdmin && teams.length > 0 && (
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted">Equipe:</label>
@@ -102,6 +92,6 @@ export default function AcessoPage() {
           {isAdmin ? "Nenhuma equipe cadastrada." : "Você não está vinculado a uma equipe."}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

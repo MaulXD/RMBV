@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { ReportsGoalsPanel } from "@/components/ReportsGoalsPanel";
 import { ReportsTimelineChart } from "@/components/ReportsTimelineChart";
@@ -180,7 +179,6 @@ function ReportsContent() {
         <TeseFilterBar embedded showPdfButton />
       </div>
 
-      {/* Tabs */}
       <div className="app-tabs">
         {([
           { key: "geral", label: "Visão geral" },
@@ -354,9 +352,5 @@ function ReportsContent() {
 }
 
 export default function ReportsPage() {
-  return (
-    <AppShell>
-      <ReportsContent />
-    </AppShell>
-  );
+  return <ReportsContent />;
 }

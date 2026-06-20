@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 
@@ -47,11 +46,11 @@ export default function PontoPage() {
   useEffect(() => { void loadRecords(); }, [loadRecords]);
 
   const kioskUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/ponto/kiosk?teamId=${isAdmin ? teamId : user?.teamId ?? ""}`
+    ? `${window.location.origin}/kiosk?teamId=${isAdmin ? teamId : user?.teamId ?? ""}`
     : "";
 
   return (
-    <AppShell>
+    <>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-emerald-500"
@@ -69,7 +68,6 @@ export default function PontoPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         {isAdmin && teams.length > 0 && (
           <div>
@@ -94,7 +92,6 @@ export default function PontoPage() {
         </button>
       </div>
 
-      {/* Kiosk link */}
       {(isAdmin ? teamId : user?.teamId) && (
         <div className="industrial-panel flex items-center justify-between gap-4 p-4">
           <div className="min-w-0">
@@ -113,7 +110,6 @@ export default function PontoPage() {
         </div>
       )}
 
-      {/* Records table */}
       <div className="industrial-panel overflow-hidden">
         {loading ? (
           <p className="p-6 text-sm text-muted">Carregando...</p>
@@ -156,6 +152,6 @@ export default function PontoPage() {
           </table>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }
