@@ -55,15 +55,15 @@ export async function POST(
     }
 
     try {
-      const { storedName } = await saveChamadoAttachment(id, file);
+      const { storedName, mimeType, size } = await saveChamadoAttachment(id, file);
 
       const attachment = await prisma.chamadoAttachment.create({
         data: {
           chamadoId: id,
           storedName,
           originalName: file.name || "anexo",
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
+          mimeType,
+          size,
           uploadedById: user.id,
         },
         include: { uploadedBy: { select: { id: true, name: true } } },

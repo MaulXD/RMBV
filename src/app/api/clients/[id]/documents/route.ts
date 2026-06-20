@@ -65,7 +65,7 @@ export async function POST(
     }
 
     try {
-      const { storedName } = await saveClientDocument(clientId, file);
+      const { storedName, mimeType, size } = await saveClientDocument(clientId, file);
 
       const document = await prisma.$transaction(async (tx) => {
         const doc = await tx.clientDocument.create({
@@ -73,8 +73,8 @@ export async function POST(
             clientId,
             storedName,
             originalName: file.name || "documento",
-            mimeType: file.type || "application/octet-stream",
-            size: file.size,
+            mimeType,
+            size,
             tags,
             uploadedById: user.id,
           },

@@ -2,6 +2,7 @@ import { mkdir, writeFile, unlink, readFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { del, get, put } from "@vercel/blob";
+import { convertToWebP, isConvertibleImage, replaceExtensionWithWebp } from "./image-convert";
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage", "documents");
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -49,7 +50,7 @@ function blobPathname(clientId: string, storedName: string) {
 export async function saveClientDocument(
   clientId: string,
   file: File
-): Promise<{ storedName: string; absolutePath?: string }> {
+): Promise<{ storedName: string; mimeType: string; size: number; absolutePath?: string }> {
   if (!canPersistDocuments()) {
     throw new Error(
       "Upload indisponível: configure Vercel Blob (BLOB_READ_WRITE_TOKEN) no projeto."
@@ -58,17 +59,28 @@ export async function saveClientDocument(
 
   validateUpload(file);
 
-  const safeOriginal = sanitizeOriginalName(file.name || "documento");
-  const storedName = `${randomUUID()}_${safeOriginal}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const originalMime = file.type || "application/octet-stream";
+  // Explicit type avoids Buffer<ArrayBuffer> vs Buffer<ArrayBufferLike> mismatch after reassignment
+  let buffer: Buffer<ArrayBufferLike> = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+  let mimeType = originalMime;
+
+  if (isConvertibleImage(originalMime)) {
+    ({ buffer, mimeType } = await convertToWebP(buffer, originalMime));
+  }
+
+  const originalName = file.name || "documento";
+  const safeName = isConvertibleImage(originalMime)
+    ? sanitizeOriginalName(replaceExtensionWithWebp(originalName))
+    : sanitizeOriginalName(originalName);
+  const storedName = `${randomUUID()}_${safeName}`;
 
   if (usesBlobStorage()) {
     await put(blobPathname(clientId, storedName), buffer, {
       access: "private",
-      contentType: file.type || "application/octet-stream",
+      contentType: mimeType,
       addRandomSuffix: false,
     });
-    return { storedName };
+    return { storedName, mimeType, size: buffer.length };
   }
 
   const dir = path.join(STORAGE_ROOT, clientId);
@@ -76,7 +88,7 @@ export async function saveClientDocument(
   const absolutePath = path.join(dir, storedName);
   await writeFile(absolutePath, buffer);
 
-  return { storedName, absolutePath };
+  return { storedName, mimeType, size: buffer.length, absolutePath };
 }
 
 export function resolveDocumentPath(clientId: string, storedName: string) {
