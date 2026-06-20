@@ -17,6 +17,7 @@ export type SessionUser = {
   role: "ADMIN" | "ADV" | "GERENTE" | "COLABORADOR" | "PESQUISADOR";
   teamId: string | null;
   teamName: string | null;
+  avatarUrl: string | null;
 };
 
 type SessionContextValue = {

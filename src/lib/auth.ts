@@ -15,6 +15,7 @@ export type SessionUser = {
   role: Role;
   teamId: string | null;
   teamName: string | null;
+  avatarUrl: string | null;
 };
 
 function getSecret() {
@@ -55,6 +56,7 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
       role: payload.role as Role,
       teamId: null,
       teamName: null,
+      avatarUrl: null,
     };
   } catch {
     return null;
@@ -94,6 +96,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       role: true,
       isActive: true,
       teamId: true,
+      avatarUrl: true,
       team: { select: { name: true } },
     },
   });
@@ -107,6 +110,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: user.role,
     teamId: user.teamId,
     teamName: user.team?.name ?? null,
+    avatarUrl: user.avatarUrl ?? null,
   };
 }
 
@@ -148,5 +152,6 @@ export async function authenticateUser(login: string, password: string) {
     role: user.role,
     teamId: full?.teamId ?? null,
     teamName: full?.team?.name ?? null,
+    avatarUrl: null,
   } satisfies SessionUser;
 }
