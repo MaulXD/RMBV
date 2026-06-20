@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -61,32 +62,38 @@ export function primeSessionCache(user: SessionUser | null) {
   sessionSubscriber?.(user);
 }
 
-/**
- * Leitura síncrona do cache — garante que o primeiro render já tem o user correto,
- * eliminando o flash "Configurações → Administração" causado pela janela
- * onde sessionLoading=false mas user ainda era null.
- */
-function getInitialUser(): SessionUser | null {
+function getLocalUser(): SessionUser | null {
+  // Module-level cache takes priority (avoids redundant localStorage reads)
   if (sessionCache !== undefined) return sessionCache;
   const stored = readStorage();
-  // Marca o cache como resolvido (null = não autenticado, objeto = autenticado)
   sessionCache = stored;
   return stored;
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  // useState com lazy initializer: lê cache/localStorage de forma síncrona
-  // Garante que o primeiro render já tem o user correto — sem flash
-  const [user, setUser] = useState<SessionUser | null>(getInitialUser);
+  // Start with null — safe for SSR (no hydration mismatch with server HTML).
+  // The real value from localStorage is applied synchronously before first paint
+  // via useLayoutEffect, so there is no visible flash for authenticated users.
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Register as the subscriber so primeSessionCache can push updates
-  // into React state immediately (e.g. right after login + router.push)
+  // Register as subscriber so primeSessionCache() can push state updates
+  // immediately into React (e.g. right after login + router.push without F5).
   useEffect(() => {
     sessionSubscriber = setUser;
     return () => {
       if (sessionSubscriber === setUser) sessionSubscriber = null;
     };
+  }, []);
+
+  // Read from localStorage BEFORE the first browser paint.
+  // useLayoutEffect fires synchronously after React's DOM mutations but before
+  // the browser repaints — the user sees their nav items immediately, not after
+  // the server /api/auth/me round-trip.
+  // On the server this is a no-op (typeof window === "undefined").
+  useLayoutEffect(() => {
+    const cached = getLocalUser();
+    if (cached !== null) setUser(cached);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -97,20 +104,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         writeStorage(null);
         setUser(null);
       } else if (res.ok) {
-        const data = await res.json();
-        const next = (data.user ?? null) as SessionUser | null;
+        const data = await res.json() as { user?: SessionUser };
+        const next = data.user ?? null;
         sessionCache = next;
         writeStorage(next);
         setUser(next);
       }
-      // 4xx/5xx que não sejam 401: preserva sessão em cache
+      // 4xx/5xx that are not 401: preserve session in cache (e.g. Neon cold start → 500)
     } catch {
-      // Erro de rede: preserva sessão em cache, não desloga
+      // Network error: preserve session in cache, don't log out
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Verify/update session from server on mount.
+  // Runs AFTER useLayoutEffect, so localStorage data is already in state.
   useEffect(() => {
     void refresh();
   }, [refresh]);
