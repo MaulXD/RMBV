@@ -80,7 +80,6 @@ export async function GET(request: Request) {
         primaryPhone: client.phone1 ?? client.phone2 ?? null,
         hasResearch: !!(client.pesquisa && client.pesquisa.trim().length > 0),
         hasContacts,
-        followUpAt: client.followUpAt?.toISOString() ?? null,
       };
     });
 

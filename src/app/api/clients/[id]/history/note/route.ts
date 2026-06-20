@@ -14,7 +14,6 @@ export const runtime = "nodejs";
 const noteSchema = z.object({
   type: z.enum(["CALL", "WHATSAPP", "NOTE"]),
   note: z.string().min(1).max(8000),
-  followUpAt: z.string().datetime().optional().nullable(),
 });
 
 export async function POST(
@@ -48,29 +47,17 @@ export async function POST(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const followUpDate =
-      parsed.data.followUpAt !== undefined
-        ? parsed.data.followUpAt
-          ? new Date(parsed.data.followUpAt)
-          : null
-        : undefined;
-
-    const [row] = await prisma.$transaction([
-      prisma.clientHistory.create({
-        data: {
-          clientId: id,
-          type: parsed.data.type,
-          note: parsed.data.note.trim(),
-          createdById: user.id,
-        },
-        include: {
-          createdBy: { select: { id: true, name: true, email: true } },
-        },
-      }),
-      ...(followUpDate !== undefined
-        ? [prisma.client.update({ where: { id }, data: { followUpAt: followUpDate } })]
-        : []),
-    ]);
+    const row = await prisma.clientHistory.create({
+      data: {
+        clientId: id,
+        type: parsed.data.type,
+        note: parsed.data.note.trim(),
+        createdById: user.id,
+      },
+      include: {
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+    });
 
     return NextResponse.json({ entry: formatHistoryEntry(row) }, { status: 201 });
   });

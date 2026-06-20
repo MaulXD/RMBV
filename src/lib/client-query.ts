@@ -72,7 +72,6 @@ export async function buildClientWhere(
             | "FINALIZADO",
         }
       : {}),
-    ...(filters.followUpDue ? { followUpAt: { lte: new Date() } } : {}),
   };
 }
 
