@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
@@ -14,10 +15,19 @@ const createSchema = z.object({
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   return withAuth(async (user) => {
+    const { searchParams } = new URL(request.url);
+    const teamIdParam = searchParams.get("teamId");
+
+    // Admin can filter by specific team; others always see their own team
+    const teamFilter: Prisma.TeseWhereInput =
+      isAdmin(user) && teamIdParam
+        ? { teamId: teamIdParam }
+        : teamScopeForTese(user);
+
     const teses = await prisma.tese.findMany({
-      where: { isActive: true, ...teamScopeForTese(user) },
+      where: { isActive: true, ...teamFilter },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: { _count: { select: { clients: true } } },
     });

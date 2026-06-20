@@ -92,7 +92,7 @@ export function TeseManager({
     const source = teses.find((t) => t.id === mergeSourceId);
     const target = teses.find((t) => t.id === mergeTargetId);
     const ok = await confirm({
-      message: `Fundir "${source?.name}" → "${target?.name}"? Todos os clientes da origem serão movidos para o destino e a tese origem será excluída.`,
+      message: `Unir "${source?.name}" → "${target?.name}"? Todos os clientes da origem serão movidos para o destino e a tese origem será excluída.`,
       danger: true,
     });
     if (!ok) return;
@@ -104,14 +104,14 @@ export function TeseManager({
         body: JSON.stringify({ sourceTeseId: mergeSourceId, targetTeseId: mergeTargetId, deleteSource: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Erro ao fundir teses");
+      if (!res.ok) throw new Error(data.error ?? "Erro ao unir teses");
       toast(`${data.merged} cliente(s) movidos para "${target?.name}". Tese "${source?.name}" removida.`, "success");
       setMergeSourceId("");
       setMergeTargetId("");
       setMergeMode(false);
       await refreshTeses();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Erro ao fundir teses.", "error");
+      toast(err instanceof Error ? err.message : "Erro ao unir teses.", "error");
     } finally {
       setMerging(false);
     }
@@ -127,7 +127,7 @@ export function TeseManager({
           onClick={() => setMergeMode((v) => !v)}
         >
           <Icon name="layers" className="h-3.5 w-3.5" />
-          {mergeMode ? "Cancelar fusão" : "Fundir teses"}
+          {mergeMode ? "Cancelar" : "Unir teses"}
         </button>
       </div>
       <p className="text-xs text-muted">
