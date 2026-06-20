@@ -9,8 +9,10 @@ import { Icon } from "@/components/ui/Icon";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { AccessBlockedScreen } from "@/components/AccessBlockedScreen";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "@/components/GlobalSearchPalette";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useSession } from "@/components/SessionProvider";
 import { ChatFloating } from "@/components/ChatFloating";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
@@ -18,6 +20,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
   const [scheduleBlock, setScheduleBlock] = useState<{
     startHour: number;
     endHour: number;
@@ -132,10 +136,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Icon name="search" className="h-4 w-4" />
                 </button>
               )}
+              {user && <NotificationBell />}
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {/* Bottom nav spacer accounts for fixed bottom nav + safe area */}
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
             {user && <OnboardingTour />}
             {children}
           </main>
@@ -143,7 +149,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {user && <GlobalSearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />}
-      {user && <ChatFloating />}
+      {user && (
+        <ChatFloating
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          onUnreadChange={setChatUnread}
+        />
+      )}
+      {user && (
+        <MobileBottomNav
+          onMenuOpen={() => setSidebarOpen(true)}
+          onChatToggle={() => setChatOpen((o) => !o)}
+          chatUnread={chatUnread}
+          chatOpen={chatOpen}
+        />
+      )}
       {scheduleBlock && (
         <AccessBlockedScreen
           startHour={scheduleBlock.startHour}

@@ -2,6 +2,7 @@ import {
   Users,
   UserPlus,
   User,
+  Phone,
   LayoutDashboard,
   Kanban,
   FileText,
@@ -127,6 +128,7 @@ const icons = {
   bell: Bell,
   camera: Camera,
   scanFace: ScanFace,
+  phone: Phone,
 } as const;
 
 export type IconName = keyof typeof icons;

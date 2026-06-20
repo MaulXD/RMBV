@@ -818,6 +818,11 @@
     border-color: color-mix(in srgb, var(--color-border) 50%, transparent);
   }
 
+  /* Safe area for iOS home indicator */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   /* Mobile sidebar slide-in */
   @keyframes sidebar-slide-in {
     from { transform: translateX(-100%); }
