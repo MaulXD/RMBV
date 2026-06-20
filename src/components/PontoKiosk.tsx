@@ -12,6 +12,7 @@ function euclideanDistance(a: Float32Array, b: Float32Array): number {
 }
 
 const THRESHOLD = 0.5;
+const MIN_CONFIDENCE = 0.65;
 const MODEL_URL = "/models";
 
 export function PontoKiosk({ teamId }: { teamId: string }) {
@@ -121,14 +122,14 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         if (dist < bestDist) { bestDist = dist; bestMatch = u; }
       }
 
-      if (!bestMatch || bestDist > THRESHOLD) {
+      const confidence = Math.max(0, 1 - bestDist / THRESHOLD);
+
+      if (!bestMatch || confidence < MIN_CONFIDENCE) {
         setStatus("no-match");
         setTimeout(() => setStatus("ready"), 3000);
         detectingRef.current = false;
         return;
       }
-
-      const confidence = Math.max(0, 1 - bestDist / THRESHOLD);
 
       // Determine type: toggle based on last record
       const todayStr = new Date().toISOString().slice(0, 10);

@@ -25,6 +25,7 @@ type PontoRecord = {
 };
 
 const THRESHOLD = 0.5;
+const MIN_CONFIDENCE = 0.65;
 const MODEL_URL = "/models";
 
 function euclidean(a: Float32Array, b: Float32Array) {
@@ -155,15 +156,15 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (!det) { setClockPhase("ready"); detectingRef.current = false; return; }
 
       const dist = euclidean(det.descriptor, descriptor);
-      if (dist > THRESHOLD) {
+      const confidence = Math.max(0, 1 - dist / THRESHOLD);
+
+      if (confidence < MIN_CONFIDENCE) {
         setClockPhase("no-match");
-        setClockMsg("Rosto não reconhecido. Reposicione-se e aguarde.");
+        setClockMsg("Confiança insuficiente. Reposicione-se e aguarde.");
         setTimeout(() => { setClockPhase("ready"); setClockMsg(""); }, 2500);
         detectingRef.current = false;
         return;
       }
-
-      const confidence = Math.max(0, 1 - dist / THRESHOLD);
       await fetch("/api/ponto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
