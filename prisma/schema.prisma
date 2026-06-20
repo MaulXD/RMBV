@@ -99,6 +99,7 @@ model Team {
   documentTemplates DocumentTemplate[]
   chamadoSlaConfigs ChamadoSlaConfig[]
   accessRules       UserAccessRule[]
+  pontoRecords      PontoRecord[]
   scheduleEnabled   Boolean  @default(true)
   scheduleDays      String   @default("[1,2,3,4,5]")
   scheduleStart     Int      @default(8)
@@ -126,6 +127,7 @@ model User {
   teamId         String?
   team           Team?    @relation("TeamMembers", fields: [teamId], references: [id], onDelete: Restrict)
   isActive       Boolean  @default(true)
+  faceDescriptor Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   ownedTeams     Team[]   @relation("TeamOwner")
@@ -150,8 +152,29 @@ model User {
   onboarding                  UserOnboarding?
   sessions                    UserSession[]
   accessRule                  UserAccessRule?
+  pontoRecords                PontoRecord[]
 
   @@index([teamId])
+}
+
+enum PontoType {
+  ENTRADA
+  SAIDA
+}
+
+model PontoRecord {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId     String?
+  team       Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  type       PontoType
+  confidence Float?
+  recordedAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([teamId])
+  @@index([recordedAt])
 }
 
 model Tese {
