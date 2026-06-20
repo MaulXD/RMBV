@@ -25,7 +25,12 @@ export async function GET(
       select: { id: true, name: true, faceDescriptor: true },
     });
     if (!target) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
-    return NextResponse.json({ hasDescriptor: target.faceDescriptor !== null });
+    // Return the descriptor to the user themselves (needed for client-side face matching on /ponto)
+    const isSelf = user.id === id;
+    return NextResponse.json({
+      hasDescriptor: target.faceDescriptor !== null,
+      descriptor: isSelf || isAdmin(user) ? target.faceDescriptor : null,
+    });
   });
 }
 
@@ -57,7 +62,7 @@ export async function DELETE(
 ) {
   return withAuth(async (user) => {
     const { id } = await params;
-    if (!isAdmin(user) && user.role !== "GERENTE") {
+    if (!isAdmin(user) && user.role !== "GERENTE" && user.id !== id) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
     await prisma.user.update({ where: { id }, data: { faceDescriptor: Prisma.DbNull } });
