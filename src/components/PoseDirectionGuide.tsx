@@ -10,7 +10,35 @@ const NUDGE_CLASS: Record<Exclude<PoseDirection, "center">, string> = {
   down: "liveness-guide-nudge-down",
 };
 
-/** Seta animada na lateral indicando para onde virar a cabeça. */
+/**
+ * Selfie espelhada (scaleX -1): ao virar a cabeça para a esquerda do usuário,
+ * o rosto desloca para a direita na tela. Setas laterais invertidas para bater
+ * com o preview espelhado e com evaluatePose (landmarks raw, não espelhados).
+ */
+const MIRROR_SIDE_GUIDE: Record<
+  "left" | "right",
+  {
+    pos: string;
+    icon: "chevronLeft" | "chevronRight";
+    nudge: keyof typeof NUDGE_CLASS;
+    label: string;
+  }
+> = {
+  left: {
+    pos: "right-1 top-1/2 -translate-y-1/2",
+    icon: "chevronRight",
+    nudge: "right",
+    label: "Esquerda",
+  },
+  right: {
+    pos: "left-1 top-1/2 -translate-y-1/2",
+    icon: "chevronLeft",
+    nudge: "left",
+    label: "Direita",
+  },
+};
+
+/** Seta animada indicando para onde mover o rosto no preview espelhado. */
 export function PoseDirectionGuide({
   direction,
   active,
@@ -41,17 +69,39 @@ export function PoseDirectionGuide({
     );
   }
 
-  const side: Record<
-    Exclude<PoseDirection, "center">,
-    { pos: string; icon: "chevronLeft" | "chevronRight" | "arrowUp" | "arrowDown"; label: string }
+  if (direction === "left" || direction === "right") {
+    const cfg = MIRROR_SIDE_GUIDE[direction];
+    const shell = ok
+      ? "bg-emerald-500/95 ring-white/60"
+      : active
+        ? "bg-amber-500/90 ring-white/50"
+        : "bg-primary/95 ring-white/40";
+
+    return (
+      <div className={`absolute z-10 flex flex-col items-center gap-1 ${cfg.pos}`}>
+        <div className={`flex flex-col items-center gap-1 ${NUDGE_CLASS[cfg.nudge]}`}>
+          <span
+            className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full text-white shadow-lg ring-2 transition-colors duration-200 ${shell}`}
+          >
+            <Icon name={cfg.icon} className="h-8 w-8 sm:h-9 sm:w-9" strokeWidth={2.75} />
+          </span>
+          <span className="rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+            {cfg.label}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const vertical: Record<
+    "up" | "down",
+    { pos: string; icon: "arrowUp" | "arrowDown"; label: string }
   > = {
-    left: { pos: "left-1 top-1/2 -translate-y-1/2", icon: "chevronLeft", label: "Esquerda" },
-    right: { pos: "right-1 top-1/2 -translate-y-1/2", icon: "chevronRight", label: "Direita" },
     up: { pos: "top-1 left-1/2 -translate-x-1/2", icon: "arrowUp", label: "Cima" },
     down: { pos: "bottom-1 left-1/2 -translate-x-1/2", icon: "arrowDown", label: "Baixo" },
   };
 
-  const cfg = side[direction];
+  const cfg = vertical[direction];
   const shell = ok
     ? "bg-emerald-500/95 ring-white/60"
     : active

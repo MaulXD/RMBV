@@ -223,7 +223,13 @@ export function FaceEnrollmentCaptureView({
       }
 
       const box = det.detection.box;
-      const quality = frameQuality(det.detection.score, box, video.videoWidth, video.videoHeight);
+      const quality = frameQuality(
+        det.detection.score,
+        box,
+        video.videoWidth,
+        video.videoHeight,
+        currentPose.direction,
+      );
       const metrics = computePoseMetrics(det.landmarks.positions);
       const evaluation = evaluatePose(currentPose.direction, metrics);
       setPoseEval(evaluation);
@@ -250,6 +256,7 @@ export function FaceEnrollmentCaptureView({
         quality,
         box,
         true,
+        currentPose.direction,
       );
       setStableProgress(getStableProgress(trackerRef.current));
 

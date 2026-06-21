@@ -38,11 +38,21 @@ const MAX_CENTER_OFFSET = 0.35;
 const MAX_FRAME_JITTER = 0.06;
 
 const YAW_CENTER_MAX = 0.12;
-const YAW_SIDE_MIN = 0.2;
+/** Inclinação lateral mínima (raw camera — não espelhada). */
+const YAW_SIDE_MIN = 0.16;
 const PITCH_CENTER_MIN = 0.4;
 const PITCH_CENTER_MAX = 0.54;
 const PITCH_UP_MAX = 0.36;
 const PITCH_DOWN_MIN = 0.58;
+/** Pitch tolerante quando a cabeça está virada (métrica inclina com yaw). */
+const PITCH_SIDE_MIN = 0.26;
+const PITCH_SIDE_MAX = 0.68;
+const MAX_CENTER_OFFSET_SIDE = 0.52;
+const MAX_FRAME_JITTER_SIDE = 0.11;
+
+function isSidePose(direction: PoseDirection) {
+  return direction === "left" || direction === "right";
+}
 
 export type FaceBox = { x: number; y: number; width: number; height: number };
 
@@ -163,11 +173,11 @@ export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): Po
         return {
           ok: false,
           kind: "wrong_pose",
-          message: "Vire mais para a esquerda",
+          message: "Vire a cabeça para a sua esquerda",
           alignment: clamp01((YAW_SIDE_MIN + yaw) / YAW_SIDE_MIN),
         };
       }
-      if (pitch < PITCH_UP_MAX || pitch > PITCH_DOWN_MIN) {
+      if (pitch < PITCH_SIDE_MIN || pitch > PITCH_SIDE_MAX) {
         return {
           ok: false,
           kind: "wrong_pose",
@@ -175,18 +185,18 @@ export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): Po
           alignment: 0.4,
         };
       }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à esquerda", alignment: clamp01(Math.abs(yaw) / 0.35) };
+      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à esquerda", alignment: clamp01(Math.abs(yaw) / 0.32) };
     }
     case "right": {
       if (yaw < YAW_SIDE_MIN) {
         return {
           ok: false,
           kind: "wrong_pose",
-          message: "Vire mais para a direita",
+          message: "Vire a cabeça para a sua direita",
           alignment: clamp01((YAW_SIDE_MIN - yaw) / YAW_SIDE_MIN),
         };
       }
-      if (pitch < PITCH_UP_MAX || pitch > PITCH_DOWN_MIN) {
+      if (pitch < PITCH_SIDE_MIN || pitch > PITCH_SIDE_MAX) {
         return {
           ok: false,
           kind: "wrong_pose",
@@ -194,28 +204,46 @@ export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): Po
           alignment: 0.4,
         };
       }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à direita", alignment: clamp01(yaw / 0.35) };
+      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à direita", alignment: clamp01(yaw / 0.32) };
     }
     default:
       return { ok: false, kind: "wrong_pose", message: "Ajuste a pose", alignment: 0 };
   }
 }
 
-export function faceCenterScore(box: FaceBox, videoW: number, videoH: number): number {
+export function faceCenterScore(
+  box: FaceBox,
+  videoW: number,
+  videoH: number,
+  maxOffset = MAX_CENTER_OFFSET,
+): number {
   if (videoW <= 0 || videoH <= 0) return 0;
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   const dx = Math.abs(cx - videoW / 2) / videoW;
   const dy = Math.abs(cy - videoH / 2) / videoH;
   const offset = Math.max(dx, dy);
-  if (offset > MAX_CENTER_OFFSET) return 0;
-  return 1 - offset / MAX_CENTER_OFFSET;
+  if (offset > maxOffset) return 0;
+  return 1 - offset / maxOffset;
 }
 
-export function frameQuality(detectionScore: number, box: FaceBox, videoW: number, videoH: number): number {
-  if (detectionScore < MIN_DETECTION_SCORE) return 0;
-  const center = faceCenterScore(box, videoW, videoH);
-  const sizeScore = Math.min(1, box.width / (videoW * 0.35));
+export function frameQuality(
+  detectionScore: number,
+  box: FaceBox,
+  videoW: number,
+  videoH: number,
+  direction: PoseDirection = "center",
+): number {
+  const side = isSidePose(direction);
+  const minScore = side ? 0.5 : MIN_DETECTION_SCORE;
+  if (detectionScore < minScore) return 0;
+  const center = faceCenterScore(
+    box,
+    videoW,
+    videoH,
+    side ? MAX_CENTER_OFFSET_SIDE : MAX_CENTER_OFFSET,
+  );
+  const sizeScore = Math.min(1, box.width / (videoW * (side ? 0.28 : 0.35)));
   return detectionScore * 0.45 + center * 0.4 + sizeScore * 0.15;
 }
 
@@ -227,11 +255,12 @@ export function isBoxStable(
   prev: { x: number; y: number } | null,
   next: { x: number; y: number },
   boxWidth: number,
+  maxJitter = MAX_FRAME_JITTER,
 ): boolean {
   if (!prev || boxWidth <= 0) return false;
   const dx = Math.abs(next.x - prev.x) / boxWidth;
   const dy = Math.abs(next.y - prev.y) / boxWidth;
-  return dx < MAX_FRAME_JITTER && dy < MAX_FRAME_JITTER;
+  return dx < maxJitter && dy < maxJitter;
 }
 
 export type AutoCaptureTracker = {
@@ -258,8 +287,12 @@ export function tickAutoCapture(
   quality: number,
   box: FaceBox,
   poseOk: boolean,
+  direction: PoseDirection = "center",
 ): { ready: boolean; descriptor: number[] | null } {
-  if (!poseOk || quality < MIN_QUALITY) {
+  const minQuality = isSidePose(direction) ? 0.48 : MIN_QUALITY;
+  const maxJitter = isSidePose(direction) ? MAX_FRAME_JITTER_SIDE : MAX_FRAME_JITTER;
+
+  if (!poseOk || quality < minQuality) {
     tracker.stableCount = 0;
     tracker.bestQuality = 0;
     tracker.bestDescriptor = null;
@@ -268,7 +301,7 @@ export function tickAutoCapture(
   }
 
   const center = boxCenter(box);
-  if (!isBoxStable(tracker.lastCenter, center, box.width)) {
+  if (!isBoxStable(tracker.lastCenter, center, box.width, maxJitter)) {
     tracker.stableCount = 0;
     tracker.bestQuality = quality;
     tracker.bestDescriptor = Array.from(descriptor);
