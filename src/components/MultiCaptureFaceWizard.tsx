@@ -103,6 +103,7 @@ export function MultiCaptureFaceWizard({
           <ol className="list-decimal space-y-2 pl-5 text-muted">
             <li>Escolha um local <strong className="text-foreground">bem iluminado</strong> (evite luz atrás de você).</li>
             <li>Remova boné, óculos escuros e máscara.</li>
+            <li>Primeiro faça a <strong className="text-foreground">prova de vida</strong>: feche e abra os olhos (foto ou tela não passam).</li>
             <li>Serão <strong className="text-foreground">{ENROLLMENT_CAPTURE_COUNT} poses</strong>: frente, cima, baixo, esquerda e direita.</li>
             <li>A câmera <strong className="text-foreground">captura sozinha</strong> quando a pose estiver correta.</li>
             <li>Siga as setas e o feedback na tela até completar as 5 capturas.</li>

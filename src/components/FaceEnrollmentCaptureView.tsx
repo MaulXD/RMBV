@@ -14,6 +14,12 @@ import {
   type AutoCaptureTracker,
   type PoseEvaluation,
 } from "@/lib/face-enrollment-capture";
+import {
+  createLivenessTracker,
+  resetLivenessTracker,
+  tickLiveness,
+  type LivenessTracker,
+} from "@/lib/face-liveness";
 
 const MODEL_URL = "/models";
 
@@ -65,9 +71,13 @@ export function FaceEnrollmentCaptureView({
   const [scanning, setScanning] = useState(false);
   const [poseEval, setPoseEval] = useState<PoseEvaluation | null>(null);
   const [stableProgress, setStableProgress] = useState(0);
+  const [livenessPassed, setLivenessPassed] = useState(false);
+  const [livenessMsg, setLivenessMsg] = useState("Olhe para a câmera com os olhos abertos");
+  const [livenessProgress, setLivenessProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trackerRef = useRef<AutoCaptureTracker>(resetAutoCaptureTracker());
+  const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
   const detectingRef = useRef(false);
   const pauseUntilRef = useRef(0);
 
@@ -100,6 +110,10 @@ export function FaceEnrollmentCaptureView({
   const startCamera = useCallback(async () => {
     stopCamera();
     trackerRef.current = resetAutoCaptureTracker();
+    livenessRef.current = resetLivenessTracker();
+    setLivenessPassed(false);
+    setLivenessMsg("Olhe para a câmera com os olhos abertos");
+    setLivenessProgress(0);
     setCaptures([]);
     setCaptureIndex(0);
     setPoseEval(null);
@@ -183,10 +197,28 @@ export function FaceEnrollmentCaptureView({
         .withFaceDescriptor();
 
       if (!det) {
-        setPoseEval({ ok: false, kind: "no_face", message: "Rosto não detectado", alignment: 0 });
-        setStableProgress(0);
-        setStatusMsg(`${currentPose.hint} — centralize o rosto no oval`);
-        trackerRef.current = resetAutoCaptureTracker();
+        if (!livenessPassed) {
+          setLivenessMsg("Rosto não detectado — centralize no oval");
+          setLivenessProgress(0);
+        } else {
+          setPoseEval({ ok: false, kind: "no_face", message: "Rosto não detectado", alignment: 0 });
+          setStableProgress(0);
+          setStatusMsg(`${currentPose!.hint} — centralize o rosto no oval`);
+          trackerRef.current = resetAutoCaptureTracker();
+        }
+        detectingRef.current = false;
+        return;
+      }
+
+      if (!livenessPassed) {
+        const live = tickLiveness(livenessRef.current, det.landmarks.positions);
+        setLivenessMsg(live.message);
+        setLivenessProgress(live.progress);
+        if (live.passed) {
+          pauseUntilRef.current = Date.now() + 700;
+          setLivenessPassed(true);
+          setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
+        }
         detectingRef.current = false;
         return;
       }
@@ -234,7 +266,7 @@ export function FaceEnrollmentCaptureView({
       setStatusMsg("Erro na detecção. Ajuste a posição.");
     }
     detectingRef.current = false;
-  }, [captures, currentPose, isSaving, modelsLoaded, onPoseCaptured, scanning]);
+  }, [captures, currentPose, isSaving, livenessPassed, modelsLoaded, onPoseCaptured, scanning]);
 
   useEffect(() => {
     if (!modelsLoaded || !scanning || isSaving) return;
@@ -242,19 +274,25 @@ export function FaceEnrollmentCaptureView({
     return () => clearInterval(id);
   }, [modelsLoaded, scanning, isSaving, runAutoCapture, captureIndex]);
 
-  const ringColor =
-    poseEval?.ok === true && stableProgress > 0
+  const ringColor = !livenessPassed
+    ? livenessProgress >= 1
+      ? "border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.45)]"
+      : "border-violet-400/80 shadow-[0_0_16px_rgba(139,92,246,0.35)]"
+    : poseEval?.ok === true && stableProgress > 0
       ? "border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.45)]"
       : poseEval?.kind === "wrong_pose"
         ? "border-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.35)]"
         : "border-white/50";
 
-  const statusTone =
-    poseEval?.ok === true
+  const statusTone = !livenessPassed
+    ? "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-200"
+    : poseEval?.ok === true
       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
       : poseEval?.kind === "wrong_pose" || poseEval?.kind === "no_face"
         ? "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
         : "border-border bg-surface text-muted";
+
+  const panelMsg = !livenessPassed ? livenessMsg : displayMsg;
 
   if (!modelsLoaded) {
     return <p className="text-xs text-muted text-center py-4">Carregando modelos de reconhecimento...</p>;
@@ -275,13 +313,17 @@ export function FaceEnrollmentCaptureView({
           style={{ transform: "scaleX(-1)" }}
         />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 sm:gap-2">
-          {currentPose && (
+          {!livenessPassed ? (
+            <span className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-violet-500/80 text-lg font-bold text-white animate-pulse">
+              👁
+            </span>
+          ) : currentPose ? (
             <PoseHint
               direction={currentPose.direction}
               active={poseEval?.kind === "wrong_pose"}
               ok={poseEval?.ok === true && stableProgress > 0}
             />
-          )}
+          ) : null}
           <div
             className={`h-32 w-24 sm:h-40 sm:w-32 rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
           />
@@ -294,39 +336,61 @@ export function FaceEnrollmentCaptureView({
         )}
       </div>
 
-      {currentPose && (
+      {(currentPose || !livenessPassed) && (
         <div className="panel-solid w-full min-w-0 space-y-3 rounded-xl p-3 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">
-                {captureIndex + 1}/{ENROLLMENT_CAPTURE_COUNT} · {currentPose.label}
+                {!livenessPassed
+                  ? "Prova de vida"
+                  : `${captureIndex + 1}/${ENROLLMENT_CAPTURE_COUNT} · ${currentPose!.label}`}
               </p>
-              <p className="mt-0.5 text-xs text-muted">{currentPose.hint}</p>
+              <p className="mt-0.5 text-xs text-muted">
+                {!livenessPassed
+                  ? "Confirme que você está ao vivo — foto ou tela não passam"
+                  : currentPose!.hint}
+              </p>
             </div>
-            <div className="flex shrink-0 gap-1 pt-0.5">
-              {ENROLLMENT_POSE_STEPS.map((step, i) => (
-                <span
-                  key={step.direction}
-                  title={step.label}
-                  className={`h-2 w-5 sm:w-6 rounded-full transition-colors ${
-                    i < captures.length
-                      ? "bg-emerald-500"
-                      : i === captureIndex
-                        ? "bg-primary animate-pulse"
-                        : "bg-border"
-                  }`}
-                />
-              ))}
-            </div>
+            {livenessPassed && (
+              <div className="flex shrink-0 gap-1 pt-0.5">
+                {ENROLLMENT_POSE_STEPS.map((step, i) => (
+                  <span
+                    key={step.direction}
+                    title={step.label}
+                    className={`h-2 w-5 sm:w-6 rounded-full transition-colors ${
+                      i < captures.length
+                        ? "bg-emerald-500"
+                        : i === captureIndex
+                          ? "bg-primary animate-pulse"
+                          : "bg-border"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {displayMsg && (
+          {panelMsg && (
             <p className={`rounded-lg border px-3 py-2 text-center text-xs font-medium leading-snug ${statusTone}`}>
-              {displayMsg}
+              {panelMsg}
             </p>
           )}
 
-          <div className="space-y-2">
+          {!livenessPassed ? (
+            <div>
+              <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
+                <span>Verificação</span>
+                <span>{Math.round(livenessProgress * 100)}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full bg-violet-500 transition-all duration-200"
+                  style={{ width: `${Math.round(livenessProgress * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
             <div>
               <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
                 <span>Alinhamento</span>
@@ -352,9 +416,14 @@ export function FaceEnrollmentCaptureView({
               </div>
             </div>
           </div>
+          )}
 
           <p className="text-center text-[11px] text-muted">
-            {isSaving ? "Salvando..." : "Captura automática — ajuste a pose até ficar verde"}
+            {isSaving
+              ? "Salvando..."
+              : !livenessPassed
+                ? "Foto ou tela não passam — feche e abra os olhos"
+                : "Captura automática — ajuste a pose até ficar verde"}
           </p>
         </div>
       )}

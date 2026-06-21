@@ -16,11 +16,18 @@ import {
   euclideanDistance as euclidean,
 } from "@/lib/face-match";
 import { formatGpsPontoError, geolocationErrorMessage } from "@/lib/gps-ponto";
+import {
+  createLivenessTracker,
+  resetLivenessTracker,
+  tickLiveness,
+  type LivenessTracker,
+} from "@/lib/face-liveness";
 
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
 type ClockPhase =
   | "idle"
   | "opening"
+  | "liveness"
   | "ready"
   | "detecting"
   | "verified"
@@ -81,6 +88,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const detectingRef = useRef(false);
   const cooldownRef = useRef(false);
+  const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
+  const [livenessProgress, setLivenessProgress] = useState(0);
 
   // Enrollment camera
   const [enrolling, setEnrolling] = useState(false);
@@ -160,6 +169,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setClockPhase("idle");
     setVerifiedConfidence(null);
     setClockMsg("");
+    livenessRef.current = resetLivenessTracker();
+    setLivenessProgress(0);
   }
 
   async function startClockCamera() {
@@ -167,11 +178,14 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setClockPhase("opening");
     setClockMsg("");
     setVerifiedConfidence(null);
+    livenessRef.current = resetLivenessTracker();
+    setLivenessProgress(0);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
-      setClockPhase("ready");
+      setClockPhase("liveness");
+      setClockMsg("Olhe para a câmera com os olhos abertos");
     } catch {
       setClockPhase("error");
       setClockMsg("Câmera não autorizada.");
@@ -198,6 +212,32 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       );
     });
   }
+
+  const runLivenessCheck = useCallback(async () => {
+    if (detectingRef.current || !videoRef.current || clockPhase !== "liveness") return;
+    detectingRef.current = true;
+    try {
+      const faceapi = await import("@vladmandic/face-api");
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true);
+      if (!det) {
+        setClockMsg("Centralize o rosto — olhos abertos");
+        setLivenessProgress(0);
+        detectingRef.current = false;
+        return;
+      }
+      const live = tickLiveness(livenessRef.current, det.landmarks.positions);
+      setLivenessProgress(live.progress);
+      setClockMsg(live.message);
+      if (live.passed) {
+        setClockPhase("ready");
+        setClockMsg("Olhe para a câmera");
+      }
+    } catch {
+      setClockMsg("Erro na verificação. Tente novamente.");
+    }
+    detectingRef.current = false;
+  }, [clockPhase]);
 
   const detectFace = useCallback(async () => {
     if (detectingRef.current || !videoRef.current || !descriptor) return;
@@ -273,6 +313,12 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       setClockMsg("Erro ao registrar. Tente novamente.");
     }
   }, [verifiedConfidence, user.id, user.teamId, user.gpsRequired, gpsError, loadRecords]);
+
+  useEffect(() => {
+    if (clockPhase !== "liveness") return;
+    const id = setInterval(() => void runLivenessCheck(), 450);
+    return () => clearInterval(id);
+  }, [clockPhase, runLivenessCheck]);
 
   useEffect(() => {
     if (clockPhase !== "ready") return;
@@ -604,12 +650,15 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               <span className={`h-2 w-2 rounded-full animate-pulse ${
                 clockPhase === "success" || clockPhase === "verified" ? "bg-emerald-500" :
                 clockPhase === "no-match" || clockPhase === "error" ? "bg-red-500" :
+                clockPhase === "liveness" ? "bg-violet-500" :
                 clockPhase === "detecting" || clockPhase === "submitting" ? "bg-amber-500" : "bg-muted/50"
               }`} />
               <span className="text-sm font-semibold text-foreground">
                 {clockPhase === "verified" || clockPhase === "submitting"
                   ? "Escolha o tipo de registro"
-                  : "Reconhecimento facial"}
+                  : clockPhase === "liveness"
+                    ? "Prova de vida"
+                    : "Reconhecimento facial"}
               </span>
             </div>
             <button type="button" className="btn-icon" onClick={stopClockCamera}>
@@ -623,6 +672,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               className={`relative overflow-hidden rounded-2xl border-4 transition-colors duration-300 ${
                 clockPhase === "success" || clockPhase === "verified" ? "border-emerald-500" :
                 clockPhase === "no-match" ? "border-red-400" :
+                clockPhase === "liveness" ? "border-violet-400" :
                 clockPhase === "detecting" || clockPhase === "submitting" ? "border-amber-400" : "border-border/60"
               }`}
               style={{ width: "min(100%, 260px)", aspectRatio: "1" }}
@@ -643,6 +693,13 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 </>
               )}
               {/* Overlays */}
+              {clockPhase === "liveness" && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/80 text-xl font-bold text-white animate-pulse">
+                    👁
+                  </span>
+                </div>
+              )}
               {clockPhase === "opening" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60">
                   <Icon name="rotateCw" className="h-6 w-6 animate-spin text-white/60" />
@@ -672,11 +729,27 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             </div>
 
             {/* Status text */}
+            {clockPhase === "liveness" && (
+              <div className="w-full max-w-xs space-y-2">
+                <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
+                  <span>Verificação</span>
+                  <span>{Math.round(livenessProgress * 100)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full bg-violet-500 transition-all duration-200"
+                    style={{ width: `${Math.round(livenessProgress * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
             <p className={`text-sm font-medium text-center ${
               clockPhase === "success" || (clockPhase === "verified" && !clockMsgIsError)
                 ? "text-emerald-600 dark:text-emerald-400"
                 : clockPhase === "no-match" || clockPhase === "error" || clockMsgIsError
                   ? "text-red-500"
+                  : clockPhase === "liveness"
+                    ? "text-violet-600 dark:text-violet-400"
                   : clockPhase === "detecting" || clockPhase === "submitting"
                     ? "text-amber-600 dark:text-amber-400"
                     : "text-muted"
@@ -686,8 +759,14 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                clockPhase === "detecting" ? "Reconhecendo..." :
                clockPhase === "submitting" ? "Registrando..." :
                clockPhase === "opening" ? "Iniciando..." :
+               clockPhase === "liveness" ? (clockMsg || "Feche e abra os olhos") :
                clockMsg || "Olhe para a câmera"}
             </p>
+            {clockPhase === "liveness" && (
+              <p className="text-center text-[11px] text-muted">
+                Foto ou tela não passam — confirme que você está ao vivo
+              </p>
+            )}
 
             {(clockPhase === "verified" || clockPhase === "submitting") && (
               <div className="w-full max-w-xs">
