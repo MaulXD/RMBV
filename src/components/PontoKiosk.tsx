@@ -8,7 +8,11 @@ import {
   tickLiveness,
   type LivenessTracker,
   LIVENESS_POLL_MS,
+  LIVENESS_FACE_DETECT,
+  isVideoReadyForDetection,
+  waitForVideoReady,
 } from "@/lib/face-liveness";
+import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -89,11 +93,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         stream = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
-          videoRef.current.play();
-          livenessRef.current = resetLivenessTracker();
-          setLivenessProgress(0);
-          setLivenessMsg("Olhe para a câmera com os olhos abertos");
-          setStatus("liveness");
+          void videoRef.current.play().then(async () => {
+            await waitForVideoReady(videoRef.current!);
+            livenessRef.current = resetLivenessTracker();
+            setLivenessProgress(0);
+            setLivenessMsg("Olhe para a câmera com os olhos abertos");
+            setStatus("liveness");
+          });
         }
       })
       .catch(() => {
@@ -105,10 +111,11 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
 
   const runLivenessCheck = useCallback(async () => {
     if (livenessBusyRef.current || !videoRef.current || status !== "liveness") return;
+    if (!isVideoReadyForDetection(videoRef.current)) return;
     livenessBusyRef.current = true;
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
+      const opts = new faceapi.TinyFaceDetectorOptions(LIVENESS_FACE_DETECT);
       const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true);
       if (!det) {
         setLivenessMsg("Centralize o rosto — olhos abertos");
@@ -130,6 +137,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
 
   const detectAndMatch = useCallback(async () => {
     if (detectingRef.current || cooldownRef.current || !videoRef.current || !modelsLoaded) return;
+    if (!isVideoReadyForDetection(videoRef.current)) return;
     if (status !== "ready") return;
 
     detectingRef.current = true;
@@ -261,11 +269,11 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
               </p>
             </div>
           ) : status === "liveness" ? (
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/80 text-xl font-bold text-white animate-pulse">
-                👁
-              </span>
-            </div>
+            <LivenessCornerBanner
+              message={livenessMsg}
+              progress={livenessProgress}
+              variant="kiosk"
+            />
           ) : status === "error" ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-950/90 p-4 text-center">
               <p className="text-sm text-red-400">{errorMsg}</p>
@@ -294,21 +302,9 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
               </p>
             </div>
           ) : status === "liveness" ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-violet-400">{livenessMsg}</p>
-              <div className="mx-auto w-full max-w-[240px]">
-                <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-white/40">
-                  <span>Verificação</span>
-                  <span>{Math.round(livenessProgress * 100)}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full bg-violet-500 transition-all duration-200"
-                    style={{ width: `${Math.round(livenessProgress * 100)}%` }}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-white/30">Pisque devagar: feche os olhos por 1 segundo e abra de novo</p>
+            <div className="space-y-3 px-2">
+              <p className="text-base font-bold leading-snug text-violet-300">{livenessMsg}</p>
+              <p className="text-xs text-white/40">Pisque devagar: feche os olhos por 1 segundo e abra de novo</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">

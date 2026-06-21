@@ -245,7 +245,7 @@ export function MonthlyReportPanel({
                     : "border-border text-muted hover:border-primary/50"
                 }`}
               >
-                {charts.includes(opt.id) ? "✓ " : ""}{opt.label}
+                {opt.label}
               </button>
             ))}
           </div>

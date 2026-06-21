@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession, type SessionUser } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
+import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
 import {
   hoursSummary,
   nextPontoType,
@@ -22,6 +23,9 @@ import {
   tickLiveness,
   type LivenessTracker,
   LIVENESS_POLL_MS,
+  LIVENESS_FACE_DETECT,
+  isVideoReadyForDetection,
+  waitForVideoReady,
 } from "@/lib/face-liveness";
 
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -185,7 +189,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        await waitForVideoReady(videoRef.current);
+      }
       setClockPhase("liveness");
       setClockMsg("Olhe para a câmera com os olhos abertos");
     } catch {
@@ -217,10 +225,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
   const runLivenessCheck = useCallback(async () => {
     if (livenessBusyRef.current || !videoRef.current || clockPhase !== "liveness") return;
+    if (!isVideoReadyForDetection(videoRef.current)) return;
     livenessBusyRef.current = true;
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
+      const opts = new faceapi.TinyFaceDetectorOptions(LIVENESS_FACE_DETECT);
       const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true);
       if (!det) {
         setClockMsg("Centralize o rosto — olhos abertos");
@@ -243,6 +252,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
   const detectFace = useCallback(async () => {
     if (detectingRef.current || !videoRef.current || !descriptor) return;
+    if (!isVideoReadyForDetection(videoRef.current)) return;
     detectingRef.current = true;
     setClockPhase("detecting");
     try {
@@ -696,11 +706,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               )}
               {/* Overlays */}
               {clockPhase === "liveness" && (
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/80 text-xl font-bold text-white animate-pulse">
-                    👁
-                  </span>
-                </div>
+                <LivenessCornerBanner message={clockMsg || "Olhe para a câmera com os olhos abertos"} progress={livenessProgress} />
               )}
               {clockPhase === "opening" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60">
@@ -732,11 +738,12 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
             {/* Status text */}
             {clockPhase === "liveness" && (
-              <div className="w-full max-w-xs space-y-2">
-                <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
-                  <span>Verificação</span>
-                  <span>{Math.round(livenessProgress * 100)}%</span>
-                </div>
+              <p className="w-full max-w-xs text-center text-base font-bold leading-snug text-violet-700 dark:text-violet-300">
+                {clockMsg || "Olhe para a câmera com os olhos abertos"}
+              </p>
+            )}
+            {clockPhase === "liveness" && (
+              <div className="w-full max-w-xs">
                 <div className="h-2 overflow-hidden rounded-full bg-border">
                   <div
                     className="h-full bg-violet-500 transition-all duration-200"
@@ -751,7 +758,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 : clockPhase === "no-match" || clockPhase === "error" || clockMsgIsError
                   ? "text-red-500"
                   : clockPhase === "liveness"
-                    ? "text-violet-600 dark:text-violet-400"
+                    ? "hidden"
                   : clockPhase === "detecting" || clockPhase === "submitting"
                     ? "text-amber-600 dark:text-amber-400"
                     : "text-muted"
@@ -761,7 +768,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                clockPhase === "detecting" ? "Reconhecendo..." :
                clockPhase === "submitting" ? "Registrando..." :
                clockPhase === "opening" ? "Iniciando..." :
-               clockPhase === "liveness" ? (clockMsg || "Feche e abra os olhos") :
+               clockPhase === "liveness" ? null :
                clockMsg || "Olhe para a câmera"}
             </p>
             {clockPhase === "liveness" && (

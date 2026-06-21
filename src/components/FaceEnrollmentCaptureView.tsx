@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
+import { LivenessCornerBanner } from "./LivenessCornerBanner";
 import {
   ENROLLMENT_CAPTURE_COUNT,
   ENROLLMENT_POSE_STEPS,
@@ -20,6 +21,8 @@ import {
   tickLiveness,
   type LivenessTracker,
   LIVENESS_POLL_MS,
+  LIVENESS_FACE_DETECT,
+  isVideoReadyForDetection,
 } from "@/lib/face-liveness";
 
 const MODEL_URL = "/models";
@@ -33,16 +36,20 @@ function PoseHint({
   active: boolean;
   ok: boolean;
 }) {
-  const arrows: Record<string, string> = {
-    center: "◎",
-    up: "↑",
-    down: "↓",
-    left: "←",
-    right: "→",
-  };
+  const iconName: "circleDot" | "arrowUp" | "arrowDown" | "chevronLeft" | "chevronRight" =
+    direction === "center"
+      ? "circleDot"
+      : direction === "up"
+        ? "arrowUp"
+        : direction === "down"
+          ? "arrowDown"
+          : direction === "left"
+            ? "chevronLeft"
+            : "chevronRight";
+
   return (
     <span
-      className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full text-base sm:text-lg font-bold transition-all duration-200 ${
+      className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-all duration-200 ${
         ok
           ? "bg-emerald-500/90 text-white scale-110"
           : active
@@ -50,7 +57,7 @@ function PoseHint({
             : "bg-white/15 text-white"
       }`}
     >
-      {arrows[direction]}
+      <Icon name={iconName} className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
     </span>
   );
 }
@@ -191,7 +198,13 @@ export function FaceEnrollmentCaptureView({
     try {
       const faceapi = await import("@vladmandic/face-api");
       const video = videoRef.current;
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+      if (!isVideoReadyForDetection(video)) {
+        detectingRef.current = false;
+        return;
+      }
+      const opts = new faceapi.TinyFaceDetectorOptions(
+        livenessPassed ? { inputSize: 416, scoreThreshold: 0.5 } : LIVENESS_FACE_DETECT,
+      );
 
       if (!livenessPassed) {
         const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true);
@@ -318,11 +331,10 @@ export function FaceEnrollmentCaptureView({
           style={{ transform: "scaleX(-1)" }}
         />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 sm:gap-2">
-          {!livenessPassed ? (
-            <span className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-violet-500/80 text-lg font-bold text-white animate-pulse">
-              👁
-            </span>
-          ) : currentPose ? (
+          {!livenessPassed && (
+            <LivenessCornerBanner message={livenessMsg} progress={livenessProgress} />
+          )}
+          {livenessPassed && currentPose ? (
             <PoseHint
               direction={currentPose.direction}
               active={poseEval?.kind === "wrong_pose"}
@@ -376,25 +388,16 @@ export function FaceEnrollmentCaptureView({
           </div>
 
           {panelMsg && (
-            <p className={`rounded-lg border px-3 py-2 text-center text-xs font-medium leading-snug ${statusTone}`}>
+            <p
+              className={`rounded-lg border px-3 py-2.5 text-center leading-snug ${statusTone} ${
+                !livenessPassed ? "text-sm font-bold sm:text-base" : "text-xs font-medium"
+              }`}
+            >
               {panelMsg}
             </p>
           )}
 
-          {!livenessPassed ? (
-            <div>
-              <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
-                <span>Verificação</span>
-                <span>{Math.round(livenessProgress * 100)}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-border">
-                <div
-                  className="h-full bg-violet-500 transition-all duration-200"
-                  style={{ width: `${Math.round(livenessProgress * 100)}%` }}
-                />
-              </div>
-            </div>
-          ) : (
+          {livenessPassed && (
             <div className="space-y-2">
             <div>
               <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">

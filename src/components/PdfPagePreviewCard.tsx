@@ -272,19 +272,21 @@ export function PdfPagePreviewCard({
           {onMoveUp && (
             <button
               type="button"
-              className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-800 hover:bg-white"
+              className="rounded-lg bg-white/90 p-1.5 text-slate-800 hover:bg-white"
               onClick={onMoveUp}
+              aria-label="Mover para cima"
             >
-              ↑
+              <Icon name="arrowUp" className="h-3.5 w-3.5" />
             </button>
           )}
           {onMoveDown && (
             <button
               type="button"
-              className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-800 hover:bg-white"
+              className="rounded-lg bg-white/90 p-1.5 text-slate-800 hover:bg-white"
               onClick={onMoveDown}
+              aria-label="Mover para baixo"
             >
-              ↓
+              <Icon name="arrowDown" className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
