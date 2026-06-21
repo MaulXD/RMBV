@@ -35,7 +35,7 @@ function PoseHint({
   };
   return (
     <span
-      className={`flex h-11 w-11 items-center justify-center rounded-full text-lg font-bold transition-all duration-200 ${
+      className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full text-base sm:text-lg font-bold transition-all duration-200 ${
         ok
           ? "bg-emerald-500/90 text-white scale-110"
           : active
@@ -73,6 +73,7 @@ export function FaceEnrollmentCaptureView({
 
   const isSaving = saving || savingExternal;
   const currentPose = ENROLLMENT_POSE_STEPS[captureIndex];
+  const displayMsg = statusOverride ?? statusMsg;
 
   useEffect(() => {
     void (async () => {
@@ -104,7 +105,7 @@ export function FaceEnrollmentCaptureView({
     setPoseEval(null);
     setStableProgress(0);
     pauseUntilRef.current = 0;
-    setStatusMsg(`${ENROLLMENT_POSE_STEPS[0]!.hint}`);
+    setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
@@ -248,20 +249,23 @@ export function FaceEnrollmentCaptureView({
         ? "border-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.35)]"
         : "border-white/50";
 
-  const feedbackColor =
+  const statusTone =
     poseEval?.ok === true
-      ? "bg-emerald-500/90 text-white"
-      : poseEval?.kind === "wrong_pose"
-        ? "bg-amber-500/90 text-white"
-        : "bg-black/60 text-white/90";
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : poseEval?.kind === "wrong_pose" || poseEval?.kind === "no_face"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+        : "border-border bg-surface text-muted";
 
   if (!modelsLoaded) {
     return <p className="text-xs text-muted text-center py-4">Carregando modelos de reconhecimento...</p>;
   }
 
   return (
-    <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4/3" }}>
+    <div className="flex w-full min-w-0 flex-col gap-3">
+      <div
+        className="relative mx-auto w-full max-w-[min(100%,280px)] overflow-hidden rounded-xl bg-black sm:max-w-xs"
+        style={{ aspectRatio: "3 / 4", maxHeight: "min(42dvh, 320px)" }}
+      >
         <video
           ref={videoRef}
           className="h-full w-full object-cover"
@@ -270,7 +274,7 @@ export function FaceEnrollmentCaptureView({
           autoPlay
           style={{ transform: "scaleX(-1)" }}
         />
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 sm:gap-2">
           {currentPose && (
             <PoseHint
               direction={currentPose.direction}
@@ -279,75 +283,80 @@ export function FaceEnrollmentCaptureView({
             />
           )}
           <div
-            className={`h-48 w-36 rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
+            className={`h-32 w-24 sm:h-40 sm:w-32 rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
           />
         </div>
 
-        {poseEval && (
-          <div className={`absolute top-3 inset-x-3 rounded-lg px-3 py-2 text-center text-xs font-medium backdrop-blur-sm ${feedbackColor}`}>
-            {statusOverride ?? statusMsg}
-          </div>
-        )}
-
         {isSaving && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
             <Icon name="rotateCw" className="h-8 w-8 animate-spin text-white/80" />
           </div>
         )}
       </div>
 
       {currentPose && (
-        <>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-foreground">
-              {captureIndex + 1}/{ENROLLMENT_CAPTURE_COUNT} · {currentPose.label}
+        <div className="panel-solid w-full min-w-0 space-y-3 rounded-xl p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                {captureIndex + 1}/{ENROLLMENT_CAPTURE_COUNT} · {currentPose.label}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">{currentPose.hint}</p>
+            </div>
+            <div className="flex shrink-0 gap-1 pt-0.5">
+              {ENROLLMENT_POSE_STEPS.map((step, i) => (
+                <span
+                  key={step.direction}
+                  title={step.label}
+                  className={`h-2 w-5 sm:w-6 rounded-full transition-colors ${
+                    i < captures.length
+                      ? "bg-emerald-500"
+                      : i === captureIndex
+                        ? "bg-primary animate-pulse"
+                        : "bg-border"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {displayMsg && (
+            <p className={`rounded-lg border px-3 py-2 text-center text-xs font-medium leading-snug ${statusTone}`}>
+              {displayMsg}
             </p>
-            {!poseEval && <p className="mt-1 text-xs text-muted">{currentPose.hint}</p>}
-          </div>
+          )}
 
-          <div className="space-y-1.5 px-1">
-            <div className="flex justify-between text-[10px] text-muted uppercase tracking-wide">
-              <span>Alinhamento da pose</span>
-              <span>{Math.round((poseEval?.alignment ?? 0) * 100)}%</span>
+          <div className="space-y-2">
+            <div>
+              <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
+                <span>Alinhamento</span>
+                <span>{Math.round((poseEval?.alignment ?? 0) * 100)}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-border">
+                <div
+                  className={`h-full transition-all duration-200 ${poseEval?.ok ? "bg-emerald-500" : "bg-amber-500"}`}
+                  style={{ width: `${Math.round((poseEval?.alignment ?? 0) * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-border">
-              <div
-                className={`h-full transition-all duration-200 ${poseEval?.ok ? "bg-emerald-500" : "bg-amber-500"}`}
-                style={{ width: `${Math.round((poseEval?.alignment ?? 0) * 100)}%` }}
-              />
+            <div>
+              <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
+                <span>Estabilidade</span>
+                <span>{Math.round(stableProgress * 100)}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full bg-primary transition-all duration-200"
+                  style={{ width: `${Math.round(stableProgress * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="flex justify-between text-[10px] text-muted uppercase tracking-wide">
-              <span>Estabilidade</span>
-              <span>{Math.round(stableProgress * 100)}%</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-border">
-              <div
-                className="h-full bg-primary transition-all duration-200"
-                style={{ width: `${Math.round(stableProgress * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-1 justify-center">
-            {ENROLLMENT_POSE_STEPS.map((step, i) => (
-              <span
-                key={step.direction}
-                title={step.label}
-                className={`h-2 w-8 rounded-full transition-colors ${
-                  i < captures.length
-                    ? "bg-emerald-500"
-                    : i === captureIndex
-                      ? "bg-primary/50 animate-pulse"
-                      : "bg-border"
-                }`}
-              />
-            ))}
           </div>
 
           <p className="text-center text-[11px] text-muted">
             {isSaving ? "Salvando..." : "Captura automática — ajuste a pose até ficar verde"}
           </p>
-        </>
+        </div>
       )}
     </div>
   );

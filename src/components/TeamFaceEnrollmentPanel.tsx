@@ -80,7 +80,7 @@ export function TeamFaceEnrollmentPanel({
     (user.role === "GERENTE" && settings.allowGerenteFaceEnrollment);
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="w-full min-w-0 space-y-5">
       {showSettings && settings.canConfigure && (
         <div className="panel-solid p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
