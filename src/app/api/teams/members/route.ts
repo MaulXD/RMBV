@@ -20,6 +20,9 @@ const createMemberSchema = z.object({
   email: loginIdSchema,
   password: z.string().min(6),
   role: z.enum(["GERENTE", "COLABORADOR", "PESQUISADOR"]),
+  workType: z.enum(["ESTAGIARIO", "CLT"]).optional(),
+  gpsRequired: z.boolean().optional(),
+  gpsRadiusMeters: z.number().int().min(50).max(5000).optional().nullable(),
 });
 
 export async function GET() {
@@ -49,6 +52,9 @@ export async function GET() {
         email: true,
         role: true,
         isActive: true,
+        workType: true,
+        gpsRequired: true,
+        gpsRadiusMeters: true,
         createdAt: true,
       },
     });
@@ -96,6 +102,10 @@ export async function POST(request: Request) {
           role: targetRole,
           teamId: user.teamId!,
           isActive: true,
+          mustChangePassword: true,
+          workType: parsed.data.workType ?? "CLT",
+          gpsRequired: parsed.data.gpsRequired ?? false,
+          gpsRadiusMeters: parsed.data.gpsRadiusMeters ?? null,
         },
         select: {
           id: true,

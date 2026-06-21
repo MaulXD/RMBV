@@ -8,8 +8,11 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 const patchSchema = z.object({
-  role: z.enum(["GERENTE", "COLABORADOR"]).optional(),
+  role: z.enum(["GERENTE", "COLABORADOR", "PESQUISADOR"]).optional(),
   isActive: z.boolean().optional(),
+  workType: z.enum(["ESTAGIARIO", "CLT"]).optional(),
+  gpsRequired: z.boolean().optional(),
+  gpsRadiusMeters: z.number().int().min(50).max(5000).optional().nullable(),
 });
 
 export async function PATCH(
@@ -53,6 +56,11 @@ export async function PATCH(
       data: {
         ...(parsed.data.role !== undefined ? { role: parsed.data.role as Role } : {}),
         ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
+        ...(parsed.data.workType !== undefined ? { workType: parsed.data.workType } : {}),
+        ...(parsed.data.gpsRequired !== undefined ? { gpsRequired: parsed.data.gpsRequired } : {}),
+        ...(parsed.data.gpsRadiusMeters !== undefined
+          ? { gpsRadiusMeters: parsed.data.gpsRadiusMeters }
+          : {}),
       },
       select: {
         id: true,
@@ -60,6 +68,9 @@ export async function PATCH(
         email: true,
         role: true,
         isActive: true,
+        workType: true,
+        gpsRequired: true,
+        gpsRadiusMeters: true,
         createdAt: true,
       },
     });

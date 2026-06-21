@@ -9,9 +9,12 @@ type Member = {
   id: string;
   name: string;
   email: string;
-  role: "ADV" | "GERENTE" | "COLABORADOR" | "ADMIN";
+  role: "ADV" | "GERENTE" | "COLABORADOR" | "ADMIN" | "PESQUISADOR";
   isActive: boolean;
   createdAt: string;
+  workType?: "ESTAGIARIO" | "CLT" | null;
+  gpsRequired?: boolean;
+  gpsRadiusMeters?: number | null;
 };
 
 type TeamInfo = {
@@ -31,6 +34,8 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"GERENTE" | "COLABORADOR" | "PESQUISADOR">("COLABORADOR");
+  const [workType, setWorkType] = useState<"ESTAGIARIO" | "CLT">("CLT");
+  const [gpsRequired, setGpsRequired] = useState(false);
   const [saving, setSaving] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
 
@@ -62,7 +67,7 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
       const res = await fetch("/api/teams/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role, workType, gpsRequired }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha ao cadastrar");
@@ -79,7 +84,10 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
     }
   }
 
-  async function patchMember(id: string, patch: { role?: string; isActive?: boolean }) {
+  async function patchMember(
+    id: string,
+    patch: { role?: string; isActive?: boolean; workType?: string; gpsRequired?: boolean }
+  ) {
     setPatchingId(id);
     setError(null);
     setMessage(null);
@@ -150,9 +158,41 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
                       )}
                     </p>
                     <p className="text-xs text-muted">{m.email}</p>
+                    {m.workType && (
+                      <p className="text-[11px] text-muted">
+                        {m.workType === "ESTAGIARIO" ? "Estagiário (6h)" : "CLT (8h)"}
+                        {m.gpsRequired ? " · GPS obrigatório" : ""}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isEditable && (
+                      <select
+                        className="industrial-input py-1 text-xs"
+                        value={m.workType ?? "CLT"}
+                        disabled={isPatching}
+                        onChange={(e) =>
+                          void patchMember(m.id, { workType: e.target.value })
+                        }
+                      >
+                        <option value="CLT">CLT (8h)</option>
+                        <option value="ESTAGIARIO">Estagiário (6h)</option>
+                      </select>
+                    )}
+                    {isEditable && (
+                      <label className="flex items-center gap-1 text-xs text-muted">
+                        <input
+                          type="checkbox"
+                          checked={m.gpsRequired ?? false}
+                          disabled={isPatching}
+                          onChange={(e) =>
+                            void patchMember(m.id, { gpsRequired: e.target.checked })
+                          }
+                        />
+                        GPS
+                      </label>
+                    )}
                     {isEditable ? (
                       <select
                         className="industrial-input py-1 text-xs"
@@ -239,6 +279,22 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
               <option value="COLABORADOR">Colaborador</option>
               <option value="PESQUISADOR">Pesquisador</option>
             </SelectField>
+            <SelectField
+              label="Tipo de jornada"
+              value={workType}
+              onChange={(v) => setWorkType(v as "ESTAGIARIO" | "CLT")}
+            >
+              <option value="CLT">CLT (8h)</option>
+              <option value="ESTAGIARIO">Estagiário (6h)</option>
+            </SelectField>
+            <label className="flex items-center gap-2 text-sm text-muted sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={gpsRequired}
+                onChange={(e) => setGpsRequired(e.target.checked)}
+              />
+              Exigir GPS no ponto mobile para este membro
+            </label>
             <div className="sm:col-span-2 flex justify-end">
               <button type="submit" className="btn-primary" disabled={saving}>
                 <Icon name="userPlus" className="h-4 w-4" />

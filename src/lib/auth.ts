@@ -16,6 +16,11 @@ export type SessionUser = {
   teamId: string | null;
   teamName: string | null;
   avatarUrl: string | null;
+  mustChangePassword: boolean;
+  hasFace: boolean;
+  hasFaceConsent: boolean;
+  workType: "ESTAGIARIO" | "CLT";
+  gpsRequired: boolean;
 };
 
 function getSecret() {
@@ -57,6 +62,11 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
       teamId: null,
       teamName: null,
       avatarUrl: null,
+      mustChangePassword: false,
+      hasFace: false,
+      hasFaceConsent: false,
+      workType: "CLT",
+      gpsRequired: false,
     };
   } catch {
     return null;
@@ -97,6 +107,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       isActive: true,
       teamId: true,
       avatarUrl: true,
+      mustChangePassword: true,
+      faceDescriptor: true,
+      lgpdFaceConsentAt: true,
+      workType: true,
+      gpsRequired: true,
       team: { select: { name: true } },
     },
   });
@@ -111,6 +126,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     teamId: user.teamId,
     teamName: user.team?.name ?? null,
     avatarUrl: user.avatarUrl ?? null,
+    mustChangePassword: user.mustChangePassword,
+    hasFace: user.faceDescriptor !== null,
+    hasFaceConsent: user.lgpdFaceConsentAt !== null,
+    workType: user.workType,
+    gpsRequired: user.gpsRequired,
   };
 }
 
@@ -134,24 +154,40 @@ export async function authenticateUser(login: string, password: string) {
     where: {
       OR: [{ email: lookup }, { name: { equals: raw.trim(), mode: "insensitive" } }],
     },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      passwordHash: true,
+      isActive: true,
+      teamId: true,
+      avatarUrl: true,
+      mustChangePassword: true,
+      faceDescriptor: true,
+      lgpdFaceConsentAt: true,
+      workType: true,
+      gpsRequired: true,
+      team: { select: { name: true } },
+    },
   });
   if (!user || !user.isActive) return null;
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) return null;
 
-  const full = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { teamId: true, team: { select: { name: true } } },
-  });
-
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
-    teamId: full?.teamId ?? null,
-    teamName: full?.team?.name ?? null,
-    avatarUrl: null,
+    teamId: user.teamId,
+    teamName: user.team?.name ?? null,
+    avatarUrl: user.avatarUrl ?? null,
+    mustChangePassword: user.mustChangePassword,
+    hasFace: user.faceDescriptor !== null,
+    hasFaceConsent: user.lgpdFaceConsentAt !== null,
+    workType: user.workType,
+    gpsRequired: user.gpsRequired,
   } satisfies SessionUser;
 }

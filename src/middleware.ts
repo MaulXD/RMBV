@@ -2,7 +2,23 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PREFIX_PATHS = ["/login", "/api/auth/login", "/api/health"];
+const PUBLIC_PREFIX_PATHS = [
+  "/login",
+  "/primeiro-acesso",
+  "/kiosk",
+  "/api/auth/login",
+  "/api/health",
+  "/api/ponto/faces",
+  "/api/ponto/last",
+];
+
+function isPublicApiPostPonto(pathname: string, method: string) {
+  return pathname === "/api/ponto" && method === "POST";
+}
+
+function isPublicCron(pathname: string, request: NextRequest) {
+  return pathname === "/api/cron/purge-retention" && request.method === "GET";
+}
 const COOKIE_NAME = "gestao_session";
 
 function getSecret() {
@@ -24,10 +40,12 @@ async function hasValidSession(request: NextRequest) {
   }
 }
 
-function isPublicPath(pathname: string) {
+function isPublicPath(pathname: string, request: NextRequest) {
   if (pathname === "/") return true;
+  if (isPublicApiPostPonto(pathname, request.method)) return true;
+  if (isPublicCron(pathname, request)) return true;
   return PUBLIC_PREFIX_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 }
 
@@ -42,7 +60,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = isPublicPath(pathname);
+  const isPublic = isPublicPath(pathname, request);
 
   if (isPublic) {
     if ((pathname === "/login" || pathname === "/") && (await hasValidSession(request))) {

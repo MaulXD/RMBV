@@ -13,9 +13,12 @@ const patchSchema = z.object({
   name: z.string().min(2).optional(),
   email: loginIdSchema.optional(),
   password: z.string().min(6).optional(),
-  role: z.enum(["ADV", "GERENTE", "COLABORADOR"]).optional(),
+  role: z.enum(["ADV", "GERENTE", "COLABORADOR", "PESQUISADOR"]).optional(),
   teamId: z.string().uuid().optional(),
   isActive: z.boolean().optional(),
+  workType: z.enum(["ESTAGIARIO", "CLT"]).optional(),
+  gpsRequired: z.boolean().optional(),
+  gpsRadiusMeters: z.number().int().min(50).max(5000).optional().nullable(),
 });
 
 export async function PATCH(
@@ -56,6 +59,9 @@ export async function PATCH(
       role?: Role;
       teamId?: string;
       isActive?: boolean;
+      workType?: "ESTAGIARIO" | "CLT";
+      gpsRequired?: boolean;
+      gpsRadiusMeters?: number | null;
     } = {};
 
     if (parsed.data.name) data.name = parsed.data.name.trim();
@@ -64,6 +70,9 @@ export async function PATCH(
     if (parsed.data.role) data.role = parsed.data.role;
     if (parsed.data.teamId) data.teamId = parsed.data.teamId;
     if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
+    if (parsed.data.workType !== undefined) data.workType = parsed.data.workType;
+    if (parsed.data.gpsRequired !== undefined) data.gpsRequired = parsed.data.gpsRequired;
+    if (parsed.data.gpsRadiusMeters !== undefined) data.gpsRadiusMeters = parsed.data.gpsRadiusMeters;
 
     try {
       const updated = await prisma.$transaction(async (tx) => {

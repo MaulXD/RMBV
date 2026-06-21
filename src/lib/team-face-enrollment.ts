@@ -58,6 +58,51 @@ export async function canEnrollTeamMemberFace(
   return { allowed: false, error: "Sem permissão" };
 }
 
+/** Remover rosto: ADV, Gerente (mesma equipe) e Admin. */
+export async function canRemoveTeamMemberFace(
+  actor: SessionUser,
+  targetUserId: string,
+): Promise<{ allowed: boolean; error?: string }> {
+  if (actor.id === targetUserId) {
+    return { allowed: true };
+  }
+
+  if (isAdminUser(actor)) {
+    return { allowed: true };
+  }
+
+  if (!actor.teamId) {
+    return { allowed: false, error: "Sem equipe vinculada" };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { teamId: true },
+  });
+  if (!target) return { allowed: false, error: "Usuário não encontrado" };
+  if (target.teamId !== actor.teamId) {
+    return { allowed: false, error: "Sem permissão para esta equipe" };
+  }
+
+  if (actor.role === Role.ADV || actor.role === Role.GERENTE) {
+    return { allowed: true };
+  }
+
+  return { allowed: false, error: "Sem permissão" };
+}
+
+/** Média de N descritores face-api (128 floats). */
+export function averageFaceDescriptors(descriptors: number[][]): number[] {
+  if (descriptors.length === 0) throw new Error("Nenhum descritor");
+  const len = descriptors[0]!.length;
+  const out = new Array<number>(len).fill(0);
+  for (const d of descriptors) {
+    for (let i = 0; i < len; i++) out[i]! += d[i]!;
+  }
+  for (let i = 0; i < len; i++) out[i]! /= descriptors.length;
+  return out;
+}
+
 export function canUseTeamFaceEnrollmentUI(
   user: SessionUser,
   allowGerenteFaceEnrollment: boolean,

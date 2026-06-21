@@ -79,7 +79,7 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
     const res = await fetch(`/api/users/${selected.id}/face`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ descriptor }),
+      body: JSON.stringify({ descriptors: [descriptor], enrolledByManager: true }),
     });
     if (!res.ok) throw new Error("Falha ao salvar");
     setStatusMsg("Rosto cadastrado com sucesso!");

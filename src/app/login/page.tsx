@@ -40,7 +40,13 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha no login");
       primeSessionCache(data.user as SessionUser);
-      router.push(searchParams.get("from") ?? "/dashboard");
+      const u = data.user as SessionUser;
+      const needsSetup =
+        u.role !== "ADMIN" &&
+        (u.mustChangePassword || !u.hasFace || !u.hasFaceConsent);
+      router.push(
+        needsSetup ? "/primeiro-acesso" : (searchParams.get("from") ?? "/dashboard"),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro no login");
     } finally {
