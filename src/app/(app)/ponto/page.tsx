@@ -207,7 +207,9 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setMatchProgress(0);
     warmupLivenessAudio();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -623,14 +625,19 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 clockPhase === "liveness" ? "border-violet-400" :
                 clockPhase === "detecting" || clockPhase === "submitting" ? "border-amber-400" : "border-border/60"
               }`}
-              style={{ width: "min(100%, 260px)", aspectRatio: "1" }}
+              style={{ width: "min(100%, 280px)", aspectRatio: "3 / 4" }}
             >
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
                 playsInline muted autoPlay
-                style={{ transform: "scaleX(-1)" }}
+                style={{ transform: "scaleX(-1) scale(1.42)", transformOrigin: "center 40%" }}
               />
+              {(clockPhase === "liveness" || clockPhase === "ready" || clockPhase === "detecting") && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="h-[70%] w-[54%] rounded-[50%] border-[3px] border-dashed border-white/35" />
+                </div>
+              )}
               {/* Corner guides */}
               {clockPhase !== "success" && clockPhase !== "no-match" && clockPhase !== "verified" && (
                 <>

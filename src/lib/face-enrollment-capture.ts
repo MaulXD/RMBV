@@ -172,30 +172,12 @@ export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): Po
       return { ok: true, kind: "ok", message: "Boa! Mantenha inclinado para baixo", alignment: clamp01((pitch - PITCH_CENTER_MAX) / 0.1) };
     }
     case "left": {
-      if (yaw > -YAW_SIDE_MIN) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Vire a cabeça para a sua esquerda",
-          alignment: clamp01((YAW_SIDE_MIN + yaw) / YAW_SIDE_MIN),
-        };
-      }
-      if (pitch < PITCH_SIDE_MIN || pitch > PITCH_SIDE_MAX) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Mantenha o queixo na horizontal",
-          alignment: 0.4,
-        };
-      }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à esquerda", alignment: clamp01(Math.abs(yaw) / 0.32) };
-    }
-    case "right": {
+      /** Preview espelhado: “esquerda” na tela = yaw positivo no frame raw. */
       if (yaw < YAW_SIDE_MIN) {
         return {
           ok: false,
           kind: "wrong_pose",
-          message: "Vire a cabeça para a sua direita",
+          message: "Vire a cabeça para a esquerda",
           alignment: clamp01((YAW_SIDE_MIN - yaw) / YAW_SIDE_MIN),
         };
       }
@@ -207,7 +189,26 @@ export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): Po
           alignment: 0.4,
         };
       }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à direita", alignment: clamp01(yaw / 0.32) };
+      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à esquerda", alignment: clamp01(yaw / 0.32) };
+    }
+    case "right": {
+      if (yaw > -YAW_SIDE_MIN) {
+        return {
+          ok: false,
+          kind: "wrong_pose",
+          message: "Vire a cabeça para a direita",
+          alignment: clamp01((YAW_SIDE_MIN + yaw) / YAW_SIDE_MIN),
+        };
+      }
+      if (pitch < PITCH_SIDE_MIN || pitch > PITCH_SIDE_MAX) {
+        return {
+          ok: false,
+          kind: "wrong_pose",
+          message: "Mantenha o queixo na horizontal",
+          alignment: 0.4,
+        };
+      }
+      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à direita", alignment: clamp01(Math.abs(yaw) / 0.32) };
     }
     default:
       return { ok: false, kind: "wrong_pose", message: "Ajuste a pose", alignment: 0 };
@@ -246,7 +247,7 @@ export function frameQuality(
     videoH,
     side ? MAX_CENTER_OFFSET_SIDE : MAX_CENTER_OFFSET,
   );
-  const sizeScore = Math.min(1, box.width / (videoW * (side ? 0.28 : 0.35)));
+  const sizeScore = Math.min(1, box.width / (videoW * (side ? 0.24 : 0.28)));
   return detectionScore * 0.45 + center * 0.4 + sizeScore * 0.15;
 }
 
