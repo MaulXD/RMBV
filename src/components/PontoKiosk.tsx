@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { findBestFaceMatch, toDescriptorArray } from "@/lib/face-match";
+import {
+  createLivenessTracker,
+  resetLivenessTracker,
+  tickLiveness,
+  type LivenessTracker,
+} from "@/lib/face-liveness";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -19,13 +25,16 @@ const MODEL_URL = "/models";
 export function PontoKiosk({ teamId }: { teamId: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [status, setStatus] = useState<"loading-models" | "loading-camera" | "ready" | "detecting" | "success" | "no-match" | "error">("loading-models");
+  const [status, setStatus] = useState<"loading-models" | "loading-camera" | "liveness" | "ready" | "detecting" | "success" | "no-match" | "error">("loading-models");
   const [result, setResult] = useState<PontoResult | null>(null);
   const [knownUsers, setKnownUsers] = useState<KnownUser[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [livenessMsg, setLivenessMsg] = useState("Olhe para a câmera com os olhos abertos");
+  const [livenessProgress, setLivenessProgress] = useState(0);
   const detectingRef = useRef(false);
   const cooldownRef = useRef(false);
+  const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
 
   // Load face-api models
   useEffect(() => {
@@ -79,7 +88,10 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         if (videoRef.current) {
           videoRef.current.srcObject = s;
           videoRef.current.play();
-          setStatus("ready");
+          livenessRef.current = resetLivenessTracker();
+          setLivenessProgress(0);
+          setLivenessMsg("Olhe para a câmera com os olhos abertos");
+          setStatus("liveness");
         }
       })
       .catch(() => {
@@ -88,6 +100,31 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       });
     return () => { stream?.getTracks().forEach((t) => t.stop()); };
   }, [modelsLoaded]);
+
+  const runLivenessCheck = useCallback(async () => {
+    if (detectingRef.current || !videoRef.current || status !== "liveness") return;
+    detectingRef.current = true;
+    try {
+      const faceapi = await import("@vladmandic/face-api");
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true);
+      if (!det) {
+        setLivenessMsg("Centralize o rosto — olhos abertos");
+        setLivenessProgress(0);
+        detectingRef.current = false;
+        return;
+      }
+      const live = tickLiveness(livenessRef.current, det.landmarks.positions);
+      setLivenessProgress(live.progress);
+      setLivenessMsg(live.message);
+      if (live.passed) {
+        setStatus("ready");
+      }
+    } catch {
+      setLivenessMsg("Erro na verificação. Tente novamente.");
+    }
+    detectingRef.current = false;
+  }, [status]);
 
   const detectAndMatch = useCallback(async () => {
     if (detectingRef.current || cooldownRef.current || !videoRef.current || !modelsLoaded) return;
@@ -159,6 +196,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     detectingRef.current = false;
   }, [status, modelsLoaded, knownUsers, teamId]);
 
+  // Liveness loop
+  useEffect(() => {
+    if (status !== "liveness") return;
+    const interval = setInterval(() => { void runLivenessCheck(); }, 450);
+    return () => clearInterval(interval);
+  }, [status, runLivenessCheck]);
+
   // Auto-detect loop
   useEffect(() => {
     if (status !== "ready") return;
@@ -179,6 +223,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         <div className={`relative overflow-hidden rounded-2xl border-4 transition-colors duration-300 ${
           status === "success" ? "border-emerald-500" :
           status === "no-match" ? "border-red-500" :
+          status === "liveness" ? "border-violet-500" :
           status === "detecting" ? "border-amber-500" :
           "border-white/10"
         }`} style={{ width: "min(calc(100vw - 2rem), 360px)", aspectRatio: "1" }}>
@@ -193,7 +238,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           <canvas ref={canvasRef} className="absolute inset-0 hidden" />
 
           {/* Corner guides */}
-          {(status === "ready" || status === "detecting") && (
+          {(status === "ready" || status === "detecting" || status === "liveness") && (
             <>
               <div className="absolute top-3 left-3 h-8 w-8 border-t-2 border-l-2 border-white/60 rounded-tl-lg" />
               <div className="absolute top-3 right-3 h-8 w-8 border-t-2 border-r-2 border-white/60 rounded-tr-lg" />
@@ -212,6 +257,12 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
               <p className="text-xs text-white/40">
                 {status === "loading-models" ? "Carregando modelos..." : "Iniciando câmera..."}
               </p>
+            </div>
+          ) : status === "liveness" ? (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/80 text-xl font-bold text-white animate-pulse">
+                👁
+              </span>
             </div>
           ) : status === "error" ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-950/90 p-4 text-center">
@@ -239,6 +290,23 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
                 {TYPE_LABEL[result.type]} •{" "}
                 {new Date().toLocaleTimeString("pt-BR")}
               </p>
+            </div>
+          ) : status === "liveness" ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-violet-400">{livenessMsg}</p>
+              <div className="mx-auto w-full max-w-[240px]">
+                <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-white/40">
+                  <span>Verificação</span>
+                  <span>{Math.round(livenessProgress * 100)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full bg-violet-500 transition-all duration-200"
+                    style={{ width: `${Math.round(livenessProgress * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-white/30">Feche e abra os olhos — foto ou tela não passam</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">
