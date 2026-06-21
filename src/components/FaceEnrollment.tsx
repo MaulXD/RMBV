@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./ui/Icon";
 import { FaceEnrollmentCaptureView } from "./FaceEnrollmentCaptureView";
 import { ENROLLMENT_CAPTURE_COUNT } from "@/lib/face-enrollment-capture";
@@ -9,6 +10,157 @@ type Member = { id: string; name: string; role: string; isActive: boolean; hasFa
 type EnrollMode = "camera" | "upload";
 
 const MODEL_URL = "/models";
+
+function EnrollmentModal({
+  open,
+  selected,
+  enrollMode,
+  saving,
+  statusMsg,
+  uploadPreview,
+  modelsLoaded,
+  imgRef,
+  onClose,
+  onComplete,
+  onFileChange,
+  onCaptureFromImage,
+}: {
+  open: boolean;
+  selected: Member;
+  enrollMode: EnrollMode;
+  saving: boolean;
+  statusMsg: string;
+  uploadPreview: string | null;
+  modelsLoaded: boolean;
+  imgRef: React.RefObject<HTMLImageElement | null>;
+  onClose: () => void;
+  onComplete: (descriptors: number[][]) => Promise<void>;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCaptureFromImage: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex flex-col bg-black/85 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="face-enroll-title"
+      onClick={saving ? undefined : onClose}
+    >
+      <div
+        className="relative z-10 flex h-[100dvh] w-full min-w-0 flex-col bg-surface-elevated shadow-2xl sm:h-auto sm:max-h-[min(92dvh,720px)] sm:max-w-md sm:rounded-2xl sm:border sm:border-border"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="safe-area-top flex shrink-0 items-start justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+          <div className="min-w-0 flex-1">
+            <h3 id="face-enroll-title" className="text-sm font-semibold text-foreground truncate">
+              {enrollMode === "camera" ? "Cadastro facial" : "Upload de foto"} — {selected.name}
+            </h3>
+            {enrollMode === "camera" && (
+              <p className="mt-0.5 text-xs text-muted leading-snug">
+                {ENROLLMENT_CAPTURE_COUNT} poses · captura automática com validação de direção
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-ghost shrink-0 p-1.5"
+            disabled={saving}
+            aria-label="Fechar cadastro"
+          >
+            <Icon name="x" className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 safe-area-bottom">
+          {enrollMode === "camera" ? (
+            <div className="space-y-3">
+              <FaceEnrollmentCaptureView saving={saving} onComplete={onComplete} />
+              {statusMsg && (
+                <p
+                  className={`text-center text-xs ${
+                    statusMsg.includes("sucesso") ? "text-emerald-500" : "text-red-500"
+                  }`}
+                >
+                  {statusMsg}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">
+                  Selecione uma foto com o rosto visível (menos preciso que câmera ao vivo)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="industrial-input w-full file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-sm file:text-primary-foreground"
+                  onChange={onFileChange}
+                />
+              </div>
+
+              {uploadPreview && (
+                <div
+                  className="relative mx-auto w-full max-w-xs overflow-hidden rounded-xl bg-black"
+                  style={{ aspectRatio: "4/3" }}
+                >
+                  <img
+                    ref={imgRef}
+                    src={uploadPreview}
+                    alt="Preview"
+                    className="h-full w-full object-contain"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              )}
+
+              {statusMsg && (
+                <p
+                  className={`text-center text-xs ${
+                    statusMsg.includes("sucesso")
+                      ? "text-emerald-500"
+                      : statusMsg.includes("Erro") || statusMsg.includes("Nenhum")
+                        ? "text-red-500"
+                        : "text-muted"
+                  }`}
+                >
+                  {statusMsg}
+                </p>
+              )}
+
+              <button
+                type="button"
+                className="btn-primary w-full"
+                disabled={saving || !uploadPreview || !modelsLoaded}
+                onClick={onCaptureFromImage}
+              >
+                <Icon name="scanFace" className="h-4 w-4" />
+                {saving ? "Salvando..." : "Cadastrar rosto da foto"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; canUpload?: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -123,10 +275,12 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
   }
 
   return (
-    <div className="space-y-4 max-w-2xl">
-      <div className="flex items-center justify-between">
+    <div className="w-full min-w-0 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Cadastro facial — equipe</h2>
-        <span className="text-xs text-muted">{members.filter((m) => m.hasFace).length}/{members.length} cadastrados</span>
+        <span className="text-xs text-muted">
+          {members.filter((m) => m.hasFace).length}/{members.length} cadastrados
+        </span>
       </div>
 
       {!modelsLoaded && (
@@ -135,16 +289,21 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
 
       <ul className="space-y-2">
         {members.map((m) => (
-          <li key={m.id} className="flex items-center justify-between rounded-[var(--radius-ui)] border border-border px-3 py-2">
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${m.hasFace ? "bg-emerald-500" : "bg-muted/40"}`} />
-              <span className="text-sm">{m.name}</span>
-              <span className="text-xs text-muted">{m.hasFace ? "Cadastrado" : "Sem rosto"}</span>
+          <li
+            key={m.id}
+            className="panel-solid flex flex-col gap-3 rounded-[var(--radius-ui)] p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <div className={`h-2 w-2 shrink-0 rounded-full ${m.hasFace ? "bg-emerald-500" : "bg-muted/40"}`} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
+                <p className="text-xs text-muted">{m.hasFace ? "Cadastrado" : "Sem rosto"}</p>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 sm:shrink-0">
               <button
                 type="button"
-                className="btn-ghost text-xs"
+                className="btn-ghost flex-1 text-xs sm:flex-none"
                 disabled={!modelsLoaded}
                 onClick={() => openModal(m, "camera")}
               >
@@ -154,7 +313,7 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
               {canUpload && (
                 <button
                   type="button"
-                  className="btn-ghost text-xs"
+                  className="btn-ghost flex-1 text-xs sm:flex-none"
                   disabled={!modelsLoaded}
                   onClick={() => openModal(m, "upload")}
                 >
@@ -165,7 +324,7 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
               {m.hasFace && (
                 <button
                   type="button"
-                  className="btn-ghost text-xs text-red-500"
+                  className="btn-ghost flex-1 text-xs text-red-500 sm:flex-none"
                   onClick={() => void removeFace(m.id)}
                 >
                   Remover
@@ -179,82 +338,21 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
         )}
       </ul>
 
-      {modalOpen && selected && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4">
-          <div className="industrial-panel w-full max-w-md max-h-[95vh] overflow-y-auto space-y-4 p-4 sm:p-5 rounded-t-2xl sm:rounded-[var(--radius-ui)]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold truncate">
-                  {enrollMode === "camera" ? "Cadastro facial" : "Upload de foto"} — {selected.name}
-                </h3>
-                {enrollMode === "camera" && (
-                  <p className="text-xs text-muted mt-0.5">
-                    {ENROLLMENT_CAPTURE_COUNT} poses com captura automática e validação de direção
-                  </p>
-                )}
-              </div>
-              <button type="button" onClick={closeModal} className="btn-ghost p-1 shrink-0" disabled={saving}>
-                <Icon name="x" className="h-4 w-4" />
-              </button>
-            </div>
-
-            {enrollMode === "camera" ? (
-              <>
-                <FaceEnrollmentCaptureView
-                  saving={saving}
-                  onComplete={saveDescriptors}
-                />
-                {statusMsg && (
-                  <p className={`text-center text-xs ${statusMsg.includes("sucesso") ? "text-emerald-500" : "text-red-500"}`}>
-                    {statusMsg}
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">
-                    Selecione uma foto com o rosto visível (menos preciso que câmera ao vivo)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="industrial-input file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-sm file:text-primary-foreground"
-                    onChange={handleFileChange}
-                  />
-                </div>
-
-                {uploadPreview && (
-                  <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4/3" }}>
-                    <img
-                      ref={imgRef}
-                      src={uploadPreview}
-                      alt="Preview"
-                      className="h-full w-full object-contain"
-                      crossOrigin="anonymous"
-                    />
-                  </div>
-                )}
-
-                {statusMsg && (
-                  <p className={`text-center text-xs ${statusMsg.includes("sucesso") ? "text-emerald-500" : statusMsg.includes("Erro") || statusMsg.includes("Nenhum") ? "text-red-500" : "text-muted"}`}>
-                    {statusMsg}
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  className="btn-primary w-full"
-                  disabled={saving || !uploadPreview}
-                  onClick={() => void captureFromImage()}
-                >
-                  <Icon name="scanFace" className="h-4 w-4" />
-                  {saving ? "Salvando..." : "Cadastrar rosto da foto"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+      {selected && (
+        <EnrollmentModal
+          open={modalOpen}
+          selected={selected}
+          enrollMode={enrollMode}
+          saving={saving}
+          statusMsg={statusMsg}
+          uploadPreview={uploadPreview}
+          modelsLoaded={modelsLoaded}
+          imgRef={imgRef}
+          onClose={closeModal}
+          onComplete={saveDescriptors}
+          onFileChange={handleFileChange}
+          onCaptureFromImage={() => void captureFromImage()}
+        />
       )}
     </div>
   );
