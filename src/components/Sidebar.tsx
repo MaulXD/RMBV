@@ -86,6 +86,13 @@ export function Sidebar({
 
   const isPesquisador = user?.role === "PESQUISADOR";
 
+  const pontoItem: NavItem = {
+    href: "/ponto",
+    label: "Ponto facial",
+    icon: "scanFace",
+    color: "text-emerald-500",
+  };
+
   const navGroups: NavGroup[] = [
     {
       label: "Trabalho",
@@ -96,14 +103,12 @@ export function Sidebar({
         ...(onChatToggle
           ? [{ href: "#chat", label: "Chat", icon: "messageCircle" as const, color: "text-indigo-500" }]
           : []),
+        ...(user ? [pontoItem] : []),
         ...(!isPesquisador
           ? [
               { href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" },
               { href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" },
             ]
-          : []),
-        ...(user?.role === "COLABORADOR" || isPesquisador
-          ? [{ href: "/ponto", label: "Ponto facial", icon: "scanFace" as const, color: "text-emerald-500" }]
           : []),
         { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
       ],
@@ -116,9 +121,6 @@ export function Sidebar({
               { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
               ...(user.role === "ADV"
                 ? [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" }]
-                : []),
-              ...((user.role === "ADMIN" || user.role === "GERENTE")
-                ? [{ href: "/ponto", label: "Ponto facial", icon: "scanFace" as const, color: "text-emerald-500" }]
                 : []),
               ...(user.role === "ADMIN"
                 ? [{ href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }]
