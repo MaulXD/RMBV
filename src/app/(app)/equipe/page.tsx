@@ -151,7 +151,7 @@ export default function EquipePage() {
           <div className="mb-4">
             <h2 className="text-base font-semibold text-foreground">Ponto facial</h2>
             <p className="mt-0.5 text-xs text-muted">
-              Cadastre rostos da equipe e defina se o Gerente também pode cadastrar colaboradores.
+              Configure a localização do escritório, cadastre rostos e defina permissões do gerente.
             </p>
           </div>
           <TeamFaceEnrollmentPanel teamId={teamId} />

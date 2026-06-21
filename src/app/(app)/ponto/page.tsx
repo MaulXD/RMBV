@@ -15,6 +15,7 @@ import {
   toDescriptorArray,
   euclideanDistance as euclidean,
 } from "@/lib/face-match";
+import { formatGpsPontoError, geolocationErrorMessage } from "@/lib/gps-ponto";
 
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
 type ClockPhase =
@@ -93,6 +94,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [suggestedType, setSuggestedType] = useState<PontoType>("ENTRADA");
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsConfig, setGpsConfig] = useState<{
+    gpsRequired: boolean;
+    officeConfigured: boolean;
+    radiusMeters: number;
+  } | null>(null);
 
   // Load models on mount (background)
   useEffect(() => {
@@ -125,6 +131,24 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   }, [user.id, todayStr]);
 
   useEffect(() => { void loadRecords(); }, [loadRecords]);
+
+  useEffect(() => {
+    if (!user.gpsRequired) {
+      setGpsConfig(null);
+      return;
+    }
+    fetch("/api/ponto/gps-config")
+      .then((r) => r.json())
+      .then((d) => setGpsConfig(d))
+      .catch(() => setGpsConfig(null));
+  }, [user.gpsRequired]);
+
+  const gpsBlocked =
+    user.gpsRequired && gpsConfig != null && !gpsConfig.officeConfigured;
+
+  const clockMsgIsError =
+    clockPhase === "verified" &&
+    /fora do raio|permissão|escritório|localização|gps|indisponível|não foi possível|erro/i.test(clockMsg);
 
   // ── Clock-in/out camera ──────────────────────────
   function stopClockCamera() {
@@ -165,11 +189,12 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-        () => {
-          setGpsError("Ative a localização para bater ponto.");
+        (err) => {
+          const msg = geolocationErrorMessage(err.code);
+          setGpsError(msg);
           resolve(null);
         },
-        { enableHighAccuracy: true, timeout: 12_000 },
+        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 },
       );
     });
   }
@@ -217,7 +242,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       const gps = await getGpsCoords();
       if (user.gpsRequired && !gps) {
         setClockPhase("verified");
-        setClockMsg(gpsError ?? "Localização obrigatória para bater ponto.");
+        setClockMsg(formatGpsPontoError(gpsError ?? "Localização obrigatória para bater ponto."));
         return;
       }
 
@@ -236,7 +261,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
         setClockPhase("verified");
-        setClockMsg(err.error ?? "Não foi possível registrar.");
+        setClockMsg(formatGpsPontoError(err.error ?? "Não foi possível registrar."));
         return;
       }
 
@@ -501,11 +526,39 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
         </div>
       )}
 
+      {user.gpsRequired && gpsConfig && (
+        <div
+          className={`rounded-xl border px-4 py-3 text-xs leading-relaxed ${
+            gpsConfig.officeConfigured
+              ? "border-sky-500/25 bg-sky-500/8 text-foreground"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100"
+          }`}
+        >
+          {gpsConfig.officeConfigured ? (
+            <>
+              <p className="font-semibold">Ponto com localização ativa</p>
+              <p className="mt-1 text-muted">
+                Você precisa estar a até <strong className="text-foreground">{gpsConfig.radiusMeters} m</strong> do
+                escritório para registrar pelo celular. Permita o GPS ao bater ponto.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold">GPS ativo — escritório não configurado</p>
+              <p className="mt-1">
+                O gestor ainda não cadastrou a localização do escritório. Use o quiosque no local ou solicite
+                a configuração em Configurações → Ponto facial.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── BATER PONTO (reconhecimento primeiro) ── */}
       {hasDescriptor && !enrolling && (
         <button
           type="button"
-          disabled={!modelsLoaded || clockActive}
+          disabled={!modelsLoaded || clockActive || gpsBlocked}
           onClick={() => {
             if (clockActive) stopClockCamera();
             else void startClockCamera();
@@ -528,7 +581,9 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                   : clockActive
                     ? "Olhe para a câmera — depois escolha entrada ou saída"
                     : user.gpsRequired
-                      ? "Identifique o rosto, depois escolha o tipo · GPS"
+                      ? gpsBlocked
+                        ? "Aguardando configuração do escritório"
+                        : `Identifique o rosto · GPS (raio ${gpsConfig?.radiusMeters ?? "—"} m)`
                       : "Identifique o rosto, depois escolha entrada ou saída"}
               </p>
               {!clockActive && records.length > 0 && (
@@ -618,9 +673,13 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
             {/* Status text */}
             <p className={`text-sm font-medium text-center ${
-              clockPhase === "success" || clockPhase === "verified" ? "text-emerald-600 dark:text-emerald-400" :
-              clockPhase === "no-match" || clockPhase === "error" ? "text-red-500" :
-              clockPhase === "detecting" || clockPhase === "submitting" ? "text-amber-600 dark:text-amber-400" : "text-muted"
+              clockPhase === "success" || (clockPhase === "verified" && !clockMsgIsError)
+                ? "text-emerald-600 dark:text-emerald-400"
+                : clockPhase === "no-match" || clockPhase === "error" || clockMsgIsError
+                  ? "text-red-500"
+                  : clockPhase === "detecting" || clockPhase === "submitting"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted"
             }`}>
               {clockPhase === "success" || clockPhase === "verified" ? clockMsg :
                clockPhase === "no-match" ? clockMsg :
