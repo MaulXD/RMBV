@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
+import { FaceEnrollmentCaptureView } from "./FaceEnrollmentCaptureView";
+import { ENROLLMENT_CAPTURE_COUNT } from "@/lib/face-enrollment-capture";
 
 type Member = { id: string; name: string; role: string; isActive: boolean; hasFace: boolean };
 type EnrollMode = "camera" | "upload";
@@ -12,14 +14,11 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
   const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState<Member | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [enrollMode, setEnrollMode] = useState<EnrollMode>("camera");
-  const [capturing, setCapturing] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const loadMembers = useCallback(async () => {
@@ -51,82 +50,61 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
     void load();
   }, []);
 
-  async function openModal(member: Member, mode: EnrollMode = "camera") {
+  function openModal(member: Member, mode: EnrollMode = "camera") {
     setSelected(member);
     setStatusMsg("");
     setEnrollMode(mode);
     setUploadPreview(null);
-    setCameraOpen(true);
-    if (mode === "camera") {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
-    }
+    setModalOpen(true);
   }
 
   function closeModal() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCameraOpen(false);
+    setModalOpen(false);
     setSelected(null);
     setStatusMsg("");
     setUploadPreview(null);
+    setSaving(false);
   }
 
-  async function saveDescriptor(descriptor: number[]) {
+  async function saveDescriptors(descriptors: number[][]) {
     if (!selected) return;
     setSaving(true);
     const res = await fetch(`/api/users/${selected.id}/face`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ descriptors: [descriptor], enrolledByManager: true }),
+      body: JSON.stringify({ descriptors, enrolledByManager: true }),
     });
-    if (!res.ok) throw new Error("Falha ao salvar");
+    const data = await res.json();
+    if (!res.ok) {
+      setStatusMsg(data.error ?? "Falha ao salvar");
+      setSaving(false);
+      throw new Error(data.error ?? "Falha ao salvar");
+    }
     setStatusMsg("Rosto cadastrado com sucesso!");
     await loadMembers();
     setTimeout(closeModal, 1500);
   }
 
-  async function capture() {
-    if (!videoRef.current || !modelsLoaded || !selected) return;
-    setCapturing(true);
-    setStatusMsg("Detectando rosto...");
-    try {
-      const faceapi = await import("@vladmandic/face-api");
-      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-      const detection = await faceapi
-        .detectSingleFace(videoRef.current, options)
-        .withFaceLandmarks(true)
-        .withFaceDescriptor();
-
-      if (!detection) { setStatusMsg("Nenhum rosto detectado. Tente novamente."); setCapturing(false); return; }
-      await saveDescriptor(Array.from(detection.descriptor));
-    } catch {
-      setStatusMsg("Erro ao processar. Tente novamente.");
-    } finally {
-      setCapturing(false);
-      setSaving(false);
-    }
-  }
-
   async function captureFromImage() {
     if (!imgRef.current || !modelsLoaded || !selected) return;
-    setCapturing(true);
+    setSaving(true);
     setStatusMsg("Detectando rosto na imagem...");
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 });
+      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 });
       const detection = await faceapi
         .detectSingleFace(imgRef.current, options)
         .withFaceLandmarks(true)
         .withFaceDescriptor();
 
-      if (!detection) { setStatusMsg("Nenhum rosto detectado na imagem. Use uma foto com o rosto bem visível."); setCapturing(false); return; }
-      await saveDescriptor(Array.from(detection.descriptor));
+      if (!detection) {
+        setStatusMsg("Nenhum rosto detectado na imagem. Use uma foto com o rosto bem visível.");
+        setSaving(false);
+        return;
+      }
+      await saveDescriptors([Array.from(detection.descriptor)]);
     } catch {
       setStatusMsg("Erro ao processar imagem. Tente novamente.");
-    } finally {
-      setCapturing(false);
       setSaving(false);
     }
   }
@@ -168,17 +146,17 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
                 type="button"
                 className="btn-ghost text-xs"
                 disabled={!modelsLoaded}
-                onClick={() => void openModal(m, "camera")}
+                onClick={() => openModal(m, "camera")}
               >
                 <Icon name="camera" className="h-3.5 w-3.5" />
-                {m.hasFace ? "Câmera" : "Cadastrar"}
+                {m.hasFace ? "Recadastrar" : "Cadastrar"}
               </button>
               {canUpload && (
                 <button
                   type="button"
                   className="btn-ghost text-xs"
                   disabled={!modelsLoaded}
-                  onClick={() => void openModal(m, "upload")}
+                  onClick={() => openModal(m, "upload")}
                 >
                   <Icon name="upload" className="h-3.5 w-3.5" />
                   Foto
@@ -201,54 +179,42 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
         )}
       </ul>
 
-      {/* Enrollment modal */}
-      {cameraOpen && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="industrial-panel w-full max-w-sm space-y-4 p-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">
-                {enrollMode === "camera" ? "Câmera ao vivo" : "Upload de foto"} — {selected.name}
-              </h3>
-              <button type="button" onClick={closeModal} className="btn-ghost p-1">
+      {modalOpen && selected && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4">
+          <div className="industrial-panel w-full max-w-md max-h-[95vh] overflow-y-auto space-y-4 p-4 sm:p-5 rounded-t-2xl sm:rounded-[var(--radius-ui)]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold truncate">
+                  {enrollMode === "camera" ? "Cadastro facial" : "Upload de foto"} — {selected.name}
+                </h3>
+                {enrollMode === "camera" && (
+                  <p className="text-xs text-muted mt-0.5">
+                    {ENROLLMENT_CAPTURE_COUNT} poses com captura automática e validação de direção
+                  </p>
+                )}
+              </div>
+              <button type="button" onClick={closeModal} className="btn-ghost p-1 shrink-0" disabled={saving}>
                 <Icon name="x" className="h-4 w-4" />
               </button>
             </div>
 
             {enrollMode === "camera" ? (
               <>
-                <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4/3" }}>
-                  <video
-                    ref={videoRef}
-                    className="h-full w-full object-cover"
-                    playsInline muted autoPlay
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  <div className="absolute top-2 left-2 h-6 w-6 border-t-2 border-l-2 border-white/60 rounded-tl-md" />
-                  <div className="absolute top-2 right-2 h-6 w-6 border-t-2 border-r-2 border-white/60 rounded-tr-md" />
-                  <div className="absolute bottom-2 left-2 h-6 w-6 border-b-2 border-l-2 border-white/60 rounded-bl-md" />
-                  <div className="absolute bottom-2 right-2 h-6 w-6 border-b-2 border-r-2 border-white/60 rounded-br-md" />
-                </div>
-                <p className="text-center text-xs text-muted">Centralize o rosto na câmera e clique em Capturar</p>
+                <FaceEnrollmentCaptureView
+                  saving={saving}
+                  onComplete={saveDescriptors}
+                />
                 {statusMsg && (
-                  <p className={`text-center text-xs ${statusMsg.includes("sucesso") ? "text-emerald-500" : statusMsg.includes("Erro") || statusMsg.includes("Nenhum") ? "text-red-500" : "text-muted"}`}>
+                  <p className={`text-center text-xs ${statusMsg.includes("sucesso") ? "text-emerald-500" : "text-red-500"}`}>
                     {statusMsg}
                   </p>
                 )}
-                <button
-                  type="button"
-                  className="btn-primary w-full"
-                  disabled={capturing || saving}
-                  onClick={() => void capture()}
-                >
-                  <Icon name="camera" className="h-4 w-4" />
-                  {capturing ? "Processando..." : saving ? "Salvando..." : "Capturar rosto"}
-                </button>
               </>
             ) : (
               <>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted">
-                    Selecione uma foto com o rosto visível
+                    Selecione uma foto com o rosto visível (menos preciso que câmera ao vivo)
                   </label>
                   <input
                     type="file"
@@ -279,11 +245,11 @@ export function FaceEnrollment({ teamId, canUpload = true }: { teamId: string; c
                 <button
                   type="button"
                   className="btn-primary w-full"
-                  disabled={capturing || saving || !uploadPreview}
+                  disabled={saving || !uploadPreview}
                   onClick={() => void captureFromImage()}
                 >
                   <Icon name="scanFace" className="h-4 w-4" />
-                  {capturing ? "Processando..." : saving ? "Salvando..." : "Cadastrar rosto da foto"}
+                  {saving ? "Salvando..." : "Cadastrar rosto da foto"}
                 </button>
               </>
             )}
