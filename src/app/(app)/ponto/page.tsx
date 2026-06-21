@@ -21,6 +21,7 @@ import {
   resetLivenessTracker,
   tickLiveness,
   type LivenessTracker,
+  LIVENESS_POLL_MS,
 } from "@/lib/face-liveness";
 
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -87,6 +88,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const detectingRef = useRef(false);
+  const livenessBusyRef = useRef(false);
   const cooldownRef = useRef(false);
   const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
   const [livenessProgress, setLivenessProgress] = useState(0);
@@ -214,16 +216,16 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   }
 
   const runLivenessCheck = useCallback(async () => {
-    if (detectingRef.current || !videoRef.current || clockPhase !== "liveness") return;
-    detectingRef.current = true;
+    if (livenessBusyRef.current || !videoRef.current || clockPhase !== "liveness") return;
+    livenessBusyRef.current = true;
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
       const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true);
       if (!det) {
         setClockMsg("Centralize o rosto — olhos abertos");
         setLivenessProgress(0);
-        detectingRef.current = false;
+        livenessBusyRef.current = false;
         return;
       }
       const live = tickLiveness(livenessRef.current, det.landmarks.positions);
@@ -231,12 +233,12 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       setClockMsg(live.message);
       if (live.passed) {
         setClockPhase("ready");
-        setClockMsg("Olhe para a câmera");
+        setClockMsg("Rosto confirmado — reconhecendo...");
       }
     } catch {
       setClockMsg("Erro na verificação. Tente novamente.");
     }
-    detectingRef.current = false;
+    livenessBusyRef.current = false;
   }, [clockPhase]);
 
   const detectFace = useCallback(async () => {
@@ -316,7 +318,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
   useEffect(() => {
     if (clockPhase !== "liveness") return;
-    const id = setInterval(() => void runLivenessCheck(), 450);
+    const id = setInterval(() => void runLivenessCheck(), LIVENESS_POLL_MS);
     return () => clearInterval(id);
   }, [clockPhase, runLivenessCheck]);
 
@@ -764,7 +766,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             </p>
             {clockPhase === "liveness" && (
               <p className="text-center text-[11px] text-muted">
-                Foto ou tela não passam — confirme que você está ao vivo
+                Pisque devagar: feche os olhos por 1 segundo e abra de novo
               </p>
             )}
 
