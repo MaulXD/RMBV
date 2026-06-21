@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { FaceEnrollment } from "./FaceEnrollment";
+import { TeamOfficeLocationPanel } from "./TeamOfficeLocationPanel";
 import { useSession } from "./SessionProvider";
 import { useToast } from "./ToastProvider";
 
@@ -81,6 +82,8 @@ export function TeamFaceEnrollmentPanel({
 
   return (
     <div className="w-full min-w-0 space-y-5">
+      <TeamOfficeLocationPanel teamId={teamId} />
+
       {showSettings && settings.canConfigure && (
         <div className="panel-solid p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">

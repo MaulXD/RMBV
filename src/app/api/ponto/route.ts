@@ -5,6 +5,7 @@ import { withAuth } from "@/lib/api";
 import { isAdmin } from "@/lib/admin";
 import { recordFaceAudit } from "@/lib/face-audit";
 import { nextPontoType } from "@/lib/ponto-hours";
+import { haversineMeters, isOfficeGpsConfigured } from "@/lib/gps-ponto";
 
 export const runtime = "nodejs";
 
@@ -17,18 +18,6 @@ const recordSchema = z.object({
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
 });
-
-function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 async function validateGps(userId: string, latitude?: number | null, longitude?: number | null) {
   const user = await prisma.user.findUnique({
@@ -53,12 +42,12 @@ async function validateGps(userId: string, latitude?: number | null, longitude?:
 
   const officeLat = user.team?.officeLatitude;
   const officeLng = user.team?.officeLongitude;
-  if (officeLat == null || officeLng == null) {
+  if (!isOfficeGpsConfigured(officeLat, officeLng)) {
     return { ok: false as const, error: "Escritório da equipe sem coordenadas GPS configuradas" };
   }
 
   const radius = user.gpsRadiusMeters ?? user.team?.defaultGpsRadiusMeters ?? 200;
-  const dist = haversineMeters(latitude, longitude, officeLat, officeLng);
+  const dist = haversineMeters(latitude, longitude, officeLat!, officeLng!);
   if (dist > radius) {
     return { ok: false as const, error: `Fora do raio permitido (${Math.round(dist)}m / ${radius}m)` };
   }
