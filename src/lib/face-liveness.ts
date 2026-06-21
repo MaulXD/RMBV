@@ -140,7 +140,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
         return {
           phase: "need_close",
           passed: false,
-          message: "Feche os olhos com força",
+          message: "Feche os olhos por um momento",
           progress: 0.45,
         };
       }
@@ -168,7 +168,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
           return {
             phase: "need_open",
             passed: false,
-            message: "Agora abra os olhos",
+            message: "Pronto",
             progress: 0.78,
           };
         }
@@ -179,7 +179,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
       return {
         phase: "need_close",
         passed: false,
-        message: "Feche os olhos com força",
+        message: "Feche os olhos por um momento",
         progress: 0.45 + Math.min(tracker.closedStreak, 1) * 0.25,
       };
     }
@@ -194,7 +194,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
           return {
             phase: "passed",
             passed: true,
-            message: "Verificação concluída!",
+            message: "Verificação concluída. Obrigado.",
             progress: 1,
           };
         }
@@ -205,7 +205,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
       return {
         phase: "need_open",
         passed: false,
-        message: "Abra os olhos de novo",
+        message: "Pronto",
         progress: 0.8 + Math.min(tracker.openStreak, 1) * 0.2,
       };
     }
@@ -214,7 +214,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
       return {
         phase: "passed",
         passed: true,
-        message: "Verificação concluída!",
+        message: "Verificação concluída. Obrigado.",
         progress: 1,
       };
 

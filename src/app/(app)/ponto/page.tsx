@@ -6,7 +6,8 @@ import { Icon } from "@/components/ui/Icon";
 import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
 import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
-import { warmupLivenessAudio } from "@/lib/face-liveness-audio";
+import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
+import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
 import {
   hoursSummary,
   nextPontoType,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/ponto-hours";
 import {
   isFaceMatch,
+  isStrongSelfieMatch,
   matchConfidence,
   toDescriptorArray,
   euclideanDistance as euclidean,
@@ -258,8 +260,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (live.passed) {
         window.setTimeout(() => {
           setClockPhase("ready");
-          setClockMsg("Rosto confirmado — reconhecendo...");
-        }, 1100);
+          setClockMsg("Reconhecendo rosto...");
+        }, LIVENESS_COMPLETE_DELAY_MS);
       }
     } catch {
       setClockMsg("Erro na verificação. Tente novamente.");
@@ -281,10 +283,12 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       const dist = euclidean(det.descriptor, descriptor);
       const confidence = matchConfidence(dist);
 
-      if (!isFaceMatch(dist)) {
+      if (!isStrongSelfieMatch(dist)) {
         setClockPhase("no-match");
         setClockMsg(
-          `Confiança insuficiente (${Math.round(confidence * 100)}%). Centralize o rosto e melhore a luz.`,
+          isFaceMatch(dist)
+            ? `Confiança baixa (${Math.round(confidence * 100)}%). Aproxime-se, melhore a luz e tente de novo.`
+            : `Confiança insuficiente (${Math.round(confidence * 100)}%). Centralize o rosto e melhore a luz.`,
         );
         setTimeout(() => { setClockPhase("ready"); setClockMsg(""); }, 2500);
         detectingRef.current = false;
@@ -723,6 +727,9 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               )}
               {/* Overlays */}
               {clockPhase === "liveness" && (
+                <LivenessEyeGuide phase={livenessPhase} />
+              )}
+              {clockPhase === "liveness" && (
                 <LivenessCornerBanner message={clockMsg || "Olhe para a câmera com os olhos abertos"} progress={livenessProgress} />
               )}
               {clockPhase === "opening" && (
@@ -790,7 +797,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             </p>
             {clockPhase === "liveness" && (
               <p className="text-center text-[11px] text-muted">
-                Feche bem os olhos por 1 segundo, depois abra
+                Feche os olhos por um momento — ao ouvir o sinal, abra
               </p>
             )}
 

@@ -14,8 +14,9 @@ import {
   waitForVideoReady,
 } from "@/lib/face-liveness";
 import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
+import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
-import { warmupLivenessAudio } from "@/lib/face-liveness-audio";
+import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -140,7 +141,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setLivenessPhase(live.phase);
       setLivenessMsg(live.message);
       if (live.passed) {
-        window.setTimeout(() => setStatus("ready"), 1100);
+        window.setTimeout(() => setStatus("ready"), LIVENESS_COMPLETE_DELAY_MS);
       }
     } catch {
       setLivenessMsg("Erro na verificação. Tente novamente.");
@@ -282,11 +283,14 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
               </p>
             </div>
           ) : status === "liveness" ? (
-            <LivenessCornerBanner
-              message={livenessMsg}
-              progress={livenessProgress}
-              variant="kiosk"
-            />
+            <>
+              <LivenessCornerBanner
+                message={livenessMsg}
+                progress={livenessProgress}
+                variant="kiosk"
+              />
+              <LivenessEyeGuide phase={livenessPhase} />
+            </>
           ) : status === "error" ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-950/90 p-4 text-center">
               <p className="text-sm text-red-400">{errorMsg}</p>
@@ -317,7 +321,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           ) : status === "liveness" ? (
             <div className="space-y-3 px-2">
               <p className="text-base font-bold leading-snug text-violet-300">{livenessMsg}</p>
-              <p className="text-xs text-white/40">Feche bem os olhos por 1 segundo, depois abra</p>
+              <p className="text-xs text-white/40">Feche os olhos por um momento — ao ouvir o sinal, abra</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">

@@ -840,6 +840,74 @@
     }
   }
 
+  /* Prova de vida — animação de olhos e setas de pose */
+  @keyframes liveness-eye-blink-close {
+    0%, 100% { transform: translateY(-50%) scaleY(1); }
+    50% { transform: translateY(-50%) scaleY(0.12); }
+  }
+
+  @keyframes liveness-eye-blink-open {
+    0% { transform: translateY(-50%) scaleY(0.12); }
+    100% { transform: translateY(-50%) scaleY(1); }
+  }
+
+  @keyframes liveness-guide-nudge-left {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-10px); }
+  }
+
+  @keyframes liveness-guide-nudge-right {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(10px); }
+  }
+
+  @keyframes liveness-guide-nudge-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes liveness-guide-nudge-down {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(10px); }
+  }
+
+  @keyframes liveness-guide-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.92; }
+  }
+
+  .liveness-eye-open {
+    animation: liveness-eye-blink-open 0.55s ease-out forwards;
+  }
+
+  .liveness-eye-closed {
+    animation: liveness-eye-blink-close 0.45s ease-in forwards;
+  }
+
+  .liveness-eye-opening {
+    animation: liveness-eye-blink-open 0.5s ease-out forwards;
+  }
+
+  .liveness-guide-nudge-left {
+    animation: liveness-guide-nudge-left 0.9s ease-in-out infinite;
+  }
+
+  .liveness-guide-nudge-right {
+    animation: liveness-guide-nudge-right 0.9s ease-in-out infinite;
+  }
+
+  .liveness-guide-nudge-up {
+    animation: liveness-guide-nudge-up 0.9s ease-in-out infinite;
+  }
+
+  .liveness-guide-nudge-down {
+    animation: liveness-guide-nudge-down 0.9s ease-in-out infinite;
+  }
+
+  .liveness-guide-pulse {
+    animation: liveness-guide-pulse 1s ease-in-out infinite;
+  }
+
   /* Mobile sidebar slide-in */
   @keyframes sidebar-slide-in {
     from { transform: translateX(-100%); }
