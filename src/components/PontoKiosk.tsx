@@ -7,6 +7,7 @@ import {
   resetLivenessTracker,
   tickLiveness,
   type LivenessTracker,
+  LIVENESS_POLL_MS,
 } from "@/lib/face-liveness";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
@@ -33,6 +34,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   const [livenessMsg, setLivenessMsg] = useState("Olhe para a câmera com os olhos abertos");
   const [livenessProgress, setLivenessProgress] = useState(0);
   const detectingRef = useRef(false);
+  const livenessBusyRef = useRef(false);
   const cooldownRef = useRef(false);
   const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
 
@@ -102,16 +104,16 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   }, [modelsLoaded]);
 
   const runLivenessCheck = useCallback(async () => {
-    if (detectingRef.current || !videoRef.current || status !== "liveness") return;
-    detectingRef.current = true;
+    if (livenessBusyRef.current || !videoRef.current || status !== "liveness") return;
+    livenessBusyRef.current = true;
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
       const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true);
       if (!det) {
         setLivenessMsg("Centralize o rosto — olhos abertos");
         setLivenessProgress(0);
-        detectingRef.current = false;
+        livenessBusyRef.current = false;
         return;
       }
       const live = tickLiveness(livenessRef.current, det.landmarks.positions);
@@ -123,7 +125,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     } catch {
       setLivenessMsg("Erro na verificação. Tente novamente.");
     }
-    detectingRef.current = false;
+    livenessBusyRef.current = false;
   }, [status]);
 
   const detectAndMatch = useCallback(async () => {
@@ -199,7 +201,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   // Liveness loop
   useEffect(() => {
     if (status !== "liveness") return;
-    const interval = setInterval(() => { void runLivenessCheck(); }, 450);
+    const interval = setInterval(() => { void runLivenessCheck(); }, LIVENESS_POLL_MS);
     return () => clearInterval(interval);
   }, [status, runLivenessCheck]);
 
@@ -306,7 +308,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
                   />
                 </div>
               </div>
-              <p className="text-xs text-white/30">Feche e abra os olhos — foto ou tela não passam</p>
+              <p className="text-xs text-white/30">Pisque devagar: feche os olhos por 1 segundo e abra de novo</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">

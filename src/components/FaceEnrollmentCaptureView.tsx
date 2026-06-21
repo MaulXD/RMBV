@@ -19,6 +19,7 @@ import {
   resetLivenessTracker,
   tickLiveness,
   type LivenessTracker,
+  LIVENESS_POLL_MS,
 } from "@/lib/face-liveness";
 
 const MODEL_URL = "/models";
@@ -191,34 +192,37 @@ export function FaceEnrollmentCaptureView({
       const faceapi = await import("@vladmandic/face-api");
       const video = videoRef.current;
       const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+
+      if (!livenessPassed) {
+        const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true);
+        if (!det) {
+          setLivenessMsg("Rosto não detectado — centralize no oval");
+          setLivenessProgress(0);
+          detectingRef.current = false;
+          return;
+        }
+        const live = tickLiveness(livenessRef.current, det.landmarks.positions);
+        setLivenessMsg(live.message);
+        setLivenessProgress(live.progress);
+        if (live.passed) {
+          pauseUntilRef.current = Date.now() + 500;
+          setLivenessPassed(true);
+          setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
+        }
+        detectingRef.current = false;
+        return;
+      }
+
       const det = await faceapi
         .detectSingleFace(video, opts)
         .withFaceLandmarks(true)
         .withFaceDescriptor();
 
       if (!det) {
-        if (!livenessPassed) {
-          setLivenessMsg("Rosto não detectado — centralize no oval");
-          setLivenessProgress(0);
-        } else {
-          setPoseEval({ ok: false, kind: "no_face", message: "Rosto não detectado", alignment: 0 });
-          setStableProgress(0);
-          setStatusMsg(`${currentPose!.hint} — centralize o rosto no oval`);
-          trackerRef.current = resetAutoCaptureTracker();
-        }
-        detectingRef.current = false;
-        return;
-      }
-
-      if (!livenessPassed) {
-        const live = tickLiveness(livenessRef.current, det.landmarks.positions);
-        setLivenessMsg(live.message);
-        setLivenessProgress(live.progress);
-        if (live.passed) {
-          pauseUntilRef.current = Date.now() + 700;
-          setLivenessPassed(true);
-          setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
-        }
+        setPoseEval({ ok: false, kind: "no_face", message: "Rosto não detectado", alignment: 0 });
+        setStableProgress(0);
+        setStatusMsg(`${currentPose!.hint} — centralize o rosto no oval`);
+        trackerRef.current = resetAutoCaptureTracker();
         detectingRef.current = false;
         return;
       }
@@ -270,9 +274,10 @@ export function FaceEnrollmentCaptureView({
 
   useEffect(() => {
     if (!modelsLoaded || !scanning || isSaving) return;
-    const id = setInterval(() => void runAutoCapture(), 450);
+    const ms = livenessPassed ? 450 : LIVENESS_POLL_MS;
+    const id = setInterval(() => void runAutoCapture(), ms);
     return () => clearInterval(id);
-  }, [modelsLoaded, scanning, isSaving, runAutoCapture, captureIndex]);
+  }, [modelsLoaded, scanning, isSaving, livenessPassed, runAutoCapture, captureIndex]);
 
   const ringColor = !livenessPassed
     ? livenessProgress >= 1
@@ -422,7 +427,7 @@ export function FaceEnrollmentCaptureView({
             {isSaving
               ? "Salvando..."
               : !livenessPassed
-                ? "Foto ou tela não passam — feche e abra os olhos"
+                ? "Pisque devagar — feche os olhos por 1 segundo e abra"
                 : "Captura automática — ajuste a pose até ficar verde"}
           </p>
         </div>
