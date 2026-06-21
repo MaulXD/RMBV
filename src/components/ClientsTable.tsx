@@ -110,52 +110,56 @@ export function ClientsTable({
 }) {
   if (loading) {
     return (
-      <div className="industrial-panel overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {selectable && <th className="w-10 px-3 py-2" />}
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">COD</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Tese</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Nome</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">CPF</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Status</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Finalização</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Retorno</th>
-              <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Pesquisa</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <tr key={i} className="border-b border-border">
-                {selectable && (
-                  <td className="px-3 py-2">
-                    <div className="skeleton h-4 w-4 rounded" />
-                  </td>
-                )}
-                <td className="px-4 py-2">
-                  <div className="skeleton h-4 w-12 rounded" />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="skeleton h-4 w-16 rounded" />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="skeleton h-4 w-40 rounded" />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="skeleton h-4 w-28 rounded" />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="skeleton h-5 w-20 rounded-full" />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="skeleton h-5 w-24 rounded-full" />
-                </td>
-                <td className="px-4 py-2" colSpan={4} />
+      <div className="industrial-panel">
+        {/* Mobile skeleton */}
+        <div className="sm:hidden divide-y divide-border/60">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+              <div className="skeleton h-10 w-10 shrink-0 rounded-xl" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="skeleton h-4 w-3/4 rounded" />
+                <div className="skeleton h-3 w-1/2 rounded" />
+              </div>
+              <div className="skeleton h-5 w-16 rounded-full" />
+            </div>
+          ))}
+        </div>
+        {/* Desktop skeleton */}
+        <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                {selectable && <th className="w-10 px-3 py-2" />}
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">COD</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Tese</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Nome</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">CPF</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Status</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Finalização</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Retorno</th>
+                <th className="px-4 py-2 text-[11px] font-semibold tracking-widest text-muted uppercase">Pesquisa</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <tr key={i} className="border-b border-border">
+                  {selectable && (
+                    <td className="px-3 py-2">
+                      <div className="skeleton h-4 w-4 rounded" />
+                    </td>
+                  )}
+                  <td className="px-4 py-2"><div className="skeleton h-4 w-12 rounded" /></td>
+                  <td className="px-4 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
+                  <td className="px-4 py-2"><div className="skeleton h-4 w-40 rounded" /></td>
+                  <td className="px-4 py-2"><div className="skeleton h-4 w-28 rounded" /></td>
+                  <td className="px-4 py-2"><div className="skeleton h-5 w-20 rounded-full" /></td>
+                  <td className="px-4 py-2"><div className="skeleton h-5 w-24 rounded-full" /></td>
+                  <td className="px-4 py-2" colSpan={2} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

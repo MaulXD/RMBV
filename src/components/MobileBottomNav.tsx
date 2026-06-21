@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "./SessionProvider";
-import { Icon } from "./ui/Icon";
+import { Icon, type IconName } from "./ui/Icon";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: IconName;
+  match?: (pathname: string) => boolean;
+};
 
 export function MobileBottomNav({
-  onMenuOpen,
   onChatToggle,
   chatUnread,
   chatOpen,
 }: {
-  onMenuOpen: () => void;
+  onMenuOpen?: () => void;
   onChatToggle: () => void;
   chatUnread: number;
   chatOpen: boolean;
@@ -20,46 +26,54 @@ export function MobileBottomNav({
   const { user } = useSession();
   if (!user) return null;
 
-  const navActive = (href: string) => pathname.startsWith(href);
+  const showPonto = user.role !== "ADMIN";
+  const showAdmin = user.role === "ADMIN";
+
+  const items: NavItem[] = [
+    {
+      href: "/dashboard",
+      label: "Clientes",
+      icon: "users",
+      match: (p) => p.startsWith("/dashboard") || p.startsWith("/clients"),
+    },
+    ...(showPonto
+      ? [{ href: "/ponto", label: "Ponto", icon: "scanFace" as const, match: (p: string) => p.startsWith("/ponto") }]
+      : []),
+    {
+      href: "/kanban",
+      label: "Kanban",
+      icon: "kanban",
+      match: (p) => p.startsWith("/kanban"),
+    },
+    ...(showAdmin
+      ? [{ href: "/admin", label: "Admin", icon: "shield" as const, match: (p: string) => p.startsWith("/admin") }]
+      : []),
+  ];
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-elevated/95 backdrop-blur-md lg:hidden safe-area-bottom">
-      <div className="flex h-14 items-stretch">
-        {/* Clientes */}
-        <Link
-          href="/dashboard"
-          className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
-            navActive("/dashboard") ? "text-primary" : "text-muted"
-          }`}
-        >
-          <Icon
-            name="users"
-            className={`h-5 w-5 ${navActive("/dashboard") ? "text-primary" : "text-muted"}`}
-          />
-          Clientes
-        </Link>
+      <div className="flex items-stretch">
+        {items.map((item) => {
+          const active = item.match ? item.match(pathname) : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`mobile-nav-item ${active ? "mobile-nav-item-active" : "text-muted"}`}
+            >
+              <Icon
+                name={item.icon}
+                className={`h-5 w-5 ${active ? "text-primary" : "text-muted"}`}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
 
-        {/* Kanban */}
-        <Link
-          href="/kanban"
-          className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
-            navActive("/kanban") ? "text-primary" : "text-muted"
-          }`}
-        >
-          <Icon
-            name="kanban"
-            className={`h-5 w-5 ${navActive("/kanban") ? "text-primary" : "text-muted"}`}
-          />
-          Kanban
-        </Link>
-
-        {/* Chat */}
         <button
           type="button"
           onClick={onChatToggle}
-          className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
-            chatOpen ? "text-primary" : "text-muted"
-          }`}
+          className={`mobile-nav-item ${chatOpen ? "mobile-nav-item-active" : "text-muted"}`}
         >
           <span className="relative">
             <Icon
@@ -73,16 +87,6 @@ export function MobileBottomNav({
             )}
           </span>
           Chat
-        </button>
-
-        {/* Menu */}
-        <button
-          type="button"
-          onClick={onMenuOpen}
-          className="flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted transition-colors"
-        >
-          <Icon name="menu" className="h-5 w-5 text-muted" />
-          Menu
         </button>
       </div>
     </div>

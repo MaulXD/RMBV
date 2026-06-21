@@ -255,7 +255,7 @@ export default function LoginPage() {
         {/* ══════════════════════════════════════════════
             RIGHT — Login form
         ══════════════════════════════════════════════ */}
-        <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-16 lg:px-14">
+        <div className="relative flex min-h-dvh flex-1 flex-col items-center justify-start overflow-y-auto px-6 py-8 safe-area-top sm:justify-center sm:py-16 lg:px-14">
 
           {/* Thin left border for large screens */}
           <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-px lg:block"

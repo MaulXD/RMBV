@@ -66,10 +66,12 @@ export function Sidebar({
   onMobileClose,
   onSearch,
   kanbanOverdueCount,
+  forceExpanded = false,
 }: {
   onMobileClose: () => void;
   onSearch: () => void;
   kanbanOverdueCount: number;
+  forceExpanded?: boolean;
 }) {
   const pathname = usePathname();
   const { user } = useSession();
@@ -119,24 +121,25 @@ export function Sidebar({
   ];
 
   const perfilActive = pathname.startsWith("/perfil");
+  const isCollapsed = forceExpanded ? false : collapsed;
 
   return (
     <aside
       className="sidebar-glass flex h-full flex-col overflow-hidden transition-[width] duration-200"
-      style={{ width: collapsed ? 56 : 240 }}
+      style={{ width: isCollapsed ? 56 : 240 }}
     >
       {/* Brand */}
-      <div className={`flex h-16 shrink-0 items-center border-b border-border ${collapsed ? "justify-center px-2" : "px-4"}`}>
+      <div className={`flex h-16 shrink-0 items-center border-b border-border ${isCollapsed ? "justify-center px-2" : "px-4"}`}>
         <Link
           href="/dashboard"
           className="flex min-w-0 items-center gap-2.5"
           onClick={onMobileClose}
-          title={collapsed ? "RMBV" : undefined}
+          title={isCollapsed ? "RMBV" : undefined}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Icon name="fileText" className="h-4 w-4" />
           </div>
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="min-w-0">
               <p className="text-[10px] font-bold tracking-widest text-muted uppercase">RMBV</p>
               <p className="max-w-[130px] truncate text-sm font-semibold leading-tight text-foreground">
@@ -149,17 +152,17 @@ export function Sidebar({
 
       {/* Search */}
       {user && (
-        <div className={`${collapsed ? "flex justify-center px-2" : "px-3"} pt-3`}>
+        <div className={`${isCollapsed ? "flex justify-center px-2" : "px-3"} pt-3`}>
           <button
             type="button"
             className={`flex items-center gap-2 rounded-lg border border-border bg-surface text-sm text-muted transition-colors hover:border-primary/40 hover:text-foreground ${
-              collapsed ? "h-9 w-9 justify-center" : "w-full px-3 py-2"
+              isCollapsed ? "h-9 w-9 justify-center" : "w-full px-3 py-2"
             }`}
             onClick={() => { onSearch(); onMobileClose(); }}
-            title={collapsed ? "Buscar (⌘K)" : undefined}
+            title={isCollapsed ? "Buscar (⌘K)" : undefined}
           >
             <Icon name="search" className="h-3.5 w-3.5 shrink-0" />
-            {!collapsed && (
+            {!isCollapsed && (
               <>
                 <span className="flex-1 text-left">Buscar...</span>
                 <kbd className="text-[10px] opacity-40">⌘K</kbd>
@@ -173,7 +176,7 @@ export function Sidebar({
       <nav className="flex-1 overflow-y-auto px-2 py-1" aria-label="Navegação principal">
         {navGroups.map((group) => (
           <div key={group.label} className="mb-1">
-            {!collapsed ? (
+            {!isCollapsed ? (
               <p className="px-3 pb-1 pt-3 text-[10px] font-bold tracking-[0.1em] text-muted/70 uppercase">
                 {group.label}
               </p>
@@ -189,11 +192,11 @@ export function Sidebar({
                 return (
                   <span
                     key={item.href}
-                    className={`sidebar-nav-link cursor-default opacity-40 ${collapsed ? "justify-center" : ""}`}
-                    title={collapsed ? `${item.label} — Em breve` : undefined}
+                    className={`sidebar-nav-link cursor-default opacity-40 ${isCollapsed ? "justify-center" : ""}`}
+                    title={isCollapsed ? `${item.label} — Em breve` : undefined}
                   >
                     <Icon name={item.icon} className={`h-4 w-4 shrink-0 ${item.color}`} />
-                    {!collapsed && (
+                    {!isCollapsed && (
                       <>
                         <span className="flex-1">{item.label}</span>
                         <span
@@ -213,14 +216,14 @@ export function Sidebar({
                   key={item.href}
                   href={item.href}
                   onClick={onMobileClose}
-                  className={`sidebar-nav-link ${active ? "active" : ""} ${collapsed ? "justify-center" : ""}`}
-                  title={collapsed ? item.label : undefined}
+                  className={`sidebar-nav-link ${active ? "active" : ""} ${isCollapsed ? "justify-center" : ""}`}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   <Icon
                     name={item.icon}
                     className={`h-4 w-4 shrink-0 ${item.color} ${active ? "opacity-100" : "opacity-70"}`}
                   />
-                  {!collapsed && (
+                  {!isCollapsed && (
                     <>
                       <span className="flex-1">{item.label}</span>
                       {showBadge && (
@@ -230,7 +233,7 @@ export function Sidebar({
                       )}
                     </>
                   )}
-                  {collapsed && showBadge && (
+                  {isCollapsed && showBadge && (
                     <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-600" />
                   )}
                 </Link>
@@ -257,7 +260,7 @@ export function Sidebar({
 
       {/* User footer */}
       <div className="shrink-0 border-t border-border p-2">
-        {!collapsed ? (
+        {!isCollapsed ? (
           <div className="flex items-center gap-2">
             {user && (
               <Link

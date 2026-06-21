@@ -28,11 +28,13 @@ export async function getAccountSetupStatus(userId: string): Promise<AccountSetu
 
   const hasFace = user.faceDescriptor !== null;
   const hasConsent = user.lgpdFaceConsentAt !== null;
+  const needsConsent = !hasConsent;
+  const needsFace = !hasFace;
 
   return {
     mustChangePassword: user.mustChangePassword,
-    needsFace: !hasFace,
-    needsConsent: !hasConsent && !hasFace,
+    needsFace,
+    needsConsent,
     isComplete: !user.mustChangePassword && hasFace && hasConsent,
   };
 }

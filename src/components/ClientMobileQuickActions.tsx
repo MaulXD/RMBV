@@ -12,13 +12,13 @@ export function ClientMobileQuickActions({
   const phoneDigits = primaryPhone?.replace(/\D/g, "") ?? "";
 
   return (
-    <div className="fixed inset-x-0 bottom-14 z-30 border-t border-border bg-surface-elevated/95 backdrop-blur-md md:hidden safe-area-none">
+    <div className="sticky top-14 z-20 -mx-4 border-b border-border bg-surface-elevated/95 px-2 py-1 backdrop-blur-md md:hidden">
       <div className="mx-auto flex max-w-lg justify-around gap-1">
         {phoneDigits && (
           <>
             <a
               href={`tel:${phoneDigits}`}
-              className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2.5 text-[10px] font-medium text-muted transition-colors hover:text-foreground"
+              className="mobile-touch flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[11px] font-medium text-muted transition-colors active:text-foreground"
             >
               <Icon name="phone" className="h-5 w-5 text-primary" />
               Ligar
@@ -27,7 +27,7 @@ export function ClientMobileQuickActions({
               href={`https://wa.me/55${phoneDigits}`}
               target="_blank"
               rel="noreferrer"
-              className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2.5 text-[10px] font-medium text-muted transition-colors hover:text-foreground"
+              className="mobile-touch flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[11px] font-medium text-muted transition-colors active:text-foreground"
             >
               <Icon name="messageSquare" className="h-5 w-5 text-emerald-600" />
               WhatsApp
@@ -36,14 +36,14 @@ export function ClientMobileQuickActions({
         )}
         <a
           href={`/clients/${clientId}#historico`}
-          className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2.5 text-[10px] font-medium text-muted transition-colors hover:text-foreground"
+          className="mobile-touch flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[11px] font-medium text-muted transition-colors active:text-foreground"
         >
           <Icon name="clock" className="h-5 w-5 text-primary" />
           Histórico
         </a>
         <a
           href="/kanban"
-          className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2.5 text-[10px] font-medium text-muted transition-colors hover:text-foreground"
+          className="mobile-touch flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[11px] font-medium text-muted transition-colors active:text-foreground"
         >
           <Icon name="kanban" className="h-5 w-5 text-primary" />
           Tarefas
