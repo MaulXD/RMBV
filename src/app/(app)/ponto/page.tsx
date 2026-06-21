@@ -8,6 +8,7 @@ import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
 import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
 import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
+import { MultiCaptureFaceWizard } from "@/components/MultiCaptureFaceWizard";
 import {
   hoursSummary,
   nextPontoType,
@@ -45,8 +46,6 @@ type ClockPhase =
   | "success"
   | "no-match"
   | "error";
-
-type EnrollPhase = "idle" | "opening" | "ready" | "capturing" | "saving" | "done";
 
 type PontoRecord = {
   id: string;
@@ -106,12 +105,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
   useLivenessAudioFeedback(clockPhase === "liveness", livenessPhase, livenessFaceLost);
 
-  // Enrollment camera
+  // Enrollment wizard (multi-pose + liveness)
   const [enrolling, setEnrolling] = useState(false);
-  const [enrollPhase, setEnrollPhase] = useState<EnrollPhase>("idle");
-  const [enrollMsg, setEnrollMsg] = useState("");
-  const enrollVideoRef = useRef<HTMLVideoElement>(null);
-  const enrollStreamRef = useRef<MediaStream | null>(null);
 
   // Today's records + next punch
   const [records, setRecords] = useState<PontoRecord[]>([]);
@@ -359,61 +354,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [clockPhase, detectFace]);
 
-  // ── Enrollment camera ────────────────────────────
-  function stopEnrollCamera() {
-    enrollStreamRef.current?.getTracks().forEach((t) => t.stop());
-    enrollStreamRef.current = null;
-    setEnrolling(false);
-    setEnrollPhase("idle");
-    setEnrollMsg("");
-  }
-
-  async function startEnrollCamera() {
-    setEnrolling(true);
-    setEnrollMsg("");
-    setEnrollPhase("opening");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      enrollStreamRef.current = stream;
-      if (enrollVideoRef.current) { enrollVideoRef.current.srcObject = stream; enrollVideoRef.current.play(); }
-      setEnrollPhase("ready");
-    } catch {
-      setEnrollMsg("Câmera não autorizada.");
-      setEnrollPhase("idle");
-      setEnrolling(false);
-    }
-  }
-
-  async function captureEnroll() {
-    if (!enrollVideoRef.current || !modelsLoaded) return;
-    setEnrollPhase("capturing");
-    setEnrollMsg("Detectando rosto...");
-    try {
-      const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-      const det = await faceapi.detectSingleFace(enrollVideoRef.current, opts).withFaceLandmarks(true).withFaceDescriptor();
-      if (!det) { setEnrollMsg("Rosto não detectado. Centralize-se e tente novamente."); setEnrollPhase("ready"); return; }
-      setEnrollPhase("saving");
-      setEnrollMsg("Salvando...");
-      const res = await fetch(`/api/users/${user.id}/face`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descriptor: Array.from(det.descriptor) }),
-      });
-      if (!res.ok) throw new Error();
-      setDescriptor(new Float32Array(det.descriptor));
-      setHasDescriptor(true);
-      setEnrollPhase("done");
-      setEnrollMsg("Rosto cadastrado com sucesso!");
-      setTimeout(stopEnrollCamera, 1600);
-    } catch {
-      setEnrollMsg("Erro ao salvar. Tente novamente.");
-      setEnrollPhase("ready");
-    }
-  }
-
   // Cleanup on unmount
-  useEffect(() => () => { stopClockCamera(); enrollStreamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
+  useEffect(() => () => { stopClockCamera(); }, []);
 
   const dateLabel = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
   const workType = user.workType ?? "CLT";
@@ -436,7 +378,6 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
       {/* ── ENROLLMENT section ── */}
       {hasDescriptor === null ? (
-        /* Loading */
         <div className="industrial-panel p-4">
           <div className="flex items-center gap-3">
             <div className="skeleton h-2.5 w-2.5 rounded-full" />
@@ -444,142 +385,75 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
           </div>
         </div>
       ) : !hasDescriptor ? (
-        /* No face registered — show enroll CTA */
         <div className="industrial-panel overflow-hidden" style={{ borderColor: "color-mix(in srgb, #f59e0b 30%, var(--color-border))" }}>
           <div className="flex items-center justify-between gap-4 p-4">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
                 <Icon name="scanFace" className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Rosto não cadastrado</p>
-                <p className="text-xs text-muted">Cadastre para usar o ponto.</p>
+                <p className="text-xs text-muted">Prova de vida + 5 poses para usar o ponto.</p>
               </div>
             </div>
             {!enrolling && (
               <button
                 type="button"
-                disabled={!modelsLoaded}
-                onClick={() => void startEnrollCamera()}
-                className="btn-primary shrink-0 text-sm disabled:opacity-50"
+                onClick={() => setEnrolling(true)}
+                className="btn-primary shrink-0 text-sm"
               >
                 <Icon name="camera" className="h-4 w-4" />
-                {modelsLoaded ? "Cadastrar rosto" : "Carregando..."}
+                Cadastrar rosto
               </button>
             )}
           </div>
-
-          {/* Enrollment camera (inline) */}
-          {enrolling && (
-            <div className="border-t border-border p-4 space-y-3">
-              <div className="relative mx-auto overflow-hidden rounded-2xl bg-black" style={{ maxWidth: 280, aspectRatio: "1" }}>
-                <video ref={enrollVideoRef} className="h-full w-full object-cover" playsInline muted autoPlay style={{ transform: "scaleX(-1)" }} />
-                <div className="absolute top-2 left-2 h-6 w-6 border-t-2 border-l-2 border-white/60 rounded-tl-md" />
-                <div className="absolute top-2 right-2 h-6 w-6 border-t-2 border-r-2 border-white/60 rounded-tr-md" />
-                <div className="absolute bottom-2 left-2 h-6 w-6 border-b-2 border-l-2 border-white/60 rounded-bl-md" />
-                <div className="absolute bottom-2 right-2 h-6 w-6 border-b-2 border-r-2 border-white/60 rounded-br-md" />
-                {enrollPhase === "opening" && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                    <Icon name="rotateCw" className="h-6 w-6 animate-spin text-white/60" />
-                  </div>
-                )}
-                {enrollPhase === "done" && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20">
-                    <svg viewBox="0 0 24 24" className="h-14 w-14 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
-                  </div>
-                )}
-              </div>
-              {enrollMsg && (
-                <p className={`text-center text-xs font-medium ${enrollPhase === "done" ? "text-emerald-600 dark:text-emerald-400" : enrollMsg.includes("Erro") || enrollMsg.includes("não") ? "text-red-500" : "text-muted"}`}>
-                  {enrollMsg}
-                </p>
-              )}
-              <div className="flex justify-center gap-2">
-                {enrollPhase === "ready" && (
-                  <button type="button" className="btn-primary text-sm" onClick={() => void captureEnroll()}>
-                    <Icon name="camera" className="h-4 w-4" /> Capturar
-                  </button>
-                )}
-                {(enrollPhase === "capturing" || enrollPhase === "saving") && (
-                  <button type="button" className="btn-primary text-sm" disabled>
-                    <Icon name="rotateCw" className="h-4 w-4 animate-spin" /> Processando...
-                  </button>
-                )}
-                <button type="button" className="btn-ghost text-sm" onClick={stopEnrollCamera}>Cancelar</button>
-              </div>
-            </div>
-          )}
         </div>
       ) : (
-        /* Face registered — small status pill + optional re-enroll */
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 rounded-full border px-3 py-1.5"
-            style={{ background: "color-mix(in srgb, #10b981 8%, var(--color-surface-elevated))", borderColor: "color-mix(in srgb, #10b981 22%, transparent)" }}>
+          <div
+            className="flex items-center gap-2 rounded-full border px-3 py-1.5"
+            style={{
+              background: "color-mix(in srgb, #10b981 8%, var(--color-surface-elevated))",
+              borderColor: "color-mix(in srgb, #10b981 22%, transparent)",
+            }}
+          >
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Rosto cadastrado</span>
           </div>
           {!enrolling && (
             <button
               type="button"
-              disabled={!modelsLoaded}
-              onClick={() => void startEnrollCamera()}
-              className="text-xs text-muted hover:text-foreground underline underline-offset-2 disabled:opacity-40"
+              onClick={() => setEnrolling(true)}
+              className="text-xs text-muted underline underline-offset-2 hover:text-foreground"
             >
               Recadastrar
-            </button>
-          )}
-          {/* Re-enroll camera (inline, compact) */}
-          {enrolling && (
-            <button type="button" className="text-xs text-muted hover:text-foreground underline underline-offset-2" onClick={stopEnrollCamera}>
-              Cancelar cadastro
             </button>
           )}
         </div>
       )}
 
-      {/* Re-enroll camera panel (when has descriptor but wants to redo) */}
-      {enrolling && hasDescriptor && (
+      {enrolling && hasDescriptor !== null && (
         <div className="industrial-panel overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-semibold">Recadastrar rosto</span>
-            <button type="button" className="btn-icon" onClick={stopEnrollCamera}><Icon name="x" className="h-4 w-4" /></button>
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <span className="text-sm font-semibold">
+              {hasDescriptor ? "Recadastrar rosto" : "Cadastro facial"}
+            </span>
+            <button type="button" className="btn-icon" onClick={() => setEnrolling(false)} aria-label="Fechar">
+              <Icon name="x" className="h-4 w-4" />
+            </button>
           </div>
-          <div className="p-4 space-y-3">
-            <div className="relative mx-auto overflow-hidden rounded-2xl bg-black" style={{ maxWidth: 280, aspectRatio: "1" }}>
-              <video ref={enrollVideoRef} className="h-full w-full object-cover" playsInline muted autoPlay style={{ transform: "scaleX(-1)" }} />
-              <div className="absolute top-2 left-2 h-6 w-6 border-t-2 border-l-2 border-white/60 rounded-tl-md" />
-              <div className="absolute top-2 right-2 h-6 w-6 border-t-2 border-r-2 border-white/60 rounded-tr-md" />
-              <div className="absolute bottom-2 left-2 h-6 w-6 border-b-2 border-l-2 border-white/60 rounded-bl-md" />
-              <div className="absolute bottom-2 right-2 h-6 w-6 border-b-2 border-r-2 border-white/60 rounded-br-md" />
-              {enrollPhase === "opening" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                  <Icon name="rotateCw" className="h-6 w-6 animate-spin text-white/60" />
-                </div>
-              )}
-              {enrollPhase === "done" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20">
-                  <svg viewBox="0 0 24 24" className="h-14 w-14 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
-                </div>
-              )}
-            </div>
-            {enrollMsg && (
-              <p className={`text-center text-xs font-medium ${enrollPhase === "done" ? "text-emerald-600 dark:text-emerald-400" : enrollMsg.includes("Erro") || enrollMsg.includes("não") ? "text-red-500" : "text-muted"}`}>
-                {enrollMsg}
-              </p>
-            )}
-            <div className="flex justify-center gap-2">
-              {enrollPhase === "ready" && (
-                <button type="button" className="btn-primary text-sm" onClick={() => void captureEnroll()}>
-                  <Icon name="camera" className="h-4 w-4" /> Capturar
-                </button>
-              )}
-              {(enrollPhase === "capturing" || enrollPhase === "saving") && (
-                <button type="button" className="btn-primary text-sm" disabled>
-                  <Icon name="rotateCw" className="h-4 w-4 animate-spin" /> Processando...
-                </button>
-              )}
-              <button type="button" className="btn-ghost text-sm" onClick={stopEnrollCamera}>Cancelar</button>
-            </div>
+          <div className="p-4">
+            <MultiCaptureFaceWizard
+              key={hasDescriptor ? "recapture" : "enroll"}
+              userId={user.id}
+              requireConsent={!hasDescriptor}
+              startAt={hasDescriptor ? "camera" : "instructions"}
+              allowUpload={false}
+              onComplete={() => {
+                void loadDescriptor();
+                setEnrolling(false);
+              }}
+            />
           </div>
         </div>
       )}

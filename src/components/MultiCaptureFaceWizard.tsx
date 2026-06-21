@@ -9,19 +9,23 @@ import { FaceEnrollmentCaptureView } from "./FaceEnrollmentCaptureView";
 const MODEL_URL = "/models";
 
 type Phase = "instructions" | "consent" | "camera" | "upload" | "done";
+type WizardStart = "instructions" | "consent" | "camera";
 
 export function MultiCaptureFaceWizard({
   userId,
   requireConsent,
   allowUpload = false,
+  startAt = "instructions",
   onComplete,
 }: {
   userId: string;
   requireConsent: boolean;
   allowUpload?: boolean;
+  /** Pula instruções/consentimento — útil no recadastro. */
+  startAt?: WizardStart;
   onComplete: () => void;
 }) {
-  const [phase, setPhase] = useState<Phase>("instructions");
+  const [phase, setPhase] = useState<Phase>(startAt);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [modelsError, setModelsError] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
