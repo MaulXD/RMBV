@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppConfig } from "./useAppConfig";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ToastProvider";
+import { Icon, type IconName } from "@/components/ui/Icon";
 
 type DocumentRow = {
   id: string;
@@ -36,12 +37,12 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileTypeLabel(mimeType: string) {
-  if (mimeType === "application/pdf") return { label: "PDF", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400", icon: "📄" };
-  if (mimeType.startsWith("image/")) return { label: "Imagem", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", icon: "🖼️" };
-  if (mimeType.includes("word")) return { label: "Word", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", icon: "📝" };
-  if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return { label: "Excel", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: "📊" };
-  return { label: "TXT", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400", icon: "📃" };
+function fileTypeLabel(mimeType: string): { label: string; color: string; icon: IconName } {
+  if (mimeType === "application/pdf") return { label: "PDF", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400", icon: "fileText" };
+  if (mimeType.startsWith("image/")) return { label: "Imagem", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", icon: "image" };
+  if (mimeType.includes("word")) return { label: "Word", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", icon: "clipboardPen" };
+  if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return { label: "Excel", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: "table" };
+  return { label: "TXT", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400", icon: "fileText" };
 }
 
 export function ClientDocuments({
@@ -183,7 +184,9 @@ export function ClientDocuments({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl">☁️</div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Icon name="upload" className="h-6 w-6" />
+          </div>
           <div className="text-center">
             <p className="text-sm font-medium text-foreground">Arraste um arquivo aqui</p>
             <p className="text-xs text-muted">ou clique para selecionar · PDF, imagens, Word, Excel, TXT (máx. 15 MB)</p>
@@ -210,7 +213,9 @@ export function ClientDocuments({
               <p className="text-sm font-semibold text-foreground">{pendingFile.name}</p>
               <p className="text-xs text-muted">{formatSize(pendingFile.size)} · Marque os documentos contidos neste arquivo</p>
             </div>
-            <button type="button" onClick={cancelPending} className="text-muted hover:text-foreground text-lg leading-none">✕</button>
+            <button type="button" onClick={cancelPending} className="btn-icon text-muted hover:text-foreground" aria-label="Cancelar">
+              <Icon name="x" className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -227,7 +232,7 @@ export function ClientDocuments({
                       : "border-border text-muted hover:border-primary/50 hover:text-foreground"
                   }`}
                 >
-                  {active ? "✓ " : ""}{tag}
+                  {tag}
                 </button>
               );
             })}
@@ -272,7 +277,8 @@ export function ClientDocuments({
               <div key={doc.id} className="soft-card flex flex-col gap-2 p-3">
                 <div className="flex items-start justify-between gap-1">
                   <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${color}`}>
-                    {icon} {label}
+                    <Icon name={icon} className="h-3 w-3" />
+                    {label}
                   </span>
                 </div>
 
@@ -303,10 +309,11 @@ export function ClientDocuments({
                   {isAdmin && (
                     <button
                       type="button"
-                      className="rounded-md border border-border px-2 py-1 text-[11px] text-red-500 hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="rounded-md border border-border px-2 py-1 text-red-500 hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       onClick={() => handleDelete(doc.id)}
+                      aria-label="Excluir documento"
                     >
-                      ✕
+                      <Icon name="x" className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>

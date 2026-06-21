@@ -4,13 +4,11 @@ type LandmarkPoint = { x: number; y: number };
 const LEFT_EYE = [36, 37, 38, 39, 40, 41] as const;
 const RIGHT_EYE = [42, 43, 44, 45, 46, 47] as const;
 
-/** Calibra olhos abertos antes de pedir piscada. */
-const CALIBRATION_FRAMES = 5;
-const MIN_BASELINE = 0.13;
-/** Olho fechado cai para ~60% do baseline; piscada forte ~50%. */
-const CLOSED_RATIO = 0.62;
-const STRONG_CLOSED_RATIO = 0.52;
-const OPEN_RATIO = 0.76;
+const CALIBRATION_FRAMES = 3;
+const MIN_BASELINE = 0.08;
+const CLOSED_RATIO = 0.65;
+const STRONG_CLOSED_RATIO = 0.55;
+const OPEN_RATIO = 0.72;
 
 function dist(a: LandmarkPoint, b: LandmarkPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -74,12 +72,31 @@ export function resetLivenessTracker(): LivenessTracker {
   return createLivenessTracker();
 }
 
+/** face-api precisa de dimensões válidas no elemento video. */
+export function isVideoReadyForDetection(video: HTMLVideoElement | null): boolean {
+  if (!video) return false;
+  return video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
+}
+
+export async function waitForVideoReady(
+  video: HTMLVideoElement,
+  timeoutMs = 4000,
+): Promise<boolean> {
+  if (isVideoReadyForDetection(video)) return true;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    if (isVideoReadyForDetection(video)) return true;
+  }
+  return isVideoReadyForDetection(video);
+}
+
 function isEyesClosed(avg: number, eyeMin: number, baseline: number): boolean {
   return avg < baseline * CLOSED_RATIO || eyeMin < baseline * STRONG_CLOSED_RATIO;
 }
 
-function isEyesOpen(avg: number, eyeMin: number, baseline: number): boolean {
-  return avg >= baseline * OPEN_RATIO && eyeMin >= baseline * 0.58;
+function isEyesOpen(avg: number, baseline: number): boolean {
+  return avg >= baseline * OPEN_RATIO;
 }
 
 export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[]): LivenessTick {
@@ -88,26 +105,21 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
 
   switch (tracker.phase) {
     case "need_face": {
-      if (avg < 0.09) {
-        tracker.calibration = [];
+      if (avg < 0.06) {
         return {
           phase: "need_face",
           passed: false,
           message: "Centralize o rosto na câmera",
-          progress: 0.08,
+          progress: 0.1,
         };
       }
 
       tracker.calibration.push(avg);
-      if (tracker.calibration.length > CALIBRATION_FRAMES) {
-        tracker.calibration.shift();
-      }
+      const calRatio = Math.min(tracker.calibration.length / CALIBRATION_FRAMES, 1);
 
-      const calRatio = tracker.calibration.length / CALIBRATION_FRAMES;
       if (tracker.calibration.length >= CALIBRATION_FRAMES) {
         const base = median(tracker.calibration);
-        const spread = Math.max(...tracker.calibration) - Math.min(...tracker.calibration);
-        if (base >= MIN_BASELINE && spread <= base * 0.3) {
+        if (base >= MIN_BASELINE) {
           tracker.baselineEar = base;
           tracker.phase = "need_close";
           tracker.closedStreak = 0;
@@ -115,7 +127,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
             phase: "need_close",
             passed: false,
             message: "Feche os olhos por um instante",
-            progress: 0.42,
+            progress: 0.45,
           };
         }
         tracker.calibration.shift();
@@ -124,8 +136,8 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
       return {
         phase: "need_face",
         passed: false,
-        message: "Olhe para a câmera com os olhos bem abertos",
-        progress: 0.12 + calRatio * 0.28,
+        message: "Olhe para a câmera com os olhos abertos",
+        progress: 0.15 + calRatio * 0.25,
       };
     }
 
@@ -144,7 +156,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
             phase: "need_open",
             passed: false,
             message: "Agora abra os olhos",
-            progress: 0.72,
+            progress: 0.75,
           };
         }
       } else {
@@ -155,14 +167,14 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
         phase: "need_close",
         passed: false,
         message: "Feche os olhos por um instante",
-        progress: 0.42 + Math.min(tracker.closedStreak / 2, 1) * 0.22,
+        progress: 0.45 + Math.min(tracker.closedStreak / 2, 1) * 0.2,
       };
     }
 
     case "need_open": {
       const baseline = tracker.baselineEar ?? avg;
 
-      if (isEyesOpen(avg, eyeMin, baseline)) {
+      if (isEyesOpen(avg, baseline)) {
         tracker.openStreak++;
         if (tracker.openStreak >= 2) {
           tracker.phase = "passed";
@@ -181,7 +193,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
         phase: "need_open",
         passed: false,
         message: "Abra os olhos de novo",
-        progress: 0.74 + Math.min(tracker.openStreak / 2, 1) * 0.26,
+        progress: 0.78 + Math.min(tracker.openStreak / 2, 1) * 0.22,
       };
     }
 
@@ -203,5 +215,10 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
   }
 }
 
-/** Intervalo sugerido (ms) para checagem de liveness — piscada dura ~150–350 ms. */
-export const LIVENESS_POLL_MS = 180;
+export const LIVENESS_POLL_MS = 250;
+
+/** Mesmos parâmetros usados no reconhecimento facial — evita falso “rosto não detectado”. */
+export const LIVENESS_FACE_DETECT = {
+  inputSize: 320,
+  scoreThreshold: 0.5,
+} as const;
