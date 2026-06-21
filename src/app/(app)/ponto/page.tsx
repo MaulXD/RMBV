@@ -631,54 +631,80 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             </p>
 
             {(clockPhase === "verified" || clockPhase === "submitting") && (
-              <div className="w-full max-w-xs space-y-3">
+              <div className="w-full max-w-xs">
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    disabled={clockPhase === "submitting"}
-                    onClick={() => void submitPunch("ENTRADA")}
-                    className={`rounded-xl border p-4 text-left transition-all active:scale-[0.98] disabled:opacity-50 ${
-                      suggestedType === "ENTRADA"
-                        ? "border-emerald-500/50 bg-emerald-500/10 ring-1 ring-emerald-500/30"
-                        : "border-border bg-surface-elevated hover:border-emerald-500/30"
-                    }`}
-                  >
-                    <Icon name="logIn" className="mb-2 h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                    <p className="font-bold text-foreground">Entrada</p>
-                    <p className="text-[11px] text-muted">Iniciar jornada</p>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={clockPhase === "submitting"}
-                    onClick={() => void submitPunch("SAIDA")}
-                    className={`rounded-xl border p-4 text-left transition-all active:scale-[0.98] disabled:opacity-50 ${
-                      suggestedType === "SAIDA"
-                        ? "border-amber-500/50 bg-amber-500/10 ring-1 ring-amber-500/30"
-                        : "border-border bg-surface-elevated hover:border-amber-500/30"
-                    }`}
-                  >
-                    <Icon name="logOut" className="mb-2 h-6 w-6 text-amber-600 dark:text-amber-400" />
-                    <p className="font-bold text-foreground">Saída</p>
-                    <p className="text-[11px] text-muted">Encerrar jornada</p>
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={clockPhase === "submitting"}
-                    onClick={() => void submitPunch("INTERVALO_INICIO")}
-                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:border-sky-500/40 hover:text-foreground disabled:opacity-50"
-                  >
-                    Início intervalo
-                  </button>
-                  <button
-                    type="button"
-                    disabled={clockPhase === "submitting"}
-                    onClick={() => void submitPunch("INTERVALO_FIM")}
-                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:border-sky-500/40 hover:text-foreground disabled:opacity-50"
-                  >
-                    Fim intervalo
-                  </button>
+                  {(
+                    [
+                      {
+                        type: "ENTRADA" as const,
+                        icon: "logIn" as const,
+                        accent: "emerald",
+                        title: "Entrada",
+                        subtitle: "Iniciar jornada",
+                      },
+                      {
+                        type: "SAIDA" as const,
+                        icon: "logOut" as const,
+                        accent: "amber",
+                        title: "Saída",
+                        subtitle: "Encerrar jornada",
+                      },
+                      {
+                        type: "INTERVALO_INICIO" as const,
+                        icon: "clock" as const,
+                        accent: "sky",
+                        title: "Início intervalo",
+                        subtitle: "Pausa para descanso",
+                      },
+                      {
+                        type: "INTERVALO_FIM" as const,
+                        icon: "play" as const,
+                        accent: "violet",
+                        title: "Fim intervalo",
+                        subtitle: "Retomar jornada",
+                      },
+                    ] as const
+                  ).map((opt) => {
+                    const active = suggestedType === opt.type;
+                    const accentStyles = {
+                      emerald: {
+                        active: "border-emerald-500/50 bg-emerald-500/10 ring-1 ring-emerald-500/30",
+                        idle: "border-border bg-surface-elevated hover:border-emerald-500/30",
+                        icon: "text-emerald-600 dark:text-emerald-400",
+                      },
+                      amber: {
+                        active: "border-amber-500/50 bg-amber-500/10 ring-1 ring-amber-500/30",
+                        idle: "border-border bg-surface-elevated hover:border-amber-500/30",
+                        icon: "text-amber-600 dark:text-amber-400",
+                      },
+                      sky: {
+                        active: "border-sky-500/50 bg-sky-500/10 ring-1 ring-sky-500/30",
+                        idle: "border-border bg-surface-elevated hover:border-sky-500/30",
+                        icon: "text-sky-600 dark:text-sky-400",
+                      },
+                      violet: {
+                        active: "border-violet-500/50 bg-violet-500/10 ring-1 ring-violet-500/30",
+                        idle: "border-border bg-surface-elevated hover:border-violet-500/30",
+                        icon: "text-violet-600 dark:text-violet-400",
+                      },
+                    }[opt.accent];
+
+                    return (
+                      <button
+                        key={opt.type}
+                        type="button"
+                        disabled={clockPhase === "submitting"}
+                        onClick={() => void submitPunch(opt.type)}
+                        className={`rounded-xl border p-4 text-left transition-all active:scale-[0.98] disabled:opacity-50 ${
+                          active ? accentStyles.active : accentStyles.idle
+                        }`}
+                      >
+                        <Icon name={opt.icon} className={`mb-2 h-6 w-6 ${accentStyles.icon}`} />
+                        <p className="font-bold text-foreground leading-tight">{opt.title}</p>
+                        <p className="mt-0.5 text-[11px] text-muted leading-snug">{opt.subtitle}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
