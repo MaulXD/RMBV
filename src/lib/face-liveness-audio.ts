@@ -1,11 +1,7 @@
 import type { LivenessPhase } from "@/lib/face-liveness";
 
-const PHASE_CUE: Record<LivenessPhase, string> = {
-  need_face: "Olhe para a câmera com os olhos abertos",
-  need_close: "Feche os olhos com força",
-  need_open: "Agora abra os olhos",
-  passed: "Verificação concluída",
-};
+/** Aguarda o áudio de conclusão terminar antes de avançar o fluxo. */
+export const LIVENESS_COMPLETE_DELAY_MS = 2400;
 
 let sharedAudioCtx: AudioContext | null = null;
 
@@ -22,85 +18,86 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-function pickPortugueseVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((v) => v.lang === "pt-BR") ??
-    voices.find((v) => v.lang.startsWith("pt")) ??
-    null
-  );
-}
-
-function speakPortuguese(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "pt-BR";
-  utterance.rate = 0.92;
-  utterance.pitch = 1;
-  const voice = pickPortugueseVoice();
-  if (voice) utterance.voice = voice;
-  synth.speak(utterance);
-}
-
-/** Tom curto de sucesso (dois bipes ascendentes). */
-export function playLivenessSuccessTone() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  const start = ctx.currentTime;
-  for (const [i, freq] of [523.25, 659.25].entries()) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    const t = start + i * 0.1;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-    osc.start(t);
-    osc.stop(t + 0.15);
-  }
-}
-
-/** Tom de alerta leve quando o rosto sai do enquadramento. */
-export function playLivenessAttentionTone() {
+function playTone(freq: number, start: number, duration: number, volume = 0.14) {
   const ctx = getAudioContext();
   if (!ctx) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "sine";
-  osc.frequency.value = 440;
+  osc.frequency.value = freq;
   osc.connect(gain);
   gain.connect(ctx.destination);
-  const t = ctx.currentTime;
-  gain.gain.setValueAtTime(0.0001, t);
-  gain.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-  osc.start(t);
-  osc.stop(t + 0.13);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+function playToneSequence(notes: Array<{ freq: number; at: number; dur: number; vol?: number }>) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const base = ctx.currentTime;
+  for (const n of notes) {
+    playTone(n.freq, base + n.at, n.dur, n.vol ?? 0.14);
+  }
+}
+
+/** Melodia de conclusão + agradecimento (~1,6 s). */
+export function playLivenessThankYouTone() {
+  playToneSequence([
+    { freq: 523.25, at: 0, dur: 0.16, vol: 0.13 },
+    { freq: 659.25, at: 0.18, dur: 0.16, vol: 0.14 },
+    { freq: 783.99, at: 0.36, dur: 0.22, vol: 0.15 },
+    { freq: 987.77, at: 0.62, dur: 0.28, vol: 0.14 },
+    { freq: 880, at: 0.95, dur: 0.45, vol: 0.12 },
+  ]);
+}
+
+export function playLivenessSuccessTone() {
+  playLivenessThankYouTone();
+}
+
+export function playLivenessAttentionTone() {
+  playToneSequence([
+    { freq: 440, at: 0, dur: 0.1, vol: 0.1 },
+    { freq: 370, at: 0.12, dur: 0.12, vol: 0.1 },
+  ]);
+}
+
+function playPhaseTone(phase: LivenessPhase) {
+  switch (phase) {
+    case "need_face":
+      playToneSequence([{ freq: 880, at: 0, dur: 0.1, vol: 0.11 }]);
+      break;
+    case "need_close":
+      playToneSequence([
+        { freq: 620, at: 0, dur: 0.11, vol: 0.12 },
+        { freq: 520, at: 0.14, dur: 0.14, vol: 0.12 },
+      ]);
+      break;
+    case "need_open":
+      playToneSequence([
+        { freq: 520, at: 0, dur: 0.08, vol: 0.11 },
+        { freq: 740, at: 0.1, dur: 0.14, vol: 0.14 },
+      ]);
+      break;
+    case "passed":
+      playLivenessThankYouTone();
+      break;
+    default:
+      break;
+  }
 }
 
 export function resetLivenessAudioFeedback() {
-  if (typeof window !== "undefined" && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
+  /* tons curtos — nada a cancelar */
 }
 
 export function cueLivenessPhase(phase: LivenessPhase) {
-  if (phase === "passed") {
-    playLivenessSuccessTone();
-  }
-  speakPortuguese(PHASE_CUE[phase]);
+  playPhaseTone(phase);
 }
 
-/** Carrega vozes TTS (necessário em Safari/iOS). */
 export function warmupLivenessAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.getVoices();
   void getAudioContext()?.resume();
 }

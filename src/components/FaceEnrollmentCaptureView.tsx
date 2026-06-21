@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
 import { LivenessCornerBanner } from "./LivenessCornerBanner";
+import { LivenessEyeGuide } from "./LivenessEyeGuide";
+import { PoseDirectionGuide } from "./PoseDirectionGuide";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
-import { warmupLivenessAudio } from "@/lib/face-liveness-audio";
+import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
 import {
   ENROLLMENT_CAPTURE_COUNT,
   ENROLLMENT_POSE_STEPS,
@@ -29,41 +31,6 @@ import {
 } from "@/lib/face-liveness";
 
 const MODEL_URL = "/models";
-
-function PoseHint({
-  direction,
-  active,
-  ok,
-}: {
-  direction: (typeof ENROLLMENT_POSE_STEPS)[number]["direction"];
-  active: boolean;
-  ok: boolean;
-}) {
-  const iconName: "circleDot" | "arrowUp" | "arrowDown" | "chevronLeft" | "chevronRight" =
-    direction === "center"
-      ? "circleDot"
-      : direction === "up"
-        ? "arrowUp"
-        : direction === "down"
-          ? "arrowDown"
-          : direction === "left"
-            ? "chevronLeft"
-            : "chevronRight";
-
-  return (
-    <span
-      className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-all duration-200 ${
-        ok
-          ? "bg-emerald-500/90 text-white scale-110"
-          : active
-            ? "bg-amber-500/80 text-white animate-pulse"
-            : "bg-white/15 text-white"
-      }`}
-    >
-      <Icon name={iconName} className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
-    </span>
-  );
-}
 
 export function FaceEnrollmentCaptureView({
   onComplete,
@@ -231,11 +198,11 @@ export function FaceEnrollmentCaptureView({
         setLivenessProgress(live.progress);
         setLivenessPhase(live.phase);
         if (live.passed) {
-          pauseUntilRef.current = Date.now() + 1200;
+          pauseUntilRef.current = Date.now() + LIVENESS_COMPLETE_DELAY_MS + 200;
           window.setTimeout(() => {
             setLivenessPassed(true);
             setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
-          }, 1100);
+          }, LIVENESS_COMPLETE_DELAY_MS);
         }
         detectingRef.current = false;
         return;
@@ -345,20 +312,25 @@ export function FaceEnrollmentCaptureView({
           autoPlay
           style={{ transform: "scaleX(-1)" }}
         />
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 sm:gap-2">
+        <div className="pointer-events-none absolute inset-0">
           {!livenessPassed && (
-            <LivenessCornerBanner message={livenessMsg} progress={livenessProgress} />
+            <>
+              <LivenessCornerBanner message={livenessMsg} progress={livenessProgress} />
+              <LivenessEyeGuide phase={livenessPhase} />
+            </>
           )}
-          {livenessPassed && currentPose ? (
-            <PoseHint
+          {livenessPassed && currentPose && (
+            <PoseDirectionGuide
               direction={currentPose.direction}
               active={poseEval?.kind === "wrong_pose"}
               ok={poseEval?.ok === true && stableProgress > 0}
             />
-          ) : null}
-          <div
-            className={`h-32 w-24 sm:h-40 sm:w-32 rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
-          />
+          )}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className={`h-32 w-24 sm:h-40 sm:w-32 rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
+            />
+          </div>
         </div>
 
         {isSaving && (
@@ -445,8 +417,8 @@ export function FaceEnrollmentCaptureView({
             {isSaving
               ? "Salvando..."
               : !livenessPassed
-                ? "Feche bem os olhos por 1 segundo, depois abra"
-                : "Captura automática — ajuste a pose até ficar verde"}
+                ? "Feche os olhos por um momento, depois abra quando ouvir Pronto"
+                : "Captura automática — siga a seta na lateral da câmera"}
           </p>
         </div>
       )}

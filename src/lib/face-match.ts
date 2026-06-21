@@ -4,6 +4,9 @@
  */
 export const FACE_MATCH_MAX_DISTANCE = 0.6;
 
+/** Confiança mínima no ponto mobile (evita passar com ~2% no limiar). */
+export const FACE_SELFIE_MIN_CONFIDENCE = 0.55;
+
 /** Margem mínima entre 1º e 2º colocado no quiosque (evita troca entre pessoas). */
 export const FACE_MATCH_MIN_GAP = 0.06;
 
@@ -27,6 +30,11 @@ export function matchConfidence(distance: number): number {
 
 export function isFaceMatch(distance: number): boolean {
   return distance < FACE_MATCH_MAX_DISTANCE;
+}
+
+/** Match com confiança mínima para bater ponto no celular. */
+export function isStrongSelfieMatch(distance: number): boolean {
+  return isFaceMatch(distance) && matchConfidence(distance) >= FACE_SELFIE_MIN_CONFIDENCE;
 }
 
 export function toDescriptorArray(raw: unknown): Float32Array | null {
