@@ -102,6 +102,11 @@ export default function ClientDetailPage() {
         teamId: null,
         teamName: null,
         avatarUrl: null,
+        mustChangePassword: false,
+        hasFace: false,
+        hasFaceConsent: false,
+        workType: "CLT",
+        gpsRequired: false,
       })
     : false;
   const canRequest = client.workflowStatus === "EM_ANDAMENTO";

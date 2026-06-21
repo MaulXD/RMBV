@@ -4,8 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession, type SessionUser } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
+import {
+  hoursSummary,
+  nextPontoType,
+  pontoTypeLabel,
+} from "@/lib/ponto-hours";
 
-type PontoType = "ENTRADA" | "SAIDA";
+type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
 type ClockPhase =
   | "idle"
   | "opening"
@@ -83,9 +88,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const enrollVideoRef = useRef<HTMLVideoElement>(null);
   const enrollStreamRef = useRef<MediaStream | null>(null);
 
-  // Today's records
+  // Today's records + next punch
   const [records, setRecords] = useState<PontoRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [nextType, setNextType] = useState<PontoType>("ENTRADA");
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   // Load models on mount (background)
   useEffect(() => {
@@ -112,6 +119,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (res.ok) {
         const d = await res.json() as { records: PontoRecord[] };
         setRecords(d.records);
+        setNextType(nextPontoType(d.records));
       }
     } finally { setRecordsLoading(false); }
   }, [user.id, todayStr]);
@@ -146,6 +154,26 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     }
   }
 
+  async function getGpsCoords(): Promise<{ latitude: number; longitude: number } | null> {
+    if (!user.gpsRequired) return null;
+    setGpsError(null);
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setGpsError("GPS indisponível neste dispositivo.");
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => {
+          setGpsError("Ative a localização para bater ponto.");
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 12_000 },
+      );
+    });
+  }
+
   const detectAndRecord = useCallback(async () => {
     if (detectingRef.current || cooldownRef.current || !videoRef.current || !descriptor || !selectedType) return;
     detectingRef.current = true;
@@ -166,21 +194,44 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
         detectingRef.current = false;
         return;
       }
-      await fetch("/api/ponto", {
+
+      const gps = await getGpsCoords();
+      if (user.gpsRequired && !gps) {
+        setClockPhase("error");
+        setClockMsg(gpsError ?? "Localização obrigatória.");
+        detectingRef.current = false;
+        return;
+      }
+
+      const res = await fetch("/api/ponto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, teamId: user.teamId, type: selectedType, confidence }),
+        body: JSON.stringify({
+          userId: user.id,
+          teamId: user.teamId,
+          type: selectedType,
+          confidence,
+          origin: "MOBILE",
+          ...(gps ? { latitude: gps.latitude, longitude: gps.longitude } : {}),
+        }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        setClockPhase("error");
+        setClockMsg(err.error ?? "Não foi possível registrar.");
+        detectingRef.current = false;
+        return;
+      }
 
       cooldownRef.current = true;
       setClockPhase("success");
-      setClockMsg(`${selectedType === "ENTRADA" ? "Entrada" : "Saída"} registrada às ${fmtTime(new Date().toISOString())}`);
+      setClockMsg(`${pontoTypeLabel(selectedType)} registrada às ${fmtTime(new Date().toISOString())}`);
       setTimeout(() => { stopClockCamera(); void loadRecords(); }, 2800);
     } catch {
       setClockPhase("ready");
     }
     detectingRef.current = false;
-  }, [descriptor, selectedType, user.id, user.teamId, loadRecords]);
+  }, [descriptor, selectedType, user.id, user.teamId, user.gpsRequired, gpsError, loadRecords]);
 
   useEffect(() => {
     if (clockPhase !== "ready") return;
@@ -245,6 +296,15 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   useEffect(() => () => { stopClockCamera(); enrollStreamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
 
   const dateLabel = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  const workType = user.workType ?? "CLT";
+  const dayHours = hoursSummary(records, workType);
+
+  const punchAccent =
+    nextType === "ENTRADA" || nextType === "INTERVALO_FIM"
+      ? "emerald"
+      : nextType === "SAIDA"
+        ? "amber"
+        : "sky";
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
@@ -410,63 +470,64 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
         </div>
       )}
 
-      {/* ── ENTRADA / SAÍDA buttons ── */}
-      {hasDescriptor && !enrolling && (
-        <div className="grid grid-cols-2 gap-3">
-          {/* ENTRADA */}
-          <button
-            type="button"
-            disabled={!modelsLoaded || (clockPhase !== "idle" && selectedType !== "ENTRADA")}
-            onClick={() => {
-              if (selectedType === "ENTRADA" && clockPhase !== "idle") stopClockCamera();
-              else if (clockPhase === "idle") void startClockCamera("ENTRADA");
-            }}
-            className={`relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 disabled:opacity-50 active:scale-[0.97] ${
-              selectedType === "ENTRADA" && clockPhase !== "idle"
-                ? "border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20"
-                : "border-border bg-surface-elevated hover:border-emerald-500/30 hover:bg-emerald-500/5"
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <span className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${selectedType === "ENTRADA" && clockPhase !== "idle" ? "bg-emerald-500/25" : "bg-emerald-500/10"}`}>
-                <Icon name="logIn" className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </span>
-              <span className="text-base font-bold text-foreground">Entrada</span>
+      {/* ── HOURS PANEL ── */}
+      {hasDescriptor && (
+        <div className="industrial-panel p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium text-muted">Horas trabalhadas hoje</p>
+              <p className="text-2xl font-bold tabular-nums">{dayHours.workedLabel}</p>
             </div>
-            <p className="text-xs text-muted leading-relaxed">
-              {!modelsLoaded ? "Carregando modelos..." :
-                selectedType === "ENTRADA" && clockPhase !== "idle" ? "Câmera aberta — olhe para a tela" :
-                "Registrar entrada de trabalho"}
-            </p>
-          </button>
-
-          {/* SAÍDA */}
-          <button
-            type="button"
-            disabled={!modelsLoaded || (clockPhase !== "idle" && selectedType !== "SAIDA")}
-            onClick={() => {
-              if (selectedType === "SAIDA" && clockPhase !== "idle") stopClockCamera();
-              else if (clockPhase === "idle") void startClockCamera("SAIDA");
-            }}
-            className={`relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 disabled:opacity-50 active:scale-[0.97] ${
-              selectedType === "SAIDA" && clockPhase !== "idle"
-                ? "border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20"
-                : "border-border bg-surface-elevated hover:border-amber-500/30 hover:bg-amber-500/5"
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <span className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${selectedType === "SAIDA" && clockPhase !== "idle" ? "bg-amber-500/25" : "bg-amber-500/10"}`}>
-                <Icon name="logOut" className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </span>
-              <span className="text-base font-bold text-foreground">Saída</span>
+            <div className="text-right">
+              <p className="text-xs text-muted">Meta ({workType === "ESTAGIARIO" ? "Estagiário" : "CLT"})</p>
+              <p className="text-sm font-semibold">{dayHours.targetLabel}</p>
+              {dayHours.deltaMinutes !== 0 && (
+                <p className={`text-xs ${dayHours.deltaMinutes > 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {dayHours.deltaMinutes > 0 ? "+" : ""}{Math.round(dayHours.deltaMinutes)} min
+                </p>
+              )}
             </div>
-            <p className="text-xs text-muted leading-relaxed">
-              {!modelsLoaded ? "Carregando modelos..." :
-                selectedType === "SAIDA" && clockPhase !== "idle" ? "Câmera aberta — olhe para a tela" :
-                "Registrar saída de trabalho"}
-            </p>
-          </button>
+          </div>
         </div>
+      )}
+
+      {/* ── NEXT PUNCH ── */}
+      {hasDescriptor && !enrolling && (
+        <button
+          type="button"
+          disabled={!modelsLoaded || (clockPhase !== "idle" && selectedType !== nextType)}
+          onClick={() => {
+            if (selectedType === nextType && clockPhase !== "idle") stopClockCamera();
+            else if (clockPhase === "idle") void startClockCamera(nextType);
+          }}
+          className={`w-full rounded-2xl border p-5 text-left transition-all duration-200 disabled:opacity-50 active:scale-[0.99] ${
+            selectedType === nextType && clockPhase !== "idle"
+              ? punchAccent === "emerald"
+                ? "border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20"
+                : punchAccent === "amber"
+                  ? "border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20"
+                  : "border-sky-500/50 bg-sky-500/10 ring-2 ring-sky-500/20"
+              : "border-border bg-surface-elevated hover:border-emerald-500/30"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10">
+              <Icon name="scanFace" className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </span>
+            <div>
+              <p className="text-base font-bold">{pontoTypeLabel(nextType)}</p>
+              <p className="text-xs text-muted">
+                {!modelsLoaded
+                  ? "Carregando modelos..."
+                  : selectedType === nextType && clockPhase !== "idle"
+                    ? "Câmera aberta — olhe para a tela"
+                    : user.gpsRequired
+                      ? "Reconhecimento facial + GPS"
+                      : "Próximo registro do dia"}
+              </p>
+            </div>
+          </div>
+        </button>
       )}
 
       {/* ── CLOCK CAMERA PANEL ── */}
@@ -480,7 +541,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 clockPhase === "detecting" ? "bg-amber-500" : "bg-muted/50"
               }`} />
               <span className="text-sm font-semibold text-foreground">
-                Registrando {selectedType === "ENTRADA" ? "entrada" : "saída"}
+                Registrando {pontoTypeLabel(selectedType).toLowerCase()}
               </span>
             </div>
             <button type="button" className="btn-icon" onClick={stopClockCamera}>
@@ -574,13 +635,20 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
           <div className="divide-y divide-border/50">
             {records.map((r) => (
               <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${r.type === "ENTRADA" ? "bg-emerald-500/15" : "bg-amber-500/15"}`}>
-                  <Icon name={r.type === "ENTRADA" ? "logIn" : "logOut"} className={`h-4 w-4 ${r.type === "ENTRADA" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`} />
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                  r.type === "ENTRADA" || r.type === "INTERVALO_FIM" ? "bg-emerald-500/15" :
+                  r.type === "SAIDA" ? "bg-amber-500/15" : "bg-sky-500/15"
+                }`}>
+                  <Icon
+                    name={r.type === "ENTRADA" ? "logIn" : r.type === "SAIDA" ? "logOut" : "clock"}
+                    className={`h-4 w-4 ${
+                      r.type === "ENTRADA" || r.type === "INTERVALO_FIM" ? "text-emerald-600 dark:text-emerald-400" :
+                      r.type === "SAIDA" ? "text-amber-600 dark:text-amber-400" : "text-sky-600 dark:text-sky-400"
+                    }`}
+                  />
                 </span>
                 <div className="flex-1">
-                  <p className={`text-sm font-semibold ${r.type === "ENTRADA" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
-                    {r.type === "ENTRADA" ? "Entrada" : "Saída"}
-                  </p>
+                  <p className="text-sm font-semibold text-foreground">{pontoTypeLabel(r.type)}</p>
                 </div>
                 <span className="text-sm font-medium text-foreground tabular-nums">{fmtTime(r.recordedAt)}</span>
               </div>
@@ -703,8 +771,11 @@ function AdminPontoView({ user }: { user: SessionUser }) {
                 <tr key={r.id} className="border-b border-border/50 hover:bg-surface-elevated/40 transition-colors">
                   <td className="px-4 py-2.5 font-medium">{r.user.name}</td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${r.type === "ENTRADA" ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
-                      {r.type === "ENTRADA" ? "Entrada" : "Saída"}
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      r.type === "ENTRADA" || r.type === "INTERVALO_FIM" ? "bg-emerald-500/15 text-emerald-600" :
+                      r.type === "SAIDA" ? "bg-amber-500/15 text-amber-600" : "bg-sky-500/15 text-sky-600"
+                    }`}>
+                      {pontoTypeLabel(r.type)}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-muted">
@@ -728,6 +799,15 @@ export default function PontoPage() {
   const { user } = useSession();
   if (!user) return null;
 
-  const isSelfService = user.role === "COLABORADOR" || user.role === "PESQUISADOR";
-  return isSelfService ? <SelfServicePonto user={user} /> : <AdminPontoView user={user} />;
+  const canSelfPunch = user.role !== "ADMIN";
+  const canManageTeam = user.role === "ADMIN" || user.role === "ADV" || user.role === "GERENTE";
+
+  if (!canSelfPunch) return <AdminPontoView user={user} />;
+
+  return (
+    <div className="space-y-8">
+      <SelfServicePonto user={user} />
+      {canManageTeam && <AdminPontoView user={user} />}
+    </div>
+  );
 }

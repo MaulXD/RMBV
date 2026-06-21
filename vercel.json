@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "prisma generate && prisma db push --accept-data-loss && npm run db:seed && next build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/purge-retention",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

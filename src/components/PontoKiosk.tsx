@@ -3,7 +3,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
-type PontoResult = { userName: string; type: "ENTRADA" | "SAIDA"; confidence: number };
+type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
+type PontoResult = { userName: string; type: PontoType; confidence: number };
+
+const TYPE_LABEL: Record<PontoType, string> = {
+  ENTRADA: "Entrada registrada",
+  SAIDA: "Saída registrada",
+  INTERVALO_INICIO: "Início de intervalo registrado",
+  INTERVALO_FIM: "Fim de intervalo registrado",
+};
 
 function euclideanDistance(a: Float32Array, b: Float32Array): number {
   let sum = 0;
@@ -135,13 +143,16 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       const todayStr = new Date().toISOString().slice(0, 10);
       const res = await fetch(`/api/ponto/last?userId=${bestMatch.id}&date=${todayStr}`);
       const data = await res.json();
-      const lastType: string | null = data.lastType ?? null;
-      const type: "ENTRADA" | "SAIDA" = lastType === "ENTRADA" ? "SAIDA" : "ENTRADA";
+      const type = (data.nextType ?? "ENTRADA") as
+        | "ENTRADA"
+        | "SAIDA"
+        | "INTERVALO_INICIO"
+        | "INTERVALO_FIM";
 
       await fetch("/api/ponto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: bestMatch.id, teamId, type, confidence }),
+        body: JSON.stringify({ userId: bestMatch.id, teamId, type, confidence, origin: "KIOSK" }),
       });
 
       setResult({ userName: bestMatch.name, type, confidence });
@@ -235,7 +246,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
             <div className="space-y-1">
               <p className="text-2xl font-black text-emerald-400">{result.userName}</p>
               <p className="text-sm text-white/60">
-                {result.type === "ENTRADA" ? "Entrada registrada" : "Saída registrada"} •{" "}
+                {TYPE_LABEL[result.type]} •{" "}
                 {new Date().toLocaleTimeString("pt-BR")}
               </p>
             </div>

@@ -12,13 +12,19 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { name: adminName, passwordHash, teamId: null },
+    update: {
+      name: adminName,
+      passwordHash,
+      teamId: null,
+      mustChangePassword: false,
+    },
     create: {
       name: adminName,
       email: adminEmail,
       passwordHash,
       role: Role.ADMIN,
       isActive: true,
+      mustChangePassword: false,
     },
   });
 
@@ -151,7 +157,12 @@ async function main() {
   const advPassword = await bcrypt.hash(process.env.ADV_PASSWORD ?? "Adv@123", 12);
   const adv = await prisma.user.upsert({
     where: { email: process.env.ADV_EMAIL ?? "adv@sistema.local" },
-    update: { role: Role.ADV, teamId: defaultTeam.id },
+    update: {
+      role: Role.ADV,
+      teamId: defaultTeam.id,
+      mustChangePassword: false,
+      workType: "CLT",
+    },
     create: {
       name: process.env.ADV_NAME ?? "ADV",
       email: process.env.ADV_EMAIL ?? "adv@sistema.local",
@@ -159,6 +170,8 @@ async function main() {
       role: Role.ADV,
       teamId: defaultTeam.id,
       isActive: true,
+      mustChangePassword: false,
+      workType: "CLT",
     },
   });
 
@@ -170,7 +183,12 @@ async function main() {
   const gerentePassword = await bcrypt.hash(process.env.GERENTE_PASSWORD ?? "Gerente@123", 12);
   const gerente = await prisma.user.upsert({
     where: { email: process.env.GERENTE_EMAIL ?? "gerente@sistema.local" },
-    update: { role: Role.GERENTE, teamId: defaultTeam.id },
+    update: {
+      role: Role.GERENTE,
+      teamId: defaultTeam.id,
+      mustChangePassword: false,
+      workType: "CLT",
+    },
     create: {
       name: process.env.GERENTE_NAME ?? "Gerente",
       email: process.env.GERENTE_EMAIL ?? "gerente@sistema.local",
@@ -178,6 +196,8 @@ async function main() {
       role: Role.GERENTE,
       teamId: defaultTeam.id,
       isActive: true,
+      mustChangePassword: false,
+      workType: "CLT",
     },
   });
 

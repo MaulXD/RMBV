@@ -9,6 +9,9 @@ export const runtime = "nodejs";
 const patchSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   isActive: z.boolean().optional(),
+  officeLatitude: z.number().min(-90).max(90).optional().nullable(),
+  officeLongitude: z.number().min(-180).max(180).optional().nullable(),
+  defaultGpsRadiusMeters: z.number().int().min(50).max(5000).optional(),
 });
 
 export async function PATCH(
@@ -37,6 +40,15 @@ export async function PATCH(
       data: {
         ...(parsed.data.name ? { name: parsed.data.name.trim() } : {}),
         ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
+        ...(parsed.data.officeLatitude !== undefined
+          ? { officeLatitude: parsed.data.officeLatitude }
+          : {}),
+        ...(parsed.data.officeLongitude !== undefined
+          ? { officeLongitude: parsed.data.officeLongitude }
+          : {}),
+        ...(parsed.data.defaultGpsRadiusMeters !== undefined
+          ? { defaultGpsRadiusMeters: parsed.data.defaultGpsRadiusMeters }
+          : {}),
       },
       include: {
         owner: { select: { id: true, name: true, email: true, role: true } },

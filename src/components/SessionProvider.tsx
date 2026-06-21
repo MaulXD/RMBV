@@ -19,6 +19,11 @@ export type SessionUser = {
   teamId: string | null;
   teamName: string | null;
   avatarUrl: string | null;
+  mustChangePassword?: boolean;
+  hasFace?: boolean;
+  hasFaceConsent?: boolean;
+  workType?: "ESTAGIARIO" | "CLT";
+  gpsRequired?: boolean;
 };
 
 type SessionContextValue = {

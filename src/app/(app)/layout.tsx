@@ -13,6 +13,8 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useSession } from "@/components/SessionProvider";
 import { ChatFloating } from "@/components/ChatFloating";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { AccountSetupGuard } from "@/components/AccountSetupGuard";
+import { PontoExitReminder } from "@/components/PontoExitReminder";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
@@ -142,8 +144,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Bottom nav spacer accounts for fixed bottom nav + safe area */}
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
-            {user && <OnboardingTour />}
-            {children}
+            <AccountSetupGuard>
+              {user && <PontoExitReminder />}
+              {user && <OnboardingTour />}
+              {children}
+            </AccountSetupGuard>
           </main>
         </div>
       </div>
