@@ -773,7 +773,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             </p>
             {clockPhase === "liveness" && (
               <p className="text-center text-[11px] text-muted">
-                Pisque devagar: feche os olhos por 1 segundo e abra de novo
+                Feche bem os olhos por 1 segundo, depois abra
               </p>
             )}
 

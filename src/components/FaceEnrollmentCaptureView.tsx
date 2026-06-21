@@ -430,7 +430,7 @@ export function FaceEnrollmentCaptureView({
             {isSaving
               ? "Salvando..."
               : !livenessPassed
-                ? "Pisque devagar — feche os olhos por 1 segundo e abra"
+                ? "Feche bem os olhos por 1 segundo, depois abra"
                 : "Captura automática — ajuste a pose até ficar verde"}
           </p>
         </div>
