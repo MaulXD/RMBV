@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { findBestFaceMatch, toDescriptorArray, FACE_RECOGNITION_DETECT, FACE_MATCH_STABLE_FRAMES, createMatchFrameTracker, resetMatchFrameTracker, tickStrongMatchFrame, tickNoFaceMatchFrame, type MatchFrameTracker } from "@/lib/face-match";
+import { Icon } from "@/components/ui/Icon";
+import {
+  findBestFaceMatch,
+  toDescriptorArray,
+  FACE_RECOGNITION_DETECT,
+  FACE_MATCH_STABLE_FRAMES,
+  createMatchFrameTracker,
+  resetMatchFrameTracker,
+  tickStrongMatchFrame,
+  tickNoFaceMatchFrame,
+  type MatchFrameTracker,
+} from "@/lib/face-match";
 import {
   createLivenessTracker,
   resetLivenessTracker,
@@ -20,6 +31,18 @@ import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-live
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
+type KioskStatus =
+  | "loading-models"
+  | "loading-camera"
+  | "liveness"
+  | "ready"
+  | "detecting"
+  | "verified"
+  | "submitting"
+  | "success"
+  | "no-match"
+  | "error";
+
 type PontoResult = { userName: string; type: PontoType; confidence: number };
 
 const TYPE_LABEL: Record<PontoType, string> = {
@@ -29,12 +52,20 @@ const TYPE_LABEL: Record<PontoType, string> = {
   INTERVALO_FIM: "Fim de intervalo registrado",
 };
 
+const PUNCH_OPTIONS = [
+  { type: "ENTRADA" as const, icon: "logIn" as const, title: "Entrada", subtitle: "Iniciar jornada", accent: "emerald" },
+  { type: "SAIDA" as const, icon: "logOut" as const, title: "Saída", subtitle: "Encerrar jornada", accent: "amber" },
+  { type: "INTERVALO_INICIO" as const, icon: "clock" as const, title: "Início intervalo", subtitle: "Pausa", accent: "sky" },
+  { type: "INTERVALO_FIM" as const, icon: "play" as const, title: "Fim intervalo", subtitle: "Retomar", accent: "violet" },
+];
+
 const MODEL_URL = "/models";
+const VIDEO_ZOOM = "scaleX(-1) scale(1.48)";
+const VIDEO_ORIGIN = "center 40%";
 
 export function PontoKiosk({ teamId }: { teamId: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [status, setStatus] = useState<"loading-models" | "loading-camera" | "liveness" | "ready" | "detecting" | "success" | "no-match" | "error">("loading-models");
+  const [status, setStatus] = useState<KioskStatus>("loading-models");
   const [result, setResult] = useState<PontoResult | null>(null);
   const [knownUsers, setKnownUsers] = useState<KnownUser[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -48,13 +79,24 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   const pendingUserIdRef = useRef<string | null>(null);
   const [matchHint, setMatchHint] = useState("");
   const [matchProgress, setMatchProgress] = useState(0);
+  const [verifiedUser, setVerifiedUser] = useState<KnownUser | null>(null);
+  const [verifiedConfidence, setVerifiedConfidence] = useState<number | null>(null);
+  const [suggestedType, setSuggestedType] = useState<PontoType>("ENTRADA");
 
   useLivenessAudioFeedback(status === "liveness", livenessPhase, livenessFaceLost);
   const livenessBusyRef = useRef(false);
   const cooldownRef = useRef(false);
   const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
 
-  // Load face-api models
+  const resetMatchFlow = useCallback(() => {
+    matchTrackerRef.current = resetMatchFrameTracker();
+    pendingUserIdRef.current = null;
+    setMatchProgress(0);
+    setMatchHint("");
+    setVerifiedUser(null);
+    setVerifiedConfidence(null);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -68,7 +110,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         if (cancelled) return;
         setModelsLoaded(true);
         setStatus("loading-camera");
-      } catch (e) {
+      } catch {
         if (!cancelled) {
           setErrorMsg("Falha ao carregar modelos de reconhecimento.");
           setStatus("error");
@@ -79,7 +121,6 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Load known users
   useEffect(() => {
     if (!teamId) return;
     fetch(`/api/ponto/faces?teamId=${teamId}`)
@@ -96,11 +137,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       });
   }, [teamId]);
 
-  // Start camera
   useEffect(() => {
     if (!modelsLoaded) return;
     let stream: MediaStream | null = null;
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 640, height: 480 } })
+    navigator.mediaDevices
+      .getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      })
       .then((s) => {
         stream = s;
         if (videoRef.current) {
@@ -108,6 +151,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           void videoRef.current.play().then(async () => {
             await waitForVideoReady(videoRef.current!);
             livenessRef.current = resetLivenessTracker();
+            resetMatchFlow();
             setLivenessProgress(0);
             setLivenessPhase(null);
             setLivenessFaceLost(false);
@@ -122,7 +166,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         setStatus("error");
       });
     return () => { stream?.getTracks().forEach((t) => t.stop()); };
-  }, [modelsLoaded]);
+  }, [modelsLoaded, resetMatchFlow]);
 
   const runLivenessCheck = useCallback(async () => {
     if (livenessBusyRef.current || !videoRef.current || status !== "liveness") return;
@@ -146,10 +190,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setLivenessMsg(live.message);
       if (live.passed) {
         window.setTimeout(() => {
-          matchTrackerRef.current = resetMatchFrameTracker();
-          pendingUserIdRef.current = null;
-          setMatchProgress(0);
-          setMatchHint("");
+          resetMatchFlow();
           setStatus("ready");
         }, LIVENESS_COMPLETE_DELAY_MS);
       }
@@ -157,7 +198,51 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setLivenessMsg("Erro na verificação. Tente novamente.");
     }
     livenessBusyRef.current = false;
-  }, [status]);
+  }, [status, resetMatchFlow]);
+
+  const openVerified = useCallback(async (user: KnownUser, confidence: number) => {
+    setVerifiedUser(user);
+    setVerifiedConfidence(confidence);
+    setStatus("verified");
+    setMatchHint("");
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const res = await fetch(`/api/ponto/last?userId=${user.id}&date=${todayStr}`);
+      const data = await res.json();
+      setSuggestedType((data.nextType ?? "ENTRADA") as PontoType);
+    } catch {
+      setSuggestedType("ENTRADA");
+    }
+  }, []);
+
+  const submitPunch = useCallback(async (type: PontoType) => {
+    if (!verifiedUser || verifiedConfidence === null) return;
+    setStatus("submitting");
+    try {
+      await fetch("/api/ponto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: verifiedUser.id,
+          teamId,
+          type,
+          confidence: verifiedConfidence,
+          origin: "KIOSK",
+        }),
+      });
+      setResult({ userName: verifiedUser.name, type, confidence: verifiedConfidence });
+      setStatus("success");
+      cooldownRef.current = true;
+      resetMatchFlow();
+      setTimeout(() => {
+        setStatus("ready");
+        setResult(null);
+        cooldownRef.current = false;
+      }, 4500);
+    } catch {
+      setStatus("verified");
+    }
+  }, [verifiedUser, verifiedConfidence, teamId, resetMatchFlow]);
 
   const detectAndMatch = useCallback(async () => {
     if (detectingRef.current || cooldownRef.current || !videoRef.current || !modelsLoaded) return;
@@ -188,12 +273,10 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         setMatchProgress(tick.progress);
         if (tick.status === "reject") {
           setStatus("no-match");
-          matchTrackerRef.current = resetMatchFrameTracker();
-          setMatchProgress(0);
-          setMatchHint("");
+          resetMatchFlow();
           setTimeout(() => setStatus("ready"), 3000);
         } else {
-          setMatchHint("Centralize o rosto");
+          setMatchHint("Aproxime o rosto no oval");
           setStatus("ready");
         }
         detectingRef.current = false;
@@ -203,15 +286,9 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       const match = findBestFaceMatch(detection.descriptor, knownUsers);
 
       if (!match) {
-        matchTrackerRef.current = resetMatchFrameTracker();
-        pendingUserIdRef.current = null;
-        setMatchProgress(0);
-        setMatchHint("Não reconhecido — ajuste posição e luz");
+        resetMatchFlow();
         setStatus("no-match");
-        setTimeout(() => {
-          setStatus("ready");
-          setMatchHint("");
-        }, 3000);
+        setTimeout(() => setStatus("ready"), 3000);
         detectingRef.current = false;
         return;
       }
@@ -225,42 +302,14 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setMatchProgress(tick.progress);
 
       if (tick.status === "ready") {
-        const { item: bestMatch } = match;
-        const confidence = tick.averageConfidence;
-
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const res = await fetch(`/api/ponto/last?userId=${bestMatch.id}&date=${todayStr}`);
-        const data = await res.json();
-        const type = (data.nextType ?? "ENTRADA") as PontoType;
-
-        await fetch("/api/ponto", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: bestMatch.id, teamId, type, confidence, origin: "KIOSK" }),
-        });
-
-        setResult({ userName: bestMatch.name, type, confidence });
-        setStatus("success");
-        cooldownRef.current = true;
-        matchTrackerRef.current = resetMatchFrameTracker();
-        pendingUserIdRef.current = null;
-        setMatchProgress(0);
-        setMatchHint("");
-        setTimeout(() => {
-          setStatus("ready");
-          setResult(null);
-          cooldownRef.current = false;
-        }, 4000);
+        await openVerified(match.item, tick.averageConfidence);
         detectingRef.current = false;
         return;
       }
 
       if (tick.status === "reject") {
         setStatus("no-match");
-        matchTrackerRef.current = resetMatchFrameTracker();
-        pendingUserIdRef.current = null;
-        setMatchProgress(0);
-        setMatchHint("");
+        resetMatchFlow();
         setTimeout(() => setStatus("ready"), 3000);
         detectingRef.current = false;
         return;
@@ -271,7 +320,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           `${match.item.name.split(" ")[0]} — ${Math.round(tick.averageConfidence * 100)}% (${tick.streak}/${FACE_MATCH_STABLE_FRAMES})`,
         );
       } else {
-        setMatchHint(`Confiança baixa (${Math.round(tick.confidence * 100)}%) — ajuste posição`);
+        setMatchHint(`Confiança baixa (${Math.round(tick.confidence * 100)}%) — aproxime-se`);
         setStatus("ready");
       }
     } catch {
@@ -279,77 +328,64 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setMatchHint("");
     }
     detectingRef.current = false;
-  }, [status, modelsLoaded, knownUsers, teamId]);
+  }, [status, modelsLoaded, knownUsers, openVerified, resetMatchFlow]);
 
-  // Liveness loop
   useEffect(() => {
     if (status !== "liveness") return;
     const interval = setInterval(() => { void runLivenessCheck(); }, LIVENESS_POLL_MS);
     return () => clearInterval(interval);
   }, [status, runLivenessCheck]);
 
-  // Auto-detect loop
   useEffect(() => {
     if (status !== "ready" && status !== "detecting") return;
     const interval = setInterval(() => { void detectAndMatch(); }, 700);
     return () => clearInterval(interval);
   }, [status, detectAndMatch]);
 
+  const borderClass =
+    status === "success" || status === "verified" || status === "submitting" ? "border-emerald-500" :
+    status === "no-match" ? "border-red-500" :
+    status === "liveness" ? "border-violet-500" :
+    status === "detecting" ? "border-amber-500" :
+    "border-white/10";
+
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-gray-950 text-white">
-      {/* Header */}
+    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-gray-950 px-4 py-6 text-white">
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4">
         <span className="text-xs font-bold tracking-widest text-white/30 uppercase">Ponto Eletrônico</span>
         <span className="text-xs text-white/30">{new Date().toLocaleTimeString("pt-BR")}</span>
       </div>
 
-      {/* Camera viewport */}
-      <div className="relative">
-        <div className={`relative overflow-hidden rounded-2xl border-4 transition-colors duration-300 ${
-          status === "success" ? "border-emerald-500" :
-          status === "no-match" ? "border-red-500" :
-          status === "liveness" ? "border-violet-500" :
-          status === "detecting" ? "border-amber-500" :
-          "border-white/10"
-        }`} style={{ width: "min(calc(100vw - 2rem), 360px)", aspectRatio: "1" }}>
+      <div className="relative w-full max-w-md">
+        <div
+          className={`relative mx-auto overflow-hidden rounded-2xl border-4 transition-colors duration-300 ${borderClass}`}
+          style={{ width: "min(100%, 400px)", aspectRatio: "3 / 4" }}
+        >
           <video
             ref={videoRef}
             className="h-full w-full object-cover"
             playsInline
             muted
             autoPlay
-            style={{ transform: "scaleX(-1)" }}
+            style={{ transform: VIDEO_ZOOM, transformOrigin: VIDEO_ORIGIN }}
           />
-          <canvas ref={canvasRef} className="absolute inset-0 hidden" />
 
-          {/* Corner guides */}
-          {(status === "ready" || status === "detecting" || status === "liveness") && (
-            <>
-              <div className="absolute top-3 left-3 h-8 w-8 border-t-2 border-l-2 border-white/60 rounded-tl-lg" />
-              <div className="absolute top-3 right-3 h-8 w-8 border-t-2 border-r-2 border-white/60 rounded-tr-lg" />
-              <div className="absolute bottom-3 left-3 h-8 w-8 border-b-2 border-l-2 border-white/60 rounded-bl-lg" />
-              <div className="absolute bottom-3 right-3 h-8 w-8 border-b-2 border-r-2 border-white/60 rounded-br-lg" />
-            </>
+          {(status === "ready" || status === "detecting" || status === "liveness" || status === "verified" || status === "submitting") && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="h-[70%] w-[54%] rounded-[50%] border-[3px] border-dashed border-white/40" />
+            </div>
           )}
 
-          {/* Overlay states */}
           {status === "loading-models" || status === "loading-camera" ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-950/80">
-              <svg className="h-8 w-8 animate-spin text-white/40" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
+              <Icon name="rotateCw" className="h-8 w-8 animate-spin text-white/40" />
               <p className="text-xs text-white/40">
                 {status === "loading-models" ? "Carregando modelos..." : "Iniciando câmera..."}
               </p>
             </div>
           ) : status === "liveness" ? (
             <>
-              <LivenessCornerBanner
-                message={livenessMsg}
-                progress={livenessProgress}
-                variant="kiosk"
-              />
+              <LivenessCornerBanner message={livenessMsg} progress={livenessProgress} variant="kiosk" />
               <LivenessEyeGuide phase={livenessPhase} />
             </>
           ) : status === "error" ? (
@@ -359,7 +395,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           ) : status === "success" && result ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-emerald-950/80">
               <svg viewBox="0 0 24 24" className="h-12 w-12 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 6 9 17l-5-5"/>
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+          ) : status === "verified" || status === "submitting" ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/15">
+              <svg viewBox="0 0 24 24" className="h-16 w-16 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M20 6 9 17l-5-5" />
               </svg>
             </div>
           ) : status === "no-match" ? (
@@ -369,26 +411,76 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           ) : null}
         </div>
 
-        {/* Status label */}
-        <div className="mt-6 text-center">
+        <div className="mt-5 text-center">
           {status === "success" && result ? (
             <div className="space-y-1">
               <p className="text-2xl font-black text-emerald-400">{result.userName}</p>
               <p className="text-sm text-white/60">
-                {TYPE_LABEL[result.type]} •{" "}
-                {new Date().toLocaleTimeString("pt-BR")}
+                {TYPE_LABEL[result.type]} • {new Date().toLocaleTimeString("pt-BR")}
               </p>
+            </div>
+          ) : status === "verified" || status === "submitting" ? (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xl font-bold text-emerald-400">{verifiedUser?.name}</p>
+                <p className="mt-1 text-sm text-white/50">
+                  Rosto confirmado ({verifiedConfidence !== null ? Math.round(verifiedConfidence * 100) : 0}%)
+                </p>
+                <p className="text-sm font-medium text-white/80">Escolha o tipo de registro</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {PUNCH_OPTIONS.map((opt) => {
+                  const active = suggestedType === opt.type;
+                  const styles = {
+                    emerald: active ? "border-emerald-500/60 bg-emerald-500/15 ring-1 ring-emerald-500/40" : "border-white/15 bg-white/5 hover:border-emerald-500/30",
+                    amber: active ? "border-amber-500/60 bg-amber-500/15 ring-1 ring-amber-500/40" : "border-white/15 bg-white/5 hover:border-amber-500/30",
+                    sky: active ? "border-sky-500/60 bg-sky-500/15 ring-1 ring-sky-500/40" : "border-white/15 bg-white/5 hover:border-sky-500/30",
+                    violet: active ? "border-violet-500/60 bg-violet-500/15 ring-1 ring-violet-500/40" : "border-white/15 bg-white/5 hover:border-violet-500/30",
+                  }[opt.accent];
+                  const iconColor = {
+                    emerald: "text-emerald-400",
+                    amber: "text-amber-400",
+                    sky: "text-sky-400",
+                    violet: "text-violet-400",
+                  }[opt.accent];
+
+                  return (
+                    <button
+                      key={opt.type}
+                      type="button"
+                      disabled={status === "submitting"}
+                      onClick={() => void submitPunch(opt.type)}
+                      className={`rounded-xl border p-4 text-left transition-all active:scale-[0.98] disabled:opacity-50 ${styles}`}
+                    >
+                      <Icon name={opt.icon} className={`mb-2 h-6 w-6 ${iconColor}`} />
+                      <p className="font-bold leading-tight">{opt.title}</p>
+                      <p className="mt-0.5 text-[11px] text-white/50">{opt.subtitle}</p>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                disabled={status === "submitting"}
+                onClick={() => {
+                  resetMatchFlow();
+                  setStatus("ready");
+                }}
+                className="text-xs text-white/40 underline underline-offset-2 hover:text-white/70"
+              >
+                Cancelar e tentar de novo
+              </button>
             </div>
           ) : status === "liveness" ? (
             <div className="space-y-3 px-2">
               <p className="text-base font-bold leading-snug text-violet-300">{livenessMsg}</p>
-              <p className="text-xs text-white/40">Feche os olhos por um momento — ao ouvir o sinal, abra</p>
+              <p className="text-xs text-white/40">Aproxime o rosto no oval — feche os olhos e abra ao ouvir o sinal</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">
               {knownUsers.length === 0
                 ? "Nenhum rosto cadastrado nesta equipe"
-                : "Olhe para a câmera para registrar o ponto"}
+                : "Aproxime o rosto no oval para registrar o ponto"}
             </p>
           ) : status === "detecting" ? (
             <div className="space-y-2 px-2">

@@ -108,7 +108,7 @@ export function FaceEnrollmentCaptureView({
     setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
       setScanning(true);
@@ -318,7 +318,7 @@ export function FaceEnrollmentCaptureView({
           playsInline
           muted
           autoPlay
-          style={{ transform: "scaleX(-1)" }}
+          style={{ transform: "scaleX(-1) scale(1.42)", transformOrigin: "center 42%" }}
         />
         <div className="pointer-events-none absolute inset-0">
           {!livenessPassed && (
