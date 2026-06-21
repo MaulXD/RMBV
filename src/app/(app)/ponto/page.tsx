@@ -9,6 +9,12 @@ import {
   nextPontoType,
   pontoTypeLabel,
 } from "@/lib/ponto-hours";
+import {
+  isFaceMatch,
+  matchConfidence,
+  toDescriptorArray,
+  euclideanDistance as euclidean,
+} from "@/lib/face-match";
 
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
 type ClockPhase =
@@ -16,6 +22,8 @@ type ClockPhase =
   | "opening"
   | "ready"
   | "detecting"
+  | "verified"
+  | "submitting"
   | "success"
   | "no-match"
   | "error";
@@ -30,15 +38,7 @@ type PontoRecord = {
   user: { id: string; name: string; email: string };
 };
 
-const THRESHOLD = 0.5;
-const MIN_CONFIDENCE = 0.65;
 const MODEL_URL = "/models";
-
-function euclidean(a: Float32Array, b: Float32Array) {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += (a[i]! - b[i]!) ** 2;
-  return Math.sqrt(s);
-}
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -72,9 +72,9 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // Clock-in/out camera
-  const [selectedType, setSelectedType] = useState<PontoType | null>(null);
   const [clockPhase, setClockPhase] = useState<ClockPhase>("idle");
   const [clockMsg, setClockMsg] = useState("");
+  const [verifiedConfidence, setVerifiedConfidence] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -91,7 +91,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   // Today's records + next punch
   const [records, setRecords] = useState<PontoRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
-  const [nextType, setNextType] = useState<PontoType>("ENTRADA");
+  const [suggestedType, setSuggestedType] = useState<PontoType>("ENTRADA");
   const [gpsError, setGpsError] = useState<string | null>(null);
 
   // Load models on mount (background)
@@ -105,7 +105,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     if (!res.ok) return;
     const data = await res.json() as { hasDescriptor: boolean; descriptor?: number[] | null };
     setHasDescriptor(data.hasDescriptor);
-    if (data.descriptor) setDescriptor(new Float32Array(data.descriptor));
+    if (data.descriptor) setDescriptor(toDescriptorArray(data.descriptor));
     else setDescriptor(null);
   }, [user.id]);
 
@@ -119,7 +119,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (res.ok) {
         const d = await res.json() as { records: PontoRecord[] };
         setRecords(d.records);
-        setNextType(nextPontoType(d.records));
+        setSuggestedType(nextPontoType(d.records));
       }
     } finally { setRecordsLoading(false); }
   }, [user.id, todayStr]);
@@ -134,15 +134,15 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     detectingRef.current = false;
     cooldownRef.current = false;
     setClockPhase("idle");
-    setSelectedType(null);
+    setVerifiedConfidence(null);
     setClockMsg("");
   }
 
-  async function startClockCamera(type: PontoType) {
+  async function startClockCamera() {
     if (!modelsLoaded || !descriptor) return;
-    setSelectedType(type);
     setClockPhase("opening");
     setClockMsg("");
+    setVerifiedConfidence(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
@@ -174,8 +174,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     });
   }
 
-  const detectAndRecord = useCallback(async () => {
-    if (detectingRef.current || cooldownRef.current || !videoRef.current || !descriptor || !selectedType) return;
+  const detectFace = useCallback(async () => {
+    if (detectingRef.current || !videoRef.current || !descriptor) return;
     detectingRef.current = true;
     setClockPhase("detecting");
     try {
@@ -185,21 +185,39 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (!det) { setClockPhase("ready"); detectingRef.current = false; return; }
 
       const dist = euclidean(det.descriptor, descriptor);
-      const confidence = Math.max(0, 1 - dist / THRESHOLD);
+      const confidence = matchConfidence(dist);
 
-      if (confidence < MIN_CONFIDENCE) {
+      if (!isFaceMatch(dist)) {
         setClockPhase("no-match");
-        setClockMsg("Confiança insuficiente. Reposicione-se e aguarde.");
+        setClockMsg(
+          `Confiança insuficiente (${Math.round(confidence * 100)}%). Centralize o rosto e melhore a luz.`,
+        );
         setTimeout(() => { setClockPhase("ready"); setClockMsg(""); }, 2500);
         detectingRef.current = false;
         return;
       }
 
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      setVerifiedConfidence(confidence);
+      setClockPhase("verified");
+      setClockMsg(`Rosto confirmado (${Math.round(confidence * 100)}%). Escolha o tipo de registro.`);
+    } catch {
+      setClockPhase("ready");
+    }
+    detectingRef.current = false;
+  }, [descriptor]);
+
+  const submitPunch = useCallback(async (type: PontoType) => {
+    if (verifiedConfidence === null) return;
+    setClockPhase("submitting");
+    setClockMsg("Registrando...");
+    try {
       const gps = await getGpsCoords();
       if (user.gpsRequired && !gps) {
-        setClockPhase("error");
-        setClockMsg(gpsError ?? "Localização obrigatória.");
-        detectingRef.current = false;
+        setClockPhase("verified");
+        setClockMsg(gpsError ?? "Localização obrigatória para bater ponto.");
         return;
       }
 
@@ -209,35 +227,33 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
         body: JSON.stringify({
           userId: user.id,
           teamId: user.teamId,
-          type: selectedType,
-          confidence,
+          type,
+          confidence: verifiedConfidence,
           origin: "MOBILE",
           ...(gps ? { latitude: gps.latitude, longitude: gps.longitude } : {}),
         }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
-        setClockPhase("error");
+        setClockPhase("verified");
         setClockMsg(err.error ?? "Não foi possível registrar.");
-        detectingRef.current = false;
         return;
       }
 
-      cooldownRef.current = true;
       setClockPhase("success");
-      setClockMsg(`${pontoTypeLabel(selectedType)} registrada às ${fmtTime(new Date().toISOString())}`);
+      setClockMsg(`${pontoTypeLabel(type)} registrada às ${fmtTime(new Date().toISOString())}`);
       setTimeout(() => { stopClockCamera(); void loadRecords(); }, 2800);
     } catch {
-      setClockPhase("ready");
+      setClockPhase("verified");
+      setClockMsg("Erro ao registrar. Tente novamente.");
     }
-    detectingRef.current = false;
-  }, [descriptor, selectedType, user.id, user.teamId, user.gpsRequired, gpsError, loadRecords]);
+  }, [verifiedConfidence, user.id, user.teamId, user.gpsRequired, gpsError, loadRecords]);
 
   useEffect(() => {
     if (clockPhase !== "ready") return;
-    intervalRef.current = setInterval(() => void detectAndRecord(), 700);
+    intervalRef.current = setInterval(() => void detectFace(), 700);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [clockPhase, detectAndRecord]);
+  }, [clockPhase, detectFace]);
 
   // ── Enrollment camera ────────────────────────────
   function stopEnrollCamera() {
@@ -298,13 +314,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const dateLabel = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
   const workType = user.workType ?? "CLT";
   const dayHours = hoursSummary(records, workType);
-
-  const punchAccent =
-    nextType === "ENTRADA" || nextType === "INTERVALO_FIM"
-      ? "emerald"
-      : nextType === "SAIDA"
-        ? "amber"
-        : "sky";
+  const clockActive = clockPhase !== "idle";
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
@@ -491,22 +501,18 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
         </div>
       )}
 
-      {/* ── NEXT PUNCH ── */}
+      {/* ── BATER PONTO (reconhecimento primeiro) ── */}
       {hasDescriptor && !enrolling && (
         <button
           type="button"
-          disabled={!modelsLoaded || (clockPhase !== "idle" && selectedType !== nextType)}
+          disabled={!modelsLoaded || clockActive}
           onClick={() => {
-            if (selectedType === nextType && clockPhase !== "idle") stopClockCamera();
-            else if (clockPhase === "idle") void startClockCamera(nextType);
+            if (clockActive) stopClockCamera();
+            else void startClockCamera();
           }}
           className={`w-full rounded-2xl border p-5 text-left transition-all duration-200 disabled:opacity-50 active:scale-[0.99] ${
-            selectedType === nextType && clockPhase !== "idle"
-              ? punchAccent === "emerald"
-                ? "border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20"
-                : punchAccent === "amber"
-                  ? "border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20"
-                  : "border-sky-500/50 bg-sky-500/10 ring-2 ring-sky-500/20"
+            clockActive
+              ? "border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20"
               : "border-border bg-surface-elevated hover:border-emerald-500/30"
           }`}
         >
@@ -515,33 +521,40 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               <Icon name="scanFace" className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </span>
             <div>
-              <p className="text-base font-bold">{pontoTypeLabel(nextType)}</p>
+              <p className="text-base font-bold">{clockActive ? "Reconhecimento em andamento" : "Bater ponto"}</p>
               <p className="text-xs text-muted">
                 {!modelsLoaded
                   ? "Carregando modelos..."
-                  : selectedType === nextType && clockPhase !== "idle"
-                    ? "Câmera aberta — olhe para a tela"
+                  : clockActive
+                    ? "Olhe para a câmera — depois escolha entrada ou saída"
                     : user.gpsRequired
-                      ? "Reconhecimento facial + GPS"
-                      : "Próximo registro do dia"}
+                      ? "Identifique o rosto, depois escolha o tipo · GPS"
+                      : "Identifique o rosto, depois escolha entrada ou saída"}
               </p>
+              {!clockActive && records.length > 0 && (
+                <p className="mt-1 text-[11px] text-muted">
+                  Sugestão: {pontoTypeLabel(suggestedType).toLowerCase()}
+                </p>
+              )}
             </div>
           </div>
         </button>
       )}
 
-      {/* ── CLOCK CAMERA PANEL ── */}
-      {selectedType && clockPhase !== "idle" && (
+      {/* ── CLOCK PANEL ── */}
+      {clockActive && (
         <div className="industrial-panel overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full animate-pulse ${
-                clockPhase === "success" ? "bg-emerald-500" :
+                clockPhase === "success" || clockPhase === "verified" ? "bg-emerald-500" :
                 clockPhase === "no-match" || clockPhase === "error" ? "bg-red-500" :
-                clockPhase === "detecting" ? "bg-amber-500" : "bg-muted/50"
+                clockPhase === "detecting" || clockPhase === "submitting" ? "bg-amber-500" : "bg-muted/50"
               }`} />
               <span className="text-sm font-semibold text-foreground">
-                Registrando {pontoTypeLabel(selectedType).toLowerCase()}
+                {clockPhase === "verified" || clockPhase === "submitting"
+                  ? "Escolha o tipo de registro"
+                  : "Reconhecimento facial"}
               </span>
             </div>
             <button type="button" className="btn-icon" onClick={stopClockCamera}>
@@ -553,9 +566,9 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             {/* Camera viewport */}
             <div
               className={`relative overflow-hidden rounded-2xl border-4 transition-colors duration-300 ${
-                clockPhase === "success" ? "border-emerald-500" :
+                clockPhase === "success" || clockPhase === "verified" ? "border-emerald-500" :
                 clockPhase === "no-match" ? "border-red-400" :
-                clockPhase === "detecting" ? "border-amber-400" : "border-border/60"
+                clockPhase === "detecting" || clockPhase === "submitting" ? "border-amber-400" : "border-border/60"
               }`}
               style={{ width: "min(100%, 260px)", aspectRatio: "1" }}
             >
@@ -566,7 +579,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 style={{ transform: "scaleX(-1)" }}
               />
               {/* Corner guides */}
-              {clockPhase !== "success" && clockPhase !== "no-match" && (
+              {clockPhase !== "success" && clockPhase !== "no-match" && clockPhase !== "verified" && (
                 <>
                   <div className="absolute top-2 left-2 h-6 w-6 border-t-2 border-l-2 border-white/50 rounded-tl-md" />
                   <div className="absolute top-2 right-2 h-6 w-6 border-t-2 border-r-2 border-white/50 rounded-tr-md" />
@@ -586,6 +599,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                   <svg viewBox="0 0 24 24" className="h-16 w-16 text-emerald-400 drop-shadow-lg" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
                 </div>
               )}
+              {clockPhase === "verified" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20">
+                  <svg viewBox="0 0 24 24" className="h-16 w-16 text-emerald-400 drop-shadow-lg" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
+                </div>
+              )}
               {clockPhase === "no-match" && (
                 <div className="absolute inset-0 flex items-center justify-center bg-red-500/20">
                   <Icon name="x" className="h-10 w-10 text-red-400" />
@@ -600,16 +618,70 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
 
             {/* Status text */}
             <p className={`text-sm font-medium text-center ${
-              clockPhase === "success" ? "text-emerald-600 dark:text-emerald-400" :
+              clockPhase === "success" || clockPhase === "verified" ? "text-emerald-600 dark:text-emerald-400" :
               clockPhase === "no-match" || clockPhase === "error" ? "text-red-500" :
-              clockPhase === "detecting" ? "text-amber-600 dark:text-amber-400" : "text-muted"
+              clockPhase === "detecting" || clockPhase === "submitting" ? "text-amber-600 dark:text-amber-400" : "text-muted"
             }`}>
-              {clockPhase === "success" ? clockMsg :
+              {clockPhase === "success" || clockPhase === "verified" ? clockMsg :
                clockPhase === "no-match" ? clockMsg :
                clockPhase === "detecting" ? "Reconhecendo..." :
+               clockPhase === "submitting" ? "Registrando..." :
                clockPhase === "opening" ? "Iniciando..." :
-               "Olhe para a câmera"}
+               clockMsg || "Olhe para a câmera"}
             </p>
+
+            {(clockPhase === "verified" || clockPhase === "submitting") && (
+              <div className="w-full max-w-xs space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    disabled={clockPhase === "submitting"}
+                    onClick={() => void submitPunch("ENTRADA")}
+                    className={`rounded-xl border p-4 text-left transition-all active:scale-[0.98] disabled:opacity-50 ${
+                      suggestedType === "ENTRADA"
+                        ? "border-emerald-500/50 bg-emerald-500/10 ring-1 ring-emerald-500/30"
+                        : "border-border bg-surface-elevated hover:border-emerald-500/30"
+                    }`}
+                  >
+                    <Icon name="logIn" className="mb-2 h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                    <p className="font-bold text-foreground">Entrada</p>
+                    <p className="text-[11px] text-muted">Iniciar jornada</p>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={clockPhase === "submitting"}
+                    onClick={() => void submitPunch("SAIDA")}
+                    className={`rounded-xl border p-4 text-left transition-all active:scale-[0.98] disabled:opacity-50 ${
+                      suggestedType === "SAIDA"
+                        ? "border-amber-500/50 bg-amber-500/10 ring-1 ring-amber-500/30"
+                        : "border-border bg-surface-elevated hover:border-amber-500/30"
+                    }`}
+                  >
+                    <Icon name="logOut" className="mb-2 h-6 w-6 text-amber-600 dark:text-amber-400" />
+                    <p className="font-bold text-foreground">Saída</p>
+                    <p className="text-[11px] text-muted">Encerrar jornada</p>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={clockPhase === "submitting"}
+                    onClick={() => void submitPunch("INTERVALO_INICIO")}
+                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:border-sky-500/40 hover:text-foreground disabled:opacity-50"
+                  >
+                    Início intervalo
+                  </button>
+                  <button
+                    type="button"
+                    disabled={clockPhase === "submitting"}
+                    onClick={() => void submitPunch("INTERVALO_FIM")}
+                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:border-sky-500/40 hover:text-foreground disabled:opacity-50"
+                  >
+                    Fim intervalo
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

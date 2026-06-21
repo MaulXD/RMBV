@@ -3,11 +3,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
 import { LGPD_FACE_CONSENT_TEXT } from "@/lib/lgpd-face-consent";
+import {
+  ENROLLMENT_CAPTURE_COUNT,
+  ENROLLMENT_POSE_STEPS,
+  frameQuality,
+  resetAutoCaptureTracker,
+  tickAutoCapture,
+  type AutoCaptureTracker,
+} from "@/lib/face-enrollment-capture";
 
 const MODEL_URL = "/models";
-const CAPTURES_NEEDED = 3;
 
 type Phase = "instructions" | "consent" | "camera" | "upload" | "done";
+
+function PoseHint({ direction }: { direction: (typeof ENROLLMENT_POSE_STEPS)[number]["direction"] }) {
+  const arrows: Record<string, string> = {
+    center: "◎",
+    up: "↑",
+    down: "↓",
+    left: "←",
+    right: "→",
+  };
+  return (
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-lg font-bold text-white">
+      {arrows[direction]}
+    </span>
+  );
+}
 
 export function MultiCaptureFaceWizard({
   userId,
@@ -29,10 +51,14 @@ export function MultiCaptureFaceWizard({
   const [saving, setSaving] = useState(false);
   const [consent, setConsent] = useState(false);
   const [mode, setMode] = useState<"camera" | "upload">("camera");
+  const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [uploadUrl, setUploadUrl] = useState<string | null>(null);
+  const trackerRef = useRef<AutoCaptureTracker>(resetAutoCaptureTracker());
+  const detectingRef = useRef(false);
+  const pauseUntilRef = useRef(0);
 
   useEffect(() => {
     void (async () => {
@@ -54,9 +80,9 @@ export function MultiCaptureFaceWizard({
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setScanning(false);
   }, []);
 
-  /** Anexa stream ao <video> após o elemento montar (phase === "camera"). */
   useEffect(() => {
     if (phase !== "camera") return;
     const video = videoRef.current;
@@ -68,52 +94,122 @@ export function MultiCaptureFaceWizard({
     });
   }, [phase, captureIndex]);
 
+  const currentPose = ENROLLMENT_POSE_STEPS[captureIndex];
+
   async function startCamera() {
     stopCamera();
-    setStatusMsg(`Captura ${captureIndex + 1} de ${CAPTURES_NEEDED}: centralize o rosto na oval`);
+    trackerRef.current = resetAutoCaptureTracker();
+    setCaptures([]);
+    setCaptureIndex(0);
+    pauseUntilRef.current = 0;
+    setStatusMsg(`${ENROLLMENT_POSE_STEPS[0]!.hint} — captura automática`);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
       });
       streamRef.current = stream;
       setPhase("camera");
+      setScanning(true);
     } catch {
       setStatusMsg("Câmera não autorizada. Permita o acesso à câmera nas configurações do navegador.");
       setPhase(requireConsent ? "consent" : "instructions");
     }
   }
 
-  async function captureFromVideo() {
-    if (!videoRef.current || !modelsLoaded) return;
+  const saveDescriptors = useCallback(async (descriptors: number[][]) => {
     setSaving(true);
-    setStatusMsg("Detectando rosto...");
+    setScanning(false);
+    const res = await fetch(`/api/users/${userId}/face`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        descriptors,
+        acceptConsent: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatusMsg(data.error ?? "Falha ao salvar");
+      setSaving(false);
+      setScanning(true);
+      return;
+    }
+    stopCamera();
+    setPhase("done");
+    setStatusMsg("Cadastro facial concluído!");
+    setTimeout(onComplete, 1200);
+  }, [userId, onComplete, stopCamera]);
+
+  const onPoseCaptured = useCallback(async (descriptor: number[], nextCaptures: number[][]) => {
+    pauseUntilRef.current = Date.now() + 900;
+    trackerRef.current = resetAutoCaptureTracker();
+
+    if (nextCaptures.length >= ENROLLMENT_CAPTURE_COUNT) {
+      setCaptures(nextCaptures);
+      setStatusMsg("Salvando cadastro...");
+      await saveDescriptors(nextCaptures);
+      return;
+    }
+
+    setCaptures(nextCaptures);
+    setCaptureIndex(nextCaptures.length);
+    const next = ENROLLMENT_POSE_STEPS[nextCaptures.length]!;
+    setStatusMsg(`${next.hint} — captura automática`);
+  }, [saveDescriptors]);
+
+  const runAutoCapture = useCallback(async () => {
+    if (
+      detectingRef.current ||
+      saving ||
+      !scanning ||
+      !videoRef.current ||
+      !modelsLoaded ||
+      Date.now() < pauseUntilRef.current
+    ) {
+      return;
+    }
+
+    detectingRef.current = true;
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const video = videoRef.current;
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
       const det = await faceapi
-        .detectSingleFace(videoRef.current, opts)
+        .detectSingleFace(video, opts)
         .withFaceLandmarks(true)
         .withFaceDescriptor();
+
       if (!det) {
-        setStatusMsg("Nenhum rosto detectado. Melhore a luz e tente de novo.");
-        setSaving(false);
+        setStatusMsg(`${currentPose?.hint ?? "Centralize o rosto"} — rosto não detectado`);
+        trackerRef.current = resetAutoCaptureTracker();
+        detectingRef.current = false;
         return;
       }
-      const next = [...captures, Array.from(det.descriptor)];
-      setCaptures(next);
-      const idx = next.length;
-      if (idx >= CAPTURES_NEEDED) {
-        await saveDescriptors(next);
+
+      const box = det.detection.box;
+      const quality = frameQuality(det.detection.score, box, video.videoWidth, video.videoHeight);
+      const tick = tickAutoCapture(trackerRef.current, det.descriptor, quality, box);
+
+      if (tick.ready && tick.descriptor) {
+        const next = [...captures, tick.descriptor];
+        setStatusMsg(`Captura ${next.length}/${ENROLLMENT_CAPTURE_COUNT} ok!`);
+        await onPoseCaptured(tick.descriptor, next);
+      } else if (quality > 0) {
+        setStatusMsg(`${currentPose?.hint ?? ""} — mantenha a pose (${Math.min(trackerRef.current.stableCount + 1, 3)}/3)`);
       } else {
-        setCaptureIndex(idx);
-        setStatusMsg(`Ótimo! Captura ${idx}/${CAPTURES_NEEDED} ok. Ajuste levemente e capture de novo.`);
+        setStatusMsg(`${currentPose?.hint ?? ""} — aproxime-se e centralize o rosto`);
       }
     } catch {
-      setStatusMsg("Erro ao processar. Tente novamente.");
-    } finally {
-      setSaving(false);
+      setStatusMsg("Erro na detecção. Ajuste a posição.");
     }
-  }
+    detectingRef.current = false;
+  }, [captures, currentPose, modelsLoaded, onPoseCaptured, saving, scanning]);
+
+  useEffect(() => {
+    if (phase !== "camera" || !modelsLoaded || !scanning) return;
+    const id = setInterval(() => void runAutoCapture(), 450);
+    return () => clearInterval(id);
+  }, [phase, modelsLoaded, scanning, runAutoCapture, captureIndex]);
 
   async function captureFromUpload() {
     if (!imgRef.current || !modelsLoaded) return;
@@ -134,31 +230,8 @@ export function MultiCaptureFaceWizard({
       await saveDescriptors([Array.from(det.descriptor)]);
     } catch {
       setStatusMsg("Erro ao processar imagem.");
-    } finally {
       setSaving(false);
     }
-  }
-
-  async function saveDescriptors(descriptors: number[][]) {
-    setSaving(true);
-    const res = await fetch(`/api/users/${userId}/face`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        descriptors,
-        acceptConsent: true,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setStatusMsg(data.error ?? "Falha ao salvar");
-      setSaving(false);
-      return;
-    }
-    stopCamera();
-    setPhase("done");
-    setStatusMsg("Cadastro facial concluído!");
-    setTimeout(onComplete, 1200);
   }
 
   useEffect(() => () => stopCamera(), [stopCamera]);
@@ -174,14 +247,12 @@ export function MultiCaptureFaceWizard({
           <ol className="list-decimal space-y-2 pl-5 text-muted">
             <li>Escolha um local <strong className="text-foreground">bem iluminado</strong> (evite luz atrás de você).</li>
             <li>Remova boné, óculos escuros e máscara.</li>
-            <li>Centralize o rosto na câmera — olhos na altura da linha do meio.</li>
-            <li>Serão <strong className="text-foreground">{CAPTURES_NEEDED} capturas</strong>; mova levemente a cabeça entre elas.</li>
-            <li>Depois do cadastro, teste em <strong className="text-foreground">Ponto facial</strong> para validar.</li>
+            <li>Serão <strong className="text-foreground">{ENROLLMENT_CAPTURE_COUNT} poses</strong>: frente, cima, baixo, esquerda e direita.</li>
+            <li>A câmera <strong className="text-foreground">captura sozinha</strong> o melhor frame — não precisa apertar botão.</li>
+            <li>Siga as setas na tela e mantenha a pose até a barra completar.</li>
           </ol>
         </div>
-        {modelsError && (
-          <p className="text-xs text-red-500">{statusMsg}</p>
-        )}
+        {modelsError && <p className="text-xs text-red-500">{statusMsg}</p>}
         <button
           type="button"
           className="btn-primary w-full"
@@ -239,7 +310,7 @@ export function MultiCaptureFaceWizard({
             className={`btn-ghost flex-1 text-xs ${mode === "camera" ? "border-primary text-primary" : ""}`}
             onClick={() => { setMode("camera"); void startCamera(); }}
           >
-            Câmera ({CAPTURES_NEEDED} capturas)
+            Câmera ({ENROLLMENT_CAPTURE_COUNT} poses)
           </button>
           <button
             type="button"
@@ -251,7 +322,7 @@ export function MultiCaptureFaceWizard({
         </div>
       )}
 
-      {(phase === "camera" || mode === "camera") && (
+      {(phase === "camera" || mode === "camera") && currentPose && (
         <>
           <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4/3" }}>
             <video
@@ -262,27 +333,43 @@ export function MultiCaptureFaceWizard({
               autoPlay
               style={{ transform: "scaleX(-1)" }}
             />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <PoseHint direction={currentPose.direction} />
               <div className="h-48 w-36 rounded-[50%] border-2 border-dashed border-white/50" />
             </div>
+            {saving && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <Icon name="rotateCw" className="h-8 w-8 animate-spin text-white/80" />
+              </div>
+            )}
           </div>
-          <p className="text-center text-xs text-muted">{statusMsg}</p>
+
+          <div className="text-center">
+            <p className="text-sm font-semibold text-foreground">
+              {captureIndex + 1}/{ENROLLMENT_CAPTURE_COUNT} · {currentPose.label}
+            </p>
+            <p className="mt-1 text-xs text-muted">{statusMsg}</p>
+          </div>
+
           <div className="flex gap-1 justify-center">
-            {Array.from({ length: CAPTURES_NEEDED }).map((_, i) => (
+            {ENROLLMENT_POSE_STEPS.map((step, i) => (
               <span
-                key={i}
-                className={`h-2 w-8 rounded-full ${i < captures.length ? "bg-primary" : "bg-border"}`}
+                key={step.direction}
+                title={step.label}
+                className={`h-2 w-8 rounded-full transition-colors ${
+                  i < captures.length
+                    ? "bg-primary"
+                    : i === captureIndex
+                      ? "bg-primary/40 animate-pulse"
+                      : "bg-border"
+                }`}
               />
             ))}
           </div>
-          <button
-            type="button"
-            className="btn-primary w-full"
-            disabled={saving}
-            onClick={() => void captureFromVideo()}
-          >
-            {saving ? "Processando..." : `Capturar (${captureIndex + 1}/${CAPTURES_NEEDED})`}
-          </button>
+
+          <p className="text-center text-[11px] text-muted">
+            {saving ? "Salvando..." : "Captura automática — mantenha a pose até completar"}
+          </p>
         </>
       )}
 

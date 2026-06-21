@@ -12,7 +12,6 @@ import { GlobalSearchPalette, useGlobalSearchShortcut } from "@/components/Globa
 import { NotificationBell } from "@/components/NotificationBell";
 import { useSession } from "@/components/SessionProvider";
 import { ChatFloating } from "@/components/ChatFloating";
-import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { AccountSetupGuard } from "@/components/AccountSetupGuard";
 import { PontoExitReminder } from "@/components/PontoExitReminder";
 
@@ -95,7 +94,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Sidebar
             onMobileClose={() => {}}
             onSearch={openSearch}
+            onChatToggle={() => setChatOpen((o) => !o)}
             kanbanOverdueCount={kanbanOverdueCount}
+            chatUnread={chatUnread}
+            chatOpen={chatOpen}
           />
         </div>
 
@@ -111,7 +113,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 forceExpanded
                 onMobileClose={() => setSidebarOpen(false)}
                 onSearch={openSearch}
+                onChatToggle={() => setChatOpen((o) => !o)}
                 kanbanOverdueCount={kanbanOverdueCount}
+                chatUnread={chatUnread}
+                chatOpen={chatOpen}
               />
             </div>
           </div>
@@ -143,8 +148,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* Bottom nav spacer accounts for fixed bottom nav + safe area */}
-          <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
+          <main className="safe-area-bottom flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
             <AccountSetupGuard>
               {user && <PontoExitReminder />}
               {user && <OnboardingTour />}
@@ -160,13 +164,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           open={chatOpen}
           onOpenChange={setChatOpen}
           onUnreadChange={setChatUnread}
-        />
-      )}
-      {user && (
-        <MobileBottomNav
-          onChatToggle={() => setChatOpen((o) => !o)}
-          chatUnread={chatUnread}
-          chatOpen={chatOpen}
         />
       )}
       {scheduleBlock && (

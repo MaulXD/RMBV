@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { findBestFaceMatch, toDescriptorArray } from "@/lib/face-match";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -13,14 +14,6 @@ const TYPE_LABEL: Record<PontoType, string> = {
   INTERVALO_FIM: "Fim de intervalo registrado",
 };
 
-function euclideanDistance(a: Float32Array, b: Float32Array): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) sum += (a[i]! - b[i]!) ** 2;
-  return Math.sqrt(sum);
-}
-
-const THRESHOLD = 0.5;
-const MIN_CONFIDENCE = 0.65;
 const MODEL_URL = "/models";
 
 export function PontoKiosk({ teamId }: { teamId: string }) {
@@ -65,11 +58,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     fetch(`/api/ponto/faces?teamId=${teamId}`)
       .then((r) => r.json())
       .then((data) => {
-        const users: KnownUser[] = (data.users ?? []).map((u: { id: string; name: string; faceDescriptor: number[] }) => ({
-          id: u.id,
-          name: u.name,
-          descriptor: new Float32Array(u.faceDescriptor as number[]),
-        }));
+        const users: KnownUser[] = (data.users ?? [])
+          .map((u: { id: string; name: string; faceDescriptor: unknown }) => {
+            const descriptor = toDescriptorArray(u.faceDescriptor);
+            if (!descriptor) return null;
+            return { id: u.id, name: u.name, descriptor };
+          })
+          .filter(Boolean) as KnownUser[];
         setKnownUsers(users);
       });
   }, [teamId]);
@@ -123,21 +118,16 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       }
 
       const descriptor = detection.descriptor;
-      let bestMatch: KnownUser | null = null;
-      let bestDist = Infinity;
-      for (const u of knownUsers) {
-        const dist = euclideanDistance(descriptor, u.descriptor);
-        if (dist < bestDist) { bestDist = dist; bestMatch = u; }
-      }
+      const match = findBestFaceMatch(descriptor, knownUsers);
 
-      const confidence = Math.max(0, 1 - bestDist / THRESHOLD);
-
-      if (!bestMatch || confidence < MIN_CONFIDENCE) {
+      if (!match) {
         setStatus("no-match");
         setTimeout(() => setStatus("ready"), 3000);
         detectingRef.current = false;
         return;
       }
+
+      const { item: bestMatch, confidence } = match;
 
       // Determine type: toggle based on last record
       const todayStr = new Date().toISOString().slice(0, 10);
