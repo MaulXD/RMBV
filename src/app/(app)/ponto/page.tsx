@@ -5,6 +5,8 @@ import { useSession, type SessionUser } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
 import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
+import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
+import { warmupLivenessAudio } from "@/lib/face-liveness-audio";
 import {
   hoursSummary,
   nextPontoType,
@@ -22,6 +24,7 @@ import {
   resetLivenessTracker,
   tickLiveness,
   type LivenessTracker,
+  type LivenessPhase,
   LIVENESS_POLL_MS,
   LIVENESS_FACE_DETECT,
   isVideoReadyForDetection,
@@ -96,6 +99,10 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const cooldownRef = useRef(false);
   const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
   const [livenessProgress, setLivenessProgress] = useState(0);
+  const [livenessPhase, setLivenessPhase] = useState<LivenessPhase | null>(null);
+  const [livenessFaceLost, setLivenessFaceLost] = useState(false);
+
+  useLivenessAudioFeedback(clockPhase === "liveness", livenessPhase, livenessFaceLost);
 
   // Enrollment camera
   const [enrolling, setEnrolling] = useState(false);
@@ -177,6 +184,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setClockMsg("");
     livenessRef.current = resetLivenessTracker();
     setLivenessProgress(0);
+    setLivenessPhase(null);
+    setLivenessFaceLost(false);
   }
 
   async function startClockCamera() {
@@ -186,6 +195,9 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setVerifiedConfidence(null);
     livenessRef.current = resetLivenessTracker();
     setLivenessProgress(0);
+    setLivenessPhase(null);
+    setLivenessFaceLost(false);
+    warmupLivenessAudio();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
@@ -234,15 +246,20 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       if (!det) {
         setClockMsg("Centralize o rosto — olhos abertos");
         setLivenessProgress(0);
+        setLivenessFaceLost(true);
         livenessBusyRef.current = false;
         return;
       }
+      setLivenessFaceLost(false);
       const live = tickLiveness(livenessRef.current, det.landmarks.positions);
       setLivenessProgress(live.progress);
+      setLivenessPhase(live.phase);
       setClockMsg(live.message);
       if (live.passed) {
-        setClockPhase("ready");
-        setClockMsg("Rosto confirmado — reconhecendo...");
+        window.setTimeout(() => {
+          setClockPhase("ready");
+          setClockMsg("Rosto confirmado — reconhecendo...");
+        }, 1100);
       }
     } catch {
       setClockMsg("Erro na verificação. Tente novamente.");
