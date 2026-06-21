@@ -65,12 +65,18 @@ function useSidebarCollapsed() {
 export function Sidebar({
   onMobileClose,
   onSearch,
+  onChatToggle,
   kanbanOverdueCount,
+  chatUnread = 0,
+  chatOpen = false,
   forceExpanded = false,
 }: {
   onMobileClose: () => void;
   onSearch: () => void;
+  onChatToggle?: () => void;
   kanbanOverdueCount: number;
+  chatUnread?: number;
+  chatOpen?: boolean;
   forceExpanded?: boolean;
 }) {
   const pathname = usePathname();
@@ -87,6 +93,9 @@ export function Sidebar({
         { href: "/dashboard", label: "Clientes", icon: "users", color: "text-blue-500" },
         { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
         { href: "/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
+        ...(onChatToggle
+          ? [{ href: "#chat", label: "Chat", icon: "messageCircle" as const, color: "text-indigo-500" }]
+          : []),
         ...(!isPesquisador
           ? [
               { href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" },
@@ -185,8 +194,11 @@ export function Sidebar({
             )}
 
             {group.items.map((item) => {
-              const active = pathname.startsWith(item.href);
-              const showBadge = item.href === "/kanban" && kanbanOverdueCount > 0;
+              const isChat = item.href === "#chat";
+              const active = isChat ? chatOpen : pathname.startsWith(item.href);
+              const showBadge =
+                (item.href === "/kanban" && kanbanOverdueCount > 0) ||
+                (isChat && !chatOpen && chatUnread > 0);
 
               if (item.comingSoon) {
                 return (
@@ -211,6 +223,39 @@ export function Sidebar({
                 );
               }
 
+              if (isChat && onChatToggle) {
+                return (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => {
+                      onChatToggle();
+                      onMobileClose();
+                    }}
+                    className={`sidebar-nav-link w-full ${active ? "active" : ""} ${isCollapsed ? "justify-center" : ""}`}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <Icon
+                      name={item.icon}
+                      className={`h-4 w-4 shrink-0 ${item.color} ${active ? "opacity-100" : "opacity-70"}`}
+                    />
+                    {!isCollapsed && (
+                      <>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {showBadge && (
+                          <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            {chatUnread > 99 ? "99+" : chatUnread}
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {isCollapsed && showBadge && (
+                      <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-600" />
+                    )}
+                  </button>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -226,14 +271,14 @@ export function Sidebar({
                   {!isCollapsed && (
                     <>
                       <span className="flex-1">{item.label}</span>
-                      {showBadge && (
+                      {showBadge && item.href === "/kanban" && (
                         <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                           {kanbanOverdueCount > 99 ? "99+" : kanbanOverdueCount}
                         </span>
                       )}
                     </>
                   )}
-                  {isCollapsed && showBadge && (
+                  {isCollapsed && showBadge && item.href === "/kanban" && (
                     <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-600" />
                   )}
                 </Link>

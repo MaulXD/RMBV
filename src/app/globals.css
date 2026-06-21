@@ -840,17 +840,6 @@
     }
   }
 
-  /* Bottom nav item */
-  .mobile-nav-item {
-    @apply flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors;
-    min-height: 56px;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .mobile-nav-item-active {
-    color: var(--color-primary);
-  }
-
   /* Mobile sidebar slide-in */
   @keyframes sidebar-slide-in {
     from { transform: translateX(-100%); }
