@@ -16,10 +16,15 @@ import {
 } from "@/lib/ponto-hours";
 import {
   isFaceMatch,
-  isStrongSelfieMatch,
-  matchConfidence,
   toDescriptorArray,
   euclideanDistance as euclidean,
+  FACE_RECOGNITION_DETECT,
+  FACE_MATCH_STABLE_FRAMES,
+  createMatchFrameTracker,
+  resetMatchFrameTracker,
+  tickStrongMatchFrame,
+  tickNoFaceMatchFrame,
+  type MatchFrameTracker,
 } from "@/lib/face-match";
 import { formatGpsPontoError, geolocationErrorMessage } from "@/lib/gps-ponto";
 import {
@@ -99,9 +104,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const livenessBusyRef = useRef(false);
   const cooldownRef = useRef(false);
   const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
+  const matchTrackerRef = useRef<MatchFrameTracker>(createMatchFrameTracker());
   const [livenessProgress, setLivenessProgress] = useState(0);
   const [livenessPhase, setLivenessPhase] = useState<LivenessPhase | null>(null);
   const [livenessFaceLost, setLivenessFaceLost] = useState(false);
+  const [matchProgress, setMatchProgress] = useState(0);
 
   useLivenessAudioFeedback(clockPhase === "liveness", livenessPhase, livenessFaceLost);
 
@@ -180,9 +187,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setVerifiedConfidence(null);
     setClockMsg("");
     livenessRef.current = resetLivenessTracker();
+    matchTrackerRef.current = resetMatchFrameTracker();
     setLivenessProgress(0);
     setLivenessPhase(null);
     setLivenessFaceLost(false);
+    setMatchProgress(0);
   }
 
   async function startClockCamera() {
@@ -191,9 +200,11 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
     setClockMsg("");
     setVerifiedConfidence(null);
     livenessRef.current = resetLivenessTracker();
+    matchTrackerRef.current = resetMatchFrameTracker();
     setLivenessProgress(0);
     setLivenessPhase(null);
     setLivenessFaceLost(false);
+    setMatchProgress(0);
     warmupLivenessAudio();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -254,6 +265,8 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       setClockMsg(live.message);
       if (live.passed) {
         window.setTimeout(() => {
+          matchTrackerRef.current = resetMatchFrameTracker();
+          setMatchProgress(0);
           setClockPhase("ready");
           setClockMsg("Reconhecendo rosto...");
         }, LIVENESS_COMPLETE_DELAY_MS);
@@ -267,40 +280,68 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   const detectFace = useCallback(async () => {
     if (detectingRef.current || !videoRef.current || !descriptor) return;
     if (!isVideoReadyForDetection(videoRef.current)) return;
+    if (clockPhase !== "ready" && clockPhase !== "detecting") return;
+
     detectingRef.current = true;
-    setClockPhase("detecting");
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const opts = new faceapi.TinyFaceDetectorOptions(FACE_RECOGNITION_DETECT);
       const det = await faceapi.detectSingleFace(videoRef.current, opts).withFaceLandmarks(true).withFaceDescriptor();
-      if (!det) { setClockPhase("ready"); detectingRef.current = false; return; }
 
-      const dist = euclidean(det.descriptor, descriptor);
-      const confidence = matchConfidence(dist);
+      const tick = !det
+        ? tickNoFaceMatchFrame(matchTrackerRef.current)
+        : tickStrongMatchFrame(matchTrackerRef.current, euclidean(det.descriptor, descriptor));
 
-      if (!isStrongSelfieMatch(dist)) {
-        setClockPhase("no-match");
+      setMatchProgress(tick.progress);
+
+      if (tick.status === "ready") {
+        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        const finalConfidence = tick.averageConfidence;
+        setVerifiedConfidence(finalConfidence);
+        setClockPhase("verified");
         setClockMsg(
-          isFaceMatch(dist)
-            ? `Confiança baixa (${Math.round(confidence * 100)}%). Aproxime-se, melhore a luz e tente de novo.`
-            : `Confiança insuficiente (${Math.round(confidence * 100)}%). Centralize o rosto e melhore a luz.`,
+          `Rosto confirmado (${Math.round(finalConfidence * 100)}%). Escolha o tipo de registro.`,
         );
-        setTimeout(() => { setClockPhase("ready"); setClockMsg(""); }, 2500);
         detectingRef.current = false;
         return;
       }
 
-      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setVerifiedConfidence(confidence);
-      setClockPhase("verified");
-      setClockMsg(`Rosto confirmado (${Math.round(confidence * 100)}%). Escolha o tipo de registro.`);
+      if (tick.status === "reject") {
+        setClockPhase("no-match");
+        setClockMsg(
+          tick.confidence > 0
+            ? `Confiança insuficiente (${Math.round(tick.confidence * 100)}%). Centralize o rosto e melhore a luz.`
+            : "Rosto não detectado. Centralize-se no oval e tente novamente.",
+        );
+        matchTrackerRef.current = resetMatchFrameTracker();
+        setMatchProgress(0);
+        setTimeout(() => { setClockPhase("ready"); setClockMsg("Reconhecendo rosto..."); }, 2500);
+        detectingRef.current = false;
+        return;
+      }
+
+      setClockPhase("detecting");
+      if (tick.status === "building") {
+        setClockMsg(
+          `Reconhecendo... ${Math.round(tick.averageConfidence * 100)}% (${tick.streak}/${FACE_MATCH_STABLE_FRAMES})`,
+        );
+      } else if (tick.status === "weak") {
+        setClockMsg(
+          isFaceMatch(euclidean(det!.descriptor, descriptor))
+            ? `Confiança baixa (${Math.round(tick.confidence * 100)}%). Aproxime-se e melhore a luz.`
+            : `Confiança ${Math.round(tick.confidence * 100)}% — centralize o rosto`,
+        );
+      } else {
+        setClockMsg("Centralize o rosto no oval");
+      }
     } catch {
       setClockPhase("ready");
+      setClockMsg("Reconhecendo rosto...");
     }
     detectingRef.current = false;
-  }, [descriptor]);
+  }, [clockPhase, descriptor]);
 
   const submitPunch = useCallback(async (type: PontoType) => {
     if (verifiedConfidence === null) return;
@@ -349,7 +390,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
   }, [clockPhase, runLivenessCheck]);
 
   useEffect(() => {
-    if (clockPhase !== "ready") return;
+    if (clockPhase !== "ready" && clockPhase !== "detecting") return;
     intervalRef.current = setInterval(() => void detectFace(), 700);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [clockPhase, detectFace]);
@@ -650,6 +691,20 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 </div>
               </div>
             )}
+            {clockPhase === "detecting" && (
+              <div className="w-full max-w-xs">
+                <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
+                  <span>Estabilidade</span>
+                  <span>{Math.round(matchProgress * 100)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full bg-amber-500 transition-all duration-200"
+                    style={{ width: `${Math.round(matchProgress * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
             <p className={`text-sm font-medium text-center ${
               clockPhase === "success" || (clockPhase === "verified" && !clockMsgIsError)
                 ? "text-emerald-600 dark:text-emerald-400"
@@ -663,7 +718,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             }`}>
               {clockPhase === "success" || clockPhase === "verified" ? clockMsg :
                clockPhase === "no-match" ? clockMsg :
-               clockPhase === "detecting" ? "Reconhecendo..." :
+               clockPhase === "detecting" ? clockMsg || "Reconhecendo..." :
                clockPhase === "submitting" ? "Registrando..." :
                clockPhase === "opening" ? "Iniciando..." :
                clockPhase === "liveness" ? null :

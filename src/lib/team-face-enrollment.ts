@@ -91,15 +91,22 @@ export async function canRemoveTeamMemberFace(
   return { allowed: false, error: "Sem permissão" };
 }
 
-/** Média de N descritores face-api (128 floats). */
-export function averageFaceDescriptors(descriptors: number[][]): number[] {
+/** Média ponderada de N descritores face-api (128 floats). */
+export function averageFaceDescriptors(
+  descriptors: number[][],
+  weights?: readonly number[],
+): number[] {
   if (descriptors.length === 0) throw new Error("Nenhum descritor");
   const len = descriptors[0]!.length;
+  let totalWeight = 0;
   const out = new Array<number>(len).fill(0);
-  for (const d of descriptors) {
-    for (let i = 0; i < len; i++) out[i]! += d[i]!;
+  for (let i = 0; i < descriptors.length; i++) {
+    const w = weights?.[i] ?? 1;
+    totalWeight += w;
+    const d = descriptors[i]!;
+    for (let j = 0; j < len; j++) out[j]! += d[j]! * w;
   }
-  for (let i = 0; i < len; i++) out[i]! /= descriptors.length;
+  for (let j = 0; j < len; j++) out[j]! /= totalWeight;
   return out;
 }
 

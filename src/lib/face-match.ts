@@ -7,6 +7,18 @@ export const FACE_MATCH_MAX_DISTANCE = 0.6;
 /** Confiança mínima no ponto mobile (evita passar com ~2% no limiar). */
 export const FACE_SELFIE_MIN_CONFIDENCE = 0.55;
 
+/** Frames consecutivos com match forte antes de confirmar identidade. */
+export const FACE_MATCH_STABLE_FRAMES = 5;
+
+/** Falhas consecutivas (sem rosto ou distância ≥ limiar) antes de exibir erro. */
+export const FACE_MATCH_FAIL_STREAK_MAX = 3;
+
+/** Detector alinhado ao cadastro e prova de vida (416px). */
+export const FACE_RECOGNITION_DETECT = {
+  inputSize: 416,
+  scoreThreshold: 0.5,
+} as const;
+
 /** Margem mínima entre 1º e 2º colocado no quiosque (evita troca entre pessoas). */
 export const FACE_MATCH_MIN_GAP = 0.06;
 
@@ -33,8 +45,113 @@ export function isFaceMatch(distance: number): boolean {
 }
 
 /** Match com confiança mínima para bater ponto no celular. */
-export function isStrongSelfieMatch(distance: number): boolean {
-  return isFaceMatch(distance) && matchConfidence(distance) >= FACE_SELFIE_MIN_CONFIDENCE;
+export function isStrongSelfieMatch(
+  distance: number,
+  minConfidence = FACE_SELFIE_MIN_CONFIDENCE,
+): boolean {
+  return isFaceMatch(distance) && matchConfidence(distance) >= minConfidence;
+}
+
+export type MatchFrameTracker = {
+  streak: number;
+  confidenceSum: number;
+  failStreak: number;
+};
+
+export type MatchFrameStatus = "no_face" | "reject" | "weak" | "building" | "ready";
+
+export type MatchFrameTick = {
+  status: MatchFrameStatus;
+  confidence: number;
+  progress: number;
+  streak: number;
+  /** Média de confiança dos frames válidos na sequência atual. */
+  averageConfidence: number;
+};
+
+export function createMatchFrameTracker(): MatchFrameTracker {
+  return { streak: 0, confidenceSum: 0, failStreak: 0 };
+}
+
+export function resetMatchFrameTracker(tracker = createMatchFrameTracker()): MatchFrameTracker {
+  tracker.streak = 0;
+  tracker.confidenceSum = 0;
+  tracker.failStreak = 0;
+  return tracker;
+}
+
+/**
+ * Acumula frames consecutivos com match forte; reduz falsos positivos e oscilação de %.
+ */
+export function tickStrongMatchFrame(
+  tracker: MatchFrameTracker,
+  distance: number,
+  minConfidence = FACE_SELFIE_MIN_CONFIDENCE,
+): MatchFrameTick {
+  const confidence = matchConfidence(distance);
+
+  if (!isFaceMatch(distance)) {
+    tracker.streak = 0;
+    tracker.confidenceSum = 0;
+    tracker.failStreak += 1;
+    return {
+      status: tracker.failStreak >= FACE_MATCH_FAIL_STREAK_MAX ? "reject" : "weak",
+      confidence,
+      progress: 0,
+      streak: 0,
+      averageConfidence: confidence,
+    };
+  }
+
+  tracker.failStreak = 0;
+
+  if (!isStrongSelfieMatch(distance, minConfidence)) {
+    tracker.streak = 0;
+    tracker.confidenceSum = 0;
+    return {
+      status: "weak",
+      confidence,
+      progress: 0,
+      streak: 0,
+      averageConfidence: confidence,
+    };
+  }
+
+  tracker.streak += 1;
+  tracker.confidenceSum += confidence;
+  const averageConfidence = tracker.confidenceSum / tracker.streak;
+  const progress = tracker.streak / FACE_MATCH_STABLE_FRAMES;
+
+  if (tracker.streak >= FACE_MATCH_STABLE_FRAMES) {
+    return {
+      status: "ready",
+      confidence,
+      progress: 1,
+      streak: tracker.streak,
+      averageConfidence,
+    };
+  }
+
+  return {
+    status: "building",
+    confidence,
+    progress,
+    streak: tracker.streak,
+    averageConfidence,
+  };
+}
+
+export function tickNoFaceMatchFrame(tracker: MatchFrameTracker): MatchFrameTick {
+  tracker.streak = 0;
+  tracker.confidenceSum = 0;
+  tracker.failStreak += 1;
+  return {
+    status: tracker.failStreak >= FACE_MATCH_FAIL_STREAK_MAX ? "reject" : "no_face",
+    confidence: 0,
+    progress: 0,
+    streak: 0,
+    averageConfidence: 0,
+  };
 }
 
 export function toDescriptorArray(raw: unknown): Float32Array | null {
@@ -68,6 +185,8 @@ export function findBestFaceMatch<T extends { descriptor: Float32Array | number[
   }
 
   if (!best || !isFaceMatch(bestDist)) return null;
+
+  if (!isStrongSelfieMatch(bestDist)) return null;
 
   if (candidates.length > 1 && secondDist - bestDist < FACE_MATCH_MIN_GAP) {
     return null;
