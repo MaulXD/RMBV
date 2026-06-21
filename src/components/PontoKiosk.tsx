@@ -304,7 +304,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           ) : status === "liveness" ? (
             <div className="space-y-3 px-2">
               <p className="text-base font-bold leading-snug text-violet-300">{livenessMsg}</p>
-              <p className="text-xs text-white/40">Pisque devagar: feche os olhos por 1 segundo e abra de novo</p>
+              <p className="text-xs text-white/40">Feche bem os olhos por 1 segundo, depois abra</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">

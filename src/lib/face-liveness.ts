@@ -4,21 +4,21 @@ type LandmarkPoint = { x: number; y: number };
 const LEFT_EYE = [36, 37, 38, 39, 40, 41] as const;
 const RIGHT_EYE = [42, 43, 44, 45, 46, 47] as const;
 
-const CALIBRATION_FRAMES = 3;
-const MIN_BASELINE = 0.08;
-const CLOSED_RATIO = 0.65;
-const STRONG_CLOSED_RATIO = 0.55;
-const OPEN_RATIO = 0.72;
+/** Frames com rosto antes de pedir piscada. */
+const READY_FRAMES = 2;
+/** Atualiza pico de olhos abertos. */
+const PEAK_UPDATE_RATIO = 0.84;
+/** Olho fechado vs pico recente. */
+const CLOSED_VS_PEAK = 0.8;
+/** Queda relativa entre frames consecutivos (piscada rápida). */
+const SUDDEN_DROP_RATIO = 0.07;
+/** Queda relativa vs pico acumulado. */
+const DROP_VS_PEAK = 0.1;
+/** Olhos abertos de novo após piscada. */
+const OPEN_VS_PEAK = 0.72;
 
 function dist(a: LandmarkPoint, b: LandmarkPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 /** Eye aspect ratio — olho fechado reduz o valor. */
@@ -45,8 +45,10 @@ export type LivenessPhase = "need_face" | "need_close" | "need_open" | "passed";
 
 export type LivenessTracker = {
   phase: LivenessPhase;
-  baselineEar: number | null;
-  calibration: number[];
+  readyFrames: number;
+  peakEar: number;
+  blinkRefEar: number;
+  lastEar: number | null;
   closedStreak: number;
   openStreak: number;
 };
@@ -61,8 +63,10 @@ export type LivenessTick = {
 export function createLivenessTracker(): LivenessTracker {
   return {
     phase: "need_face",
-    baselineEar: null,
-    calibration: [],
+    readyFrames: 0,
+    peakEar: 0,
+    blinkRefEar: 0,
+    lastEar: null,
     closedStreak: 0,
     openStreak: 0,
   };
@@ -72,7 +76,6 @@ export function resetLivenessTracker(): LivenessTracker {
   return createLivenessTracker();
 }
 
-/** face-api precisa de dimensões válidas no elemento video. */
 export function isVideoReadyForDetection(video: HTMLVideoElement | null): boolean {
   if (!video) return false;
   return video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
@@ -91,64 +94,74 @@ export async function waitForVideoReady(
   return isVideoReadyForDetection(video);
 }
 
-function isEyesClosed(avg: number, eyeMin: number, baseline: number): boolean {
-  return avg < baseline * CLOSED_RATIO || eyeMin < baseline * STRONG_CLOSED_RATIO;
+function hasValidFace(left: number, right: number, avg: number): boolean {
+  return avg >= 0.035 && (left >= 0.025 || right >= 0.025);
 }
 
-function isEyesOpen(avg: number, baseline: number): boolean {
-  return avg >= baseline * OPEN_RATIO;
+function isClosedNow(avg: number, peakEar: number, lastEar: number | null): boolean {
+  if (peakEar <= 0) return false;
+  const dropFromPeak = (peakEar - avg) / peakEar;
+  const suddenDrop =
+    lastEar !== null && lastEar > 0 && (lastEar - avg) / lastEar >= SUDDEN_DROP_RATIO;
+  return avg < peakEar * CLOSED_VS_PEAK || dropFromPeak >= DROP_VS_PEAK || suddenDrop;
+}
+
+function isOpenNow(avg: number, refEar: number): boolean {
+  if (refEar <= 0) return avg >= 0.04;
+  return avg >= refEar * OPEN_VS_PEAK;
 }
 
 export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[]): LivenessTick {
   const { left, right, avg } = averageEar(positions);
-  const eyeMin = Math.min(left, right);
+  const prevEar = tracker.lastEar;
+  tracker.lastEar = avg;
+
+  if (!hasValidFace(left, right, avg)) {
+    return {
+      phase: tracker.phase,
+      passed: false,
+      message: "Centralize o rosto na câmera",
+      progress: tracker.phase === "passed" ? 1 : 0.1,
+    };
+  }
 
   switch (tracker.phase) {
     case "need_face": {
-      if (avg < 0.06) {
+      tracker.readyFrames++;
+      tracker.peakEar = Math.max(tracker.peakEar, avg);
+      const ratio = Math.min(tracker.readyFrames / READY_FRAMES, 1);
+
+      if (tracker.readyFrames >= READY_FRAMES) {
+        tracker.peakEar = Math.max(tracker.peakEar, avg);
+        tracker.blinkRefEar = tracker.peakEar;
+        tracker.phase = "need_close";
+        tracker.closedStreak = 0;
+        tracker.openStreak = 0;
         return {
-          phase: "need_face",
+          phase: "need_close",
           passed: false,
-          message: "Centralize o rosto na câmera",
-          progress: 0.1,
+          message: "Feche os olhos com força",
+          progress: 0.45,
         };
-      }
-
-      tracker.calibration.push(avg);
-      const calRatio = Math.min(tracker.calibration.length / CALIBRATION_FRAMES, 1);
-
-      if (tracker.calibration.length >= CALIBRATION_FRAMES) {
-        const base = median(tracker.calibration);
-        if (base >= MIN_BASELINE) {
-          tracker.baselineEar = base;
-          tracker.phase = "need_close";
-          tracker.closedStreak = 0;
-          return {
-            phase: "need_close",
-            passed: false,
-            message: "Feche os olhos por um instante",
-            progress: 0.45,
-          };
-        }
-        tracker.calibration.shift();
       }
 
       return {
         phase: "need_face",
         passed: false,
         message: "Olhe para a câmera com os olhos abertos",
-        progress: 0.15 + calRatio * 0.25,
+        progress: 0.15 + ratio * 0.25,
       };
     }
 
     case "need_close": {
-      const baseline = tracker.baselineEar ?? avg;
-      const stronglyClosed = avg < baseline * STRONG_CLOSED_RATIO;
+      if (avg >= tracker.peakEar * PEAK_UPDATE_RATIO) {
+        tracker.peakEar = Math.max(tracker.peakEar, avg);
+        tracker.blinkRefEar = tracker.peakEar;
+      }
 
-      if (isEyesClosed(avg, eyeMin, baseline)) {
+      if (isClosedNow(avg, tracker.peakEar, prevEar)) {
         tracker.closedStreak++;
-        const needed = stronglyClosed ? 1 : 2;
-        if (tracker.closedStreak >= needed) {
+        if (tracker.closedStreak >= 1) {
           tracker.phase = "need_open";
           tracker.openStreak = 0;
           tracker.closedStreak = 0;
@@ -156,7 +169,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
             phase: "need_open",
             passed: false,
             message: "Agora abra os olhos",
-            progress: 0.75,
+            progress: 0.78,
           };
         }
       } else {
@@ -166,17 +179,17 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
       return {
         phase: "need_close",
         passed: false,
-        message: "Feche os olhos por um instante",
-        progress: 0.45 + Math.min(tracker.closedStreak / 2, 1) * 0.2,
+        message: "Feche os olhos com força",
+        progress: 0.45 + Math.min(tracker.closedStreak, 1) * 0.25,
       };
     }
 
     case "need_open": {
-      const baseline = tracker.baselineEar ?? avg;
+      const ref = tracker.blinkRefEar || tracker.peakEar;
 
-      if (isEyesOpen(avg, baseline)) {
+      if (isOpenNow(avg, ref)) {
         tracker.openStreak++;
-        if (tracker.openStreak >= 2) {
+        if (tracker.openStreak >= 1) {
           tracker.phase = "passed";
           return {
             phase: "passed",
@@ -185,7 +198,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
             progress: 1,
           };
         }
-      } else if (isEyesClosed(avg, eyeMin, baseline)) {
+      } else if (isClosedNow(avg, ref, prevEar)) {
         tracker.openStreak = 0;
       }
 
@@ -193,7 +206,7 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
         phase: "need_open",
         passed: false,
         message: "Abra os olhos de novo",
-        progress: 0.78 + Math.min(tracker.openStreak / 2, 1) * 0.22,
+        progress: 0.8 + Math.min(tracker.openStreak, 1) * 0.2,
       };
     }
 
@@ -215,10 +228,10 @@ export function tickLiveness(tracker: LivenessTracker, positions: LandmarkPoint[
   }
 }
 
-export const LIVENESS_POLL_MS = 250;
+/** Piscada dura ~150–400 ms — amostrar rápido o suficiente. */
+export const LIVENESS_POLL_MS = 120;
 
-/** Mesmos parâmetros usados no reconhecimento facial — evita falso “rosto não detectado”. */
 export const LIVENESS_FACE_DETECT = {
-  inputSize: 320,
-  scoreThreshold: 0.5,
+  inputSize: 416,
+  scoreThreshold: 0.4,
 } as const;
