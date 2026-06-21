@@ -818,9 +818,37 @@
     border-color: color-mix(in srgb, var(--color-border) 50%, transparent);
   }
 
-  /* Safe area for iOS home indicator */
+  /* Safe area for iOS notch and home indicator */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Mobile touch targets — min 44px */
+  @media (max-width: 1023px) {
+    .mobile-touch {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    .btn-icon,
+    .btn-icon-bordered {
+      @apply h-11 w-11;
+    }
+  }
+
+  /* Bottom nav item */
+  .mobile-nav-item {
+    @apply flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors;
+    min-height: 56px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-nav-item-active {
+    color: var(--color-primary);
   }
 
   /* Mobile sidebar slide-in */

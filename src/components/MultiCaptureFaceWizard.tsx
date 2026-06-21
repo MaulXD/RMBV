@@ -20,8 +20,9 @@ export function MultiCaptureFaceWizard({
   allowUpload?: boolean;
   onComplete: () => void;
 }) {
-  const [phase, setPhase] = useState<Phase>(requireConsent ? "instructions" : "instructions");
+  const [phase, setPhase] = useState<Phase>("instructions");
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelsError, setModelsError] = useState(false);
   const [captures, setCaptures] = useState<number[][]>([]);
   const [captureIndex, setCaptureIndex] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
@@ -35,13 +36,18 @@ export function MultiCaptureFaceWizard({
 
   useEffect(() => {
     void (async () => {
-      const faceapi = await import("@vladmandic/face-api");
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ]);
-      setModelsLoaded(true);
+      try {
+        const faceapi = await import("@vladmandic/face-api");
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+      } catch {
+        setModelsError(true);
+        setStatusMsg("Não foi possível carregar os modelos de reconhecimento facial.");
+      }
     })();
   }, []);
 
@@ -50,16 +56,31 @@ export function MultiCaptureFaceWizard({
     streamRef.current = null;
   }, []);
 
+  /** Anexa stream ao <video> após o elemento montar (phase === "camera"). */
+  useEffect(() => {
+    if (phase !== "camera") return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    void video.play().catch(() => {
+      setStatusMsg("Não foi possível iniciar a câmera. Verifique as permissões.");
+    });
+  }, [phase, captureIndex]);
+
   async function startCamera() {
     stopCamera();
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-    streamRef.current = stream;
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-    }
-    setPhase("camera");
     setStatusMsg(`Captura ${captureIndex + 1} de ${CAPTURES_NEEDED}: centralize o rosto na oval`);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      streamRef.current = stream;
+      setPhase("camera");
+    } catch {
+      setStatusMsg("Câmera não autorizada. Permita o acesso à câmera nas configurações do navegador.");
+      setPhase(requireConsent ? "consent" : "instructions");
+    }
   }
 
   async function captureFromVideo() {
@@ -125,7 +146,7 @@ export function MultiCaptureFaceWizard({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         descriptors,
-        acceptConsent: requireConsent ? consent : undefined,
+        acceptConsent: true,
       }),
     });
     const data = await res.json();
@@ -158,16 +179,19 @@ export function MultiCaptureFaceWizard({
             <li>Depois do cadastro, teste em <strong className="text-foreground">Ponto facial</strong> para validar.</li>
           </ol>
         </div>
+        {modelsError && (
+          <p className="text-xs text-red-500">{statusMsg}</p>
+        )}
         <button
           type="button"
           className="btn-primary w-full"
-          disabled={!modelsLoaded}
+          disabled={!modelsLoaded || modelsError}
           onClick={() => {
             if (requireConsent) setPhase("consent");
             else void startCamera();
           }}
         >
-          {modelsLoaded ? "Continuar" : "Carregando modelos..."}
+          {modelsError ? "Modelos indisponíveis" : modelsLoaded ? "Continuar" : "Carregando modelos..."}
         </button>
       </div>
     );

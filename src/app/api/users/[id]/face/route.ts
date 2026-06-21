@@ -19,6 +19,7 @@ const saveSchema = z.object({
   descriptors: z.array(z.array(z.number()).length(128)).min(1).max(5).optional(),
   acceptConsent: z.boolean().optional(),
   enrolledByManager: z.boolean().optional(),
+  consentOnly: z.boolean().optional(),
 });
 
 function resolveDescriptor(body: z.infer<typeof saveSchema>): number[] | null {
@@ -70,23 +71,46 @@ export async function POST(
       return NextResponse.json({ error: "Descriptor inválido" }, { status: 400 });
     }
 
-    const descriptor = resolveDescriptor(parsed.data);
-    if (!descriptor) {
-      return NextResponse.json({ error: "Descriptor inválido" }, { status: 400 });
-    }
-
-    const isSelf = user.id === id;
-    const managerEnroll = !isSelf && parsed.data.enrolledByManager !== false;
-
-    if (isSelf && !parsed.data.acceptConsent) {
-      return NextResponse.json({ error: "Aceite o termo LGPD para continuar" }, { status: 400 });
-    }
-
     const existing = await prisma.user.findUnique({
       where: { id },
       select: { faceDescriptor: true, teamId: true, lgpdFaceConsentAt: true },
     });
     if (!existing) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+
+    const isSelf = user.id === id;
+
+    if (isSelf && parsed.data.consentOnly && parsed.data.acceptConsent) {
+      if (!existing.faceDescriptor) {
+        return NextResponse.json({ error: "Cadastre o rosto antes de aceitar o termo" }, { status: 400 });
+      }
+      const now = new Date();
+      await prisma.user.update({
+        where: { id },
+        data: {
+          lgpdFaceConsentAt: now,
+          lgpdFaceConsentVersion: LGPD_FACE_CONSENT_VERSION,
+        },
+      });
+      await recordFaceAudit({
+        actorId: user.id,
+        targetUserId: id,
+        teamId: existing.teamId,
+        action: "CONSENT_ACCEPT",
+        metadata: { version: LGPD_FACE_CONSENT_VERSION, consentOnly: true },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    const descriptor = resolveDescriptor(parsed.data);
+    if (!descriptor) {
+      return NextResponse.json({ error: "Descriptor inválido" }, { status: 400 });
+    }
+
+    const managerEnroll = !isSelf && parsed.data.enrolledByManager !== false;
+
+    if (isSelf && !parsed.data.acceptConsent) {
+      return NextResponse.json({ error: "Aceite o termo LGPD para continuar" }, { status: 400 });
+    }
 
     const now = new Date();
     const consentUpdate =

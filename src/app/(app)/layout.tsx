@@ -106,8 +106,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="sidebar-mobile absolute inset-y-0 left-0">
+            <div className="sidebar-mobile absolute inset-y-0 left-0 w-60 max-w-[85vw]">
               <Sidebar
+                forceExpanded
                 onMobileClose={() => setSidebarOpen(false)}
                 onSearch={openSearch}
                 kanbanOverdueCount={kanbanOverdueCount}
@@ -119,10 +120,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Content column */}
         <div className="relative flex min-h-screen min-w-0 flex-1 flex-col" style={{ zIndex: 1 }}>
           {/* Mobile top bar */}
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-elevated/95 px-4 backdrop-blur-md dark:border-white/[0.07] dark:bg-[rgb(8_12_24_/_0.85)] lg:hidden">
+          <header className="safe-area-top sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-elevated/95 px-4 backdrop-blur-md dark:border-white/[0.07] dark:bg-[rgb(8_12_24_/_0.85)] lg:hidden">
             <button
               type="button"
-              className="btn-ghost px-2 py-1.5"
+              className="btn-ghost mobile-touch px-2 py-1.5"
               onClick={() => setSidebarOpen(true)}
               aria-label="Abrir menu"
             >
@@ -143,7 +144,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Bottom nav spacer accounts for fixed bottom nav + safe area */}
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
+          <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
             <AccountSetupGuard>
               {user && <PontoExitReminder />}
               {user && <OnboardingTour />}
@@ -163,7 +164,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
       {user && (
         <MobileBottomNav
-          onMenuOpen={() => setSidebarOpen(true)}
           onChatToggle={() => setChatOpen((o) => !o)}
           chatUnread={chatUnread}
           chatOpen={chatOpen}

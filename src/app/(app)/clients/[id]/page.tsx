@@ -169,6 +169,8 @@ export default function ClientDetailPage() {
 
   return (
     <>
+      <ClientMobileQuickActions clientId={client.id} primaryPhone={client.phone1} />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Link href="/dashboard" className="text-xs text-muted hover:text-foreground">
           ← Voltar ao painel
@@ -233,8 +235,6 @@ export default function ClientDetailPage() {
           }
         />
       </div>
-      <ClientMobileQuickActions clientId={client.id} primaryPhone={client.phone1} />
-      <div className="pb-20 md:pb-0" />
     </>
   );
 }

@@ -191,7 +191,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           status === "no-match" ? "border-red-500" :
           status === "detecting" ? "border-amber-500" :
           "border-white/10"
-        }`} style={{ width: 320, height: 320 }}>
+        }`} style={{ width: "min(calc(100vw - 2rem), 360px)", aspectRatio: "1" }}>
           <video
             ref={videoRef}
             className="h-full w-full object-cover"
