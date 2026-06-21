@@ -11,7 +11,7 @@ import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { TeseManager } from "@/components/TeseManager";
 import { AdminClientsPanel } from "@/components/AdminClientsPanel";
 import { BackupPanel } from "@/components/BackupPanel";
-import { FaceEnrollment } from "@/components/FaceEnrollment";
+import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
@@ -294,7 +294,7 @@ export default function AdminPage() {
               </div>
               {teamId && (
                 <div className="space-y-4">
-                  <FaceEnrollment teamId={teamId} />
+                  <TeamFaceEnrollmentPanel teamId={teamId} />
                   <div className="industrial-panel max-w-2xl p-4">
                     <p className="text-xs font-medium text-muted mb-1">Link do quiosque de ponto</p>
                     <code className="block rounded bg-surface px-3 py-2 text-xs break-all">

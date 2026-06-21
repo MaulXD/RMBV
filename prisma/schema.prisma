@@ -105,6 +105,8 @@ model Team {
   scheduleDays      String   @default("[1,2,3,4,5]")
   scheduleStart     Int      @default(8)
   scheduleEnd       Int      @default(19)
+  /// ADV pode liberar para o Gerente cadastrar rostos da equipe
+  allowGerenteFaceEnrollment Boolean @default(false)
 }
 
 model TeseChecklistItem {
