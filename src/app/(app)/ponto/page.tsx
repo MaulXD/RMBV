@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession, type SessionUser } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
+import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
 
 type PontoType = "ENTRADA" | "SAIDA";
 type ClockPhase =
@@ -673,6 +674,13 @@ function AdminPontoView({ user }: { user: SessionUser }) {
             Abrir quiosque
           </a>
         </div>
+      )}
+
+      {(isAdminRole ? teamId : user.teamId) && (
+        <TeamFaceEnrollmentPanel
+          teamId={(isAdminRole ? teamId : user.teamId)!}
+          showSettings={user.role === "ADV"}
+        />
       )}
 
       <div className="industrial-panel overflow-hidden">

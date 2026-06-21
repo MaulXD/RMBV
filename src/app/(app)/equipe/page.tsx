@@ -7,6 +7,7 @@ import { TeamMembersManager } from "@/components/TeamMembersManager";
 import { TeseManager } from "@/components/TeseManager";
 import { KanbanColumnManager } from "@/components/KanbanColumnManager";
 import { AccessControlPanel } from "@/components/AccessControlPanel";
+import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
 import type { KanbanColumnItem } from "@/lib/kanban-columns";
 
 const SECTIONS = [
@@ -14,6 +15,7 @@ const SECTIONS = [
   { id: "membros", label: "Membros" },
   { id: "kanban", label: "Kanban" },
   { id: "acesso", label: "Acesso" },
+  { id: "ponto", label: "Ponto facial" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
@@ -61,7 +63,7 @@ export default function EquipePage() {
       </div>
 
       <div className="app-tabs">
-        {SECTIONS.map((s) => (
+        {SECTIONS.filter((s) => s.id !== "ponto" || canInvite).map((s) => (
           <button
             key={s.id}
             type="button"
@@ -142,6 +144,22 @@ export default function EquipePage() {
             teamId={teamId}
           />
         </div>
+      )}
+
+      {activeSection === "ponto" && canInvite && teamId && (
+        <div id="ponto-facial">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-foreground">Ponto facial</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Cadastre rostos da equipe e defina se o Gerente também pode cadastrar colaboradores.
+            </p>
+          </div>
+          <TeamFaceEnrollmentPanel teamId={teamId} />
+        </div>
+      )}
+
+      {activeSection === "ponto" && !canInvite && (
+        <p className="text-sm text-muted">Apenas o ADV pode gerenciar cadastro facial da equipe.</p>
       )}
     </>
   );

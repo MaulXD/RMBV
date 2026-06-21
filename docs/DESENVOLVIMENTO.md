@@ -8,7 +8,7 @@
 
 ## 1. Visão geral
 
-**RMBV** é uma plataforma interna para escritórios de advocacia gerenciarem clientes jurídicos com múltiplas equipes e teses (categorias jurídicas). Controla o ciclo de vida do cliente desde a captação até a finalização, com Kanban, chamados, documentos e relatórios.
+**RMBV** é uma plataforma interna para escritórios de advocacia gerenciarem clientes jurídicos com múltiplas equipes e teses (categorias jurídicas). Controla o ciclo de vida do cliente desde a captação até a finalização, com Kanban, chamados, documentos, relatórios, chat interno e ponto eletrônico facial.
 
 | Item | Valor |
 |---|---|
@@ -17,11 +17,12 @@
 | Framework | Next.js 15 — App Router + Turbopack |
 | Linguagem | TypeScript + React 19 |
 | Estilo | Tailwind CSS v4 (config via `@theme` no CSS, sem `tailwind.config.ts`) |
-| Banco | PostgreSQL via Prisma ORM (Neon em produção, SQLite em dev) |
+| Banco | PostgreSQL via Prisma ORM (Neon em produção e dev) |
 | Auth | JWT com `jose` + cookies httpOnly + bcrypt |
 | Storage | Vercel Blob (produção) / pasta `storage/` (dev local) |
 | PDF | pdf-lib, pdfkit, pdfjs-dist |
 | OCR | Tesseract.js |
+| Reconhecimento facial | `@vladmandic/face-api` (modelos em `/public/models`) |
 | Validação | Zod |
 | Deploy | Vercel (auto-deploy a cada push em `main`) |
 
@@ -32,51 +33,56 @@
 ```
 src/
 ├── app/
-│   ├── globals.css          ← PALETA DE CORES E CLASSES UTILITÁRIAS
-│   ├── layout.tsx           ← fonts, meta tags, providers
-│   ├── dashboard/           ← listagem de clientes
-│   ├── clients/[id]/        ← perfil do cliente (abas: Perfil, Pesquisa, Histórico, Tarefas)
-│   ├── kanban/              ← board de tarefas por equipe
-│   ├── chamados/            ← sistema de tickets internos
-│   ├── ferramentas/         ← pesquisa CPF, verificação telefone, OCR
-│   ├── reports/             ← relatórios, gráficos, exportação PDF/CSV
-│   ├── equipe/              ← "Configurações" — tabs: Teses, Membros, Kanban
-│   ├── admin/               ← painel admin — tabs: Equipes, Usuários, Teses, CSV, Auditoria
-│   └── api/                 ← todas as rotas REST
-│       ├── auth/            ← login, logout, /me
-│       ├── clients/         ← CRUD clientes + documentos + histórico + tarefas
-│       ├── teses/           ← CRUD teses
-│       ├── teams/           ← CRUD equipes
-│       ├── kanban/          ← colunas + tarefas
-│       ├── chamados/        ← tickets + anexos + comentários
-│       ├── notifications/   ← notificações do usuário
-│       ├── reports/         ← dados para relatórios
-│       └── admin/           ← importação CSV, usuários admin
+│   ├── globals.css              ← PALETA, GLASSMORPHISM, CLASSES UTILITÁRIAS
+│   ├── layout.tsx               ← fonts, meta tags, providers globais
+│   ├── page.tsx                 ← landing pública
+│   ├── login/                   ← login glassmorphism
+│   └── (app)/                   ← route group autenticado (layout compartilhado)
+│       ├── layout.tsx           ← LAYOUT PRINCIPAL (sidebar + bottom nav + chat)
+│       ├── dashboard/           ← listagem de clientes
+│       ├── clients/[id]/        ← perfil (abas: Perfil, Pesquisa, Revisão, Histórico, Tarefas, Parentes)
+│       ├── kanban/
+│       ├── chamados/
+│       ├── ferramentas/         ← PDF, validadores, OCR, templates
+│       ├── reports/
+│       ├── equipe/              ← Configurações (ADV): Teses, Membros, Kanban
+│       ├── admin/               ← Equipes, Usuários, Teses, Clientes, CSV, Auditoria
+│       ├── acesso/              ← histórico de logins + horários por colaborador
+│       ├── ponto/               ← ponto eletrônico com reconhecimento facial
+│       ├── perfil/              ← foto de perfil + cadastro facial
+│       └── pesquisa/
+│   └── api/
+│       ├── auth/                ← login, logout (POST + redirect 303), /me
+│       ├── clients/             ← CRUD + documentos + histórico + bulk
+│       ├── chat/                ← mensagens em tempo real (equipe + DM)
+│       ├── ponto/               ← registro e consulta de ponto
+│       ├── equipe/              ← schedule-check, horários, membros
+│       ├── notifications/
+│       ├── reports/             ← stats, PDF, pesquisa, timeline
+│       └── admin/
 ├── components/
-│   ├── AppShell.tsx         ← LAYOUT PRINCIPAL (sidebar + conteúdo)
-│   ├── NotificationBell.tsx ← sino de notificações flutuante
-│   ├── ClientsTable.tsx     ← tabela de clientes (nome clicável)
-│   ├── ClientDocuments.tsx  ← upload drag-and-drop + cards com tags
-│   ├── ClientProfileView.tsx← visualização somente leitura do perfil
-│   ├── ClientProfileForm.tsx← formulário de edição do perfil
-│   ├── TeseManager.tsx      ← criar/excluir teses
-│   ├── TeseFilterBar.tsx    ← filtro de tese (variante sidebar ou bar)
-│   ├── LandingPage.tsx      ← página inicial com gradiente animado
+│   ├── Sidebar.tsx              ← sidebar colapsável (desktop) + overlay (mobile)
+│   ├── MobileBottomNav.tsx      ← nav inferior mobile: Clientes, Kanban, Chat, Menu
+│   ├── ChatFloating.tsx         ← messenger flutuante (desktop) / full-screen (mobile)
+│   ├── NotificationBell.tsx     ← portal no document.body
+│   ├── AccessBlockedScreen.tsx  ← bloqueio full-screen fora do horário (COLABORADOR)
+│   ├── ClientDocuments.tsx      ← upload drag-and-drop + tags
+│   ├── ClientsTable.tsx
+│   ├── TeseManager.tsx
+│   ├── GlobalSearchPalette.tsx
 │   └── ui/
-│       ├── Icon.tsx         ← wrapper Lucide Icons
-│       └── SelectField.tsx  ← select estilizado
 └── lib/
-    ├── document-storage.ts  ← lógica Vercel Blob / disco local
-    ├── client-fields.ts     ← campos do modelo de cliente + cabeçalho CSV
-    ├── roles.ts             ← funções de permissão por role
-    ├── automations.ts       ← regras de automação por evento
-    ├── notifications.ts     ← criação de notificações no banco
-    └── prisma.ts            ← instância singleton do Prisma
+    ├── document-storage.ts      ← Blob / disco; imagens convertidas para WebP
+    ├── roles.ts
+    ├── automations.ts
+    └── prisma.ts
 
 prisma/
-├── schema.prisma            ← schema completo do banco
-└── seed.ts                  ← dados iniciais (admin, equipe padrão, categorias)
+├── schema.prisma
+└── seed.ts
 ```
+
+> **Nota:** `AppShell.tsx` existe no repositório mas **não é mais usado** — o layout autenticado está em `(app)/layout.tsx` + `Sidebar.tsx`.
 
 ---
 
@@ -84,74 +90,75 @@ prisma/
 
 Arquivo: `src/app/globals.css`
 
-O Tailwind CSS v4 usa um bloco `@theme` no CSS (não `tailwind.config.ts`). As variáveis CSS são geradas automaticamente como classes (`bg-surface`, `text-foreground`, etc.).
+Visual unificado com **glassmorphism** (mesmo DNA da tela de login). Dark mode usa fundo índigo/violeta profundo com orbs e grid sutil.
 
-### Modo claro
+### Modo claro (atual — neutro azul-ardósia)
 ```css
---color-surface: #c2ddff           /* fundo da página */
---color-surface-elevated: #d9ecff  /* cards, painéis, sidebar */
---color-surface-glass: rgb(217 236 255 / 0.92)
---color-foreground: #0b1e36
---color-muted: #2e5b8a
---color-border: #6aaae0
---color-primary: #2563eb
---color-primary-foreground: #ffffff
+--color-surface: #dce3ef
+--color-surface-elevated: #edf1f8
+--color-foreground: #1a2035
+--color-muted: #56637a
+--color-border: #bfc9db
+--color-primary: #4f46e5
 ```
 
-### Modo escuro (GitHub-style)
+### Modo escuro (glass índigo/violeta)
 ```css
---color-surface: #0d1117
---color-surface-elevated: #161b22
---color-surface-glass: rgb(13 17 23 / 0.88)
---color-foreground: #e6edf3
---color-muted: #7d8590
---color-border: #30363d
---color-primary: #58a6ff
---color-primary-foreground: #0d1117
+--color-surface: #080c18
+--color-surface-elevated: #0f1428
+--color-foreground: #e2e4f0
+--color-muted: #8b8fb8
+--color-border: rgb(255 255 255 / 0.10)
+--color-primary: #6366f1
 ```
 
-A classe `.dark` no `<html>` ativa o modo escuro. Alternância controlada por `ThemeProvider` e persistida em `localStorage`. O botão fica no rodapé da sidebar.
+Alternância via `ThemeProvider` + `localStorage`. Botão sol/lua no rodapé da sidebar.
 
-### Classes utilitárias definidas no CSS
+### Classes utilitárias relevantes
 | Classe | Uso |
 |---|---|
-| `.industrial-panel` | Painel com borda, blur e fundo glass |
-| `.panel-solid` | Painel sem blur, fundo `surface-elevated` |
-| `.soft-card` | Card arredondado com hover |
-| `.btn-primary` | Botão azul primário |
-| `.btn-ghost` | Botão transparente com borda |
-| `.btn-icon` | Botão quadrado de ícone |
-| `.industrial-input` | Input estilizado |
-| `.alert-success / alert-error / alert-warn` | Alertas coloridos |
-| `.data-table` | Tabela com hover e bordas |
+| `.sidebar-glass` / `.sidebar-nav-link` | Sidebar com blur e link ativo via pseudo-elemento |
+| `.soft-card` / `.panel-solid` | Cards e painéis |
+| `.btn-primary` / `.btn-ghost` / `.btn-danger` | Botões |
+| `.industrial-input` | Inputs e selects estilizados |
+| `.page-header` / `.tab-bar` | Cabeçalhos e abas compartilhados |
+| `.safe-area-bottom` | Padding para bottom nav no mobile |
 
 ---
 
-## 4. Layout — Sidebar
+## 4. Layout — Sidebar + mobile
 
-Arquivo: `src/components/AppShell.tsx`
+Arquivos: `src/app/(app)/layout.tsx`, `src/components/Sidebar.tsx`, `src/components/MobileBottomNav.tsx`
 
-A sidebar ocupa 240px à esquerda (desktop). Em mobile, é um overlay deslizante com backdrop.
+### Desktop
+- Sidebar **colapsável** (240px ↔ 56px), estado em `localStorage` (`sidebar-collapsed`)
+- Sticky, altura total da viewport
+- Orbs + grid no dark mode (atmosphere layer)
 
-### Estrutura da sidebar
-1. **Brand** — logo RMBV + nome da equipe/usuário
-2. **Busca** — botão que abre `GlobalSearchPalette` (atalho ⌘K / Ctrl+K)
-3. **Filtro de tese** — aparece nas páginas `/dashboard`, `/reports`, `/kanban`
-4. **Navegação em grupos com ícones coloridos:**
+### Mobile
+- **Top bar** — hamburger, logo, busca, notificações
+- **Bottom nav** fixa — Clientes · Kanban · Chat · Menu (abre sidebar overlay)
+- **Chat** abre full-screen; demais páginas com `pb-24` para não ficar atrás da bottom nav
+- Sidebar deslizante com backdrop
 
-| Grupo | Item | Cor do ícone |
+### Navegação por grupos
+
+| Grupo | Item | Quem vê |
 |---|---|---|
-| PRINCIPAL | Clientes | azul (`text-blue-500`) |
-| PRINCIPAL | Kanban | violeta (`text-violet-500`) |
-| PRINCIPAL | Relatórios | verde (`text-emerald-500`) |
-| OPERAÇÕES | Ferramentas | laranja (`text-orange-500`) |
-| OPERAÇÕES | Chamados | âmbar (`text-amber-500`) |
-| SISTEMA | Configurações (não-admin) | ciano (`text-cyan-500`) |
-| SISTEMA | Administração (admin) | rosa (`text-rose-500`) |
+| Trabalho | Clientes, Kanban, Chamados | Todos autenticados |
+| Trabalho | Relatórios, Ferramentas | Todos exceto `PESQUISADOR` |
+| Trabalho | Ponto facial | `COLABORADOR`, `PESQUISADOR` (grupo Trabalho) |
+| Trabalho | APA | Todos (badge **Em breve**) |
+| Sistema | Acesso | `GERENTE`, `ADV`, `ADMIN` |
+| Sistema | Configurações | `ADV` |
+| Sistema | Ponto facial | `GERENTE`, `ADMIN` (grupo Sistema) |
+| Sistema | Administração | `ADMIN` |
 
-5. **Footer do usuário** — avatar, nome, role, notificações, toggle tema, logout
+`COLABORADOR` e `PESQUISADOR` **não veem** o grupo Sistema — acessam ponto pelo grupo Trabalho.
 
-**Detalhe importante:** durante o carregamento da sessão (`user === null`), os itens de navegação continuam visíveis porque não dependem do estado do usuário para renderizar — apenas o item SISTEMA muda entre Configurações e Administração após o user carregar.
+**Sessão:** `SessionProvider` com cache em memória + `localStorage` (`primeSessionCache`) para evitar flash ao navegar ou abrir nova aba.
+
+**Logout:** `fetch POST /api/auth/logout` + `window.location.assign("/")`. A rota responde **303** (evita HTTP 405 por re-POST na home).
 
 ---
 
@@ -161,29 +168,17 @@ Arquivo: `src/components/ClientDocuments.tsx`
 API: `src/app/api/clients/[id]/documents/route.ts`  
 Storage: `src/lib/document-storage.ts`
 
-### Fluxo completo
-1. Usuário arrasta arquivo para a zona de drop (ou clica para abrir seletor)
-2. Após selecionar, aparece formulário inline com checkboxes de tipo:
-   - RG / CNH, CPF, Contrato, Comprovante de residência
-   - Ficha de Filiação (ANCREF), Procuração
-   - Certidão de nascimento, Certidão de casamento
-   - Extrato bancário, Declaração de IR, Outros
-   - Campo livre para tipo customizado
-3. Usuário confirma → arquivo + tags enviados via `FormData`
-4. API salva no Vercel Blob (produção) ou disco local (dev)
-5. `tags` salvo como JSON array no campo `ClientDocument.tags`
-6. Cards dos documentos exibem badges com as tags
+### Fluxo
+1. Drag-and-drop ou seletor de arquivo
+2. Formulário inline com checkboxes de tipo (RG, CPF, Contrato, etc.) + campo livre
+3. `FormData` → Vercel Blob (prod) ou `storage/` (dev)
+4. Tags em `ClientDocument.tags` (JSON); badges nos cards
 
-### Storage
-```typescript
-// document-storage.ts
-if (process.env.BLOB_READ_WRITE_TOKEN) → Vercel Blob (produção)
-else if (!process.env.VERCEL)           → pasta storage/ (dev local)
-else                                    → erro (Vercel sem Blob configurado)
-```
+### Imagens
+Uploads de imagem são **convertidos para WebP** automaticamente antes de persistir.
 
 ### Tipos permitidos
-PDF, JPEG, PNG, WebP, TXT, Word (.doc/.docx), Excel (.xls/.xlsx) — máx. 15 MB
+PDF, JPEG, PNG, WebP, TXT, Word, Excel — máx. 15 MB
 
 ---
 
@@ -191,101 +186,161 @@ PDF, JPEG, PNG, WebP, TXT, Word (.doc/.docx), Excel (.xls/.xlsx) — máx. 15 MB
 
 Arquivo: `src/components/NotificationBell.tsx`
 
-Painel flutuante criado com `createPortal` no `document.body`. Posicionado com `getBoundingClientRect()` toda vez que abre, e recalculado no resize/scroll.
+Painel via **`createPortal`** no `document.body` (z-index acima do header). Posição calculada com `getBoundingClientRect()` no resize/scroll.
 
-### Lógica de posicionamento
-O botão fica no rodapé da sidebar (canto inferior esquerdo da tela):
-
-```typescript
-// Horizontal
-buttonCenterX < window.innerWidth / 2
-  ? { left: rect.left }           // botão à esquerda → painel alinha à esquerda
-  : { right: window.innerWidth - rect.right }  // botão à direita → alinha à direita
-
-// Vertical
-spaceBelow >= 320
-  ? { top: rect.bottom + 6 }      // espaço suficiente → abre abaixo
-  : { bottom: window.innerHeight - rect.top + 6 }  // sem espaço → abre acima
-```
-
-O div do painel aplica **todas as 4 propriedades** (`top`, `bottom`, `left`, `right`) — se alguma for `undefined`, o CSS a ignora.
+No mobile, overlay escuro semi-transparente ao abrir; altura máxima adaptada à viewport (`100dvh`).
 
 ---
 
-## 7. Papéis de usuário
+## 7. Chat interno
 
-| Role | Acesso |
+Arquivos: `src/components/ChatFloating.tsx`, `src/app/api/chat/`  
+Modelo: `ChatMessage` (equipe + DM opcional por `receiverId`)
+
+- **Desktop:** painel flutuante estilo messenger
+- **Mobile:** full-screen ao tocar na bottom nav
+- Badge de não lidas na bottom nav
+- Avatares com foto (`User.avatarUrl`) ou iniciais
+- Polling periódico para novas mensagens
+
+---
+
+## 8. Ponto eletrônico facial
+
+Arquivo: `src/app/(app)/ponto/page.tsx`  
+Modelos: `/public/models` (face-api)  
+Modelo DB: `PontoRecord` (`ENTRADA` / `SAIDA`, `confidence`)
+
+- Colaborador/Pesquisador: bater próprio ponto + cadastrar rosto em `/perfil`
+- Gerente/Admin: painel da equipe + cadastro facial de membros
+- Confiança mínima exigida: **65%** (`MIN_CONFIDENCE = 0.65`)
+- Descriptor facial em `User.faceDescriptor` (JSON)
+
+---
+
+## 9. Controle de acesso e horários
+
+Arquivos: `src/app/(app)/acesso/page.tsx`, `src/components/AccessControlPanel.tsx`  
+Modelos: `UserSession` (logins), `UserAccessRule` (horário por colaborador)
+
+- Página **Acesso** — histórico de logins + regras de horário (dias, início, fim)
+- `COLABORADOR` fora do horário: `AccessBlockedScreen` full-screen com relógio ao vivo (login **não** bloqueia — bloqueio só após autenticar)
+- API: `GET /api/equipe/schedule-check` (checada a cada 60s + on focus)
+
+---
+
+## 10. Papéis de usuário
+
+| Role | Acesso resumido |
 |---|---|
-| `ADMIN` | Tudo — painel admin, todas as equipes, importação CSV, auditoria global |
-| `ADV` | Sua equipe — gerencia membros, teses e aprova finalizações |
-| `GERENTE` | Sua equipe — operação completa nos clientes |
-| `COLABORADOR` | Sua equipe — acesso conforme permissões de categoria |
+| `ADMIN` | Tudo — admin global, acesso, ponto da equipe, bulk clientes |
+| `ADV` | Equipe — configurações, acesso, aprova finalizações |
+| `GERENTE` | Equipe — operação completa, acesso, ponto da equipe |
+| `COLABORADOR` | Equipe — clientes conforme permissões; ponto próprio; sem grupo Sistema |
+| `PESQUISADOR` | Clientes + Kanban + Chamados + Ponto; sem Relatórios/Ferramentas/Sistema |
 
 Login padrão pós-seed: **Admin** / **rmbvadmin**
 
 ---
 
-## 8. Variáveis de ambiente
+## 11. Variáveis de ambiente
 
 | Variável | Obrigatório | Descrição |
 |---|:---:|---|
 | `DATABASE_URL` | ✅ | Connection string PostgreSQL (`?sslmode=require`) |
 | `JWT_SECRET` | ✅ | Chave aleatória 32+ caracteres |
 | `BLOB_READ_WRITE_TOKEN` | Produção | Token Vercel Blob para uploads persistentes |
-| `ADMIN_EMAIL` | Seed | Padrão: `admin@sistema.local` |
-| `ADMIN_PASSWORD` | Seed | Padrão: `rmbvadmin` |
-| `ADMIN_NAME` | Seed | Padrão: `Admin` |
-
-### Configurar Vercel Blob
-1. Vercel → Storage → Create → Blob → nomear e criar
-2. Dentro do Blob → Tokens → Create Token (Read & Write) → copiar
-3. Projeto → Settings → Environment Variables → `BLOB_READ_WRITE_TOKEN`
-4. Redeploy para aplicar
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | Seed | Credenciais iniciais |
 
 ---
 
-## 9. Deploy
+## 12. Deploy
 
 O `vercel.json` executa no build:
 ```
 prisma generate → prisma db push → db:seed → next build
 ```
 
-Push em `main` dispara deploy automático. O `prisma db push` aplica mudanças de schema sem migrations explícitas (pode aceitar data loss em campos novos com default).
+Push em `main` dispara deploy automático. Router cache dinâmico desabilitado em rotas sensíveis para evitar UI stale pós-deploy.
 
 ---
 
-## 10. Pendências conhecidas
+## 13. Pendências conhecidas
 
 | Item | Status |
 |---|---|
+| Módulo APA (`/apa`) | ⏳ Placeholder "Em breve" |
 | Transferir equipe responsável por tese no TeseManager | ⏳ Pendente |
 | Testes automatizados (E2E / integração) | ❌ Não existem |
-| Paginação na lista de clientes com muitos registros | ⏳ Pendente |
+| Paginação no dashboard principal (lista geral) | ⏳ Parcial — admin tem paginação customizável |
 | Reset de senha pelo admin via UI | ⏳ Pendente |
+| Desativar usuário/equipe sem apagar | ⏳ Pendente |
+| `followUpAt` no schema Client | ⏳ Revertido até migração formal |
 
 ---
 
-## 11. Histórico de alterações
+## 14. Histórico de alterações
 
-### 2026-06-18 — Sessão atual
-- **Tags em documentos** — ao subir arquivo, formulário com checkboxes (RG, CPF, Contrato, Comprovante, Ficha ANCREF, Procuração, Certidões, IR, etc.) + campo livre. Tags salvas em `ClientDocument.tags` (JSON). Cards exibem badges.
-- **ClientDocuments redesenhado** — zona drag-and-drop + cards em grade (2-4 colunas por tese de arquivo, tamanho, uploader, data, ações)
-- **Cor do fundo claro** ajustada para `#c2ddff` (após iterações: `#96c5ff` → `#add2ff` → `#c2ddff`)
-- **Notificações corrigidas** — painel não aparecia: `bottom` e `left` não estavam sendo aplicados no style do div `position: fixed`
-- **Nome do cliente clicável** na tabela do dashboard (link para `/clients/[id]`)
-- **Sidebar com grupos e ícones coloridos** — PRINCIPAL / OPERAÇÕES / SISTEMA, cada item com cor própria no ícone
-- **README atualizado** com setup detalhado do Vercel Blob
-- **Este documento criado** (`docs/DESENVOLVIMENTO.md`)
+### 2026-06-20 — Mobile, chat e ponto
+- **Route group `(app)`** — páginas autenticadas migradas; removidas duplicatas fora do grupo
+- **`Sidebar.tsx` colapsável** — substitui layout monolítico; estado persistido
+- **Bottom nav mobile** — Clientes, Kanban, Chat, Menu (`MobileBottomNav.tsx`)
+- **Chat messenger** — `ChatFloating` flutuante (desktop) e full-screen (mobile); modelo `ChatMessage`
+- **Foto de perfil** — `User.avatarUrl`; página `/perfil`
+- **Ponto eletrônico facial** — `/ponto` com face-api; `PontoRecord`; cadastro de descriptor
+- **Confiança mínima 65%** no reconhecimento facial
+- **WebP automático** em uploads de imagem
+- **Fix F5 / hidratação SSR** — mismatch eliminado
+- **Fix race condition** no carregamento de clientes no dashboard
+- **Router cache dinâmico desabilitado** — UI não fica stale após deploy
+- **Lembretes de follow-up** por cliente (campo revertido no schema até migração)
+
+### 2026-06-19 — Design, roles, admin em lote
+- **Glassmorphism unificado** — login, landing e app (dark mode índigo/violeta + orbs)
+- **Paleta modo claro neutra** — `#dce3ef` / `#edf1f8` (substitui azuis anteriores)
+- **Login redesign** — preview flutuante do produto + card glass
+- **Animações** — fluidity, active states, keyboard UX
+- **Role `PESQUISADOR`** — nav reduzida; APA com badge "Em breve"
+- **Cores por tese** — campo `Tese.color`
+- **Sidebar por papel** — COLABORADOR sem Sistema; GERENTE/ADV/ADMIN com Acesso; ADMIN sem Configurações redundante
+- **Admin — aba Clientes** — filtro sem tese, atribuição em lote, bulk delete (até 50k IDs), edição inline
+- **Paginação customizável** — input + botão "Ver todos"
+- **CSV** — tese obrigatória, merge/unir teses, backup por equipe
+- **TeseManager** — admin passa `teamId`; coluna Categorias removida da tabela
+- **Performance** — listagem de clientes mais leve; teses padrão removidas do seed
+- **Fix logout** em Ferramentas; acesso ADMIN a horários; bugs `res.ok`
+- **Visual overhaul** — CSS compartilhado de tabs/headers; JSON.parse safety
+
+### 2026-06-18 — Acesso, relatórios e UX (tarde)
+- **Controle de horário** — `UserAccessRule` + tela de bloqueio full-screen
+- **Página `/acesso`** — histórico de logins + restrições por colaborador
+- **Toast, confirm dialog, rate limiting, skeletons**
+- **Sessão sem flash** — cache em memória + localStorage (`sessionCache`)
+- **Parentes** — aba no perfil do cliente com identificação automática na pesquisa
+- **Kanban drag** — ghost card flutuante com inclinação direcional
+- **WhatsApp** — botão verde ao lado de copiar telefone
+- **Relatório de pesquisa** — média por dia útil, feriados nacionais, badge na tabela
+- **Relatório mensal** — gráficos, período selecionável, documentos no PDF
+- **Relatório por colaborador/equipe**
+- **Gerenciamento de membros** no painel de configurações
+- **Fix logout HTTP 405** — redirect 303 + fetch no botão Sair
+- **Fix mobile** — ferramentas visíveis; notificações via portal
+
+### 2026-06-18 — Documentos e sidebar (manhã)
+- **Tags em documentos** — checkboxes + campo livre; badges nos cards
+- **ClientDocuments redesenhado** — drag-and-drop + grade de cards
+- **Cor fundo claro** `#c2ddff` → evoluída depois para paleta neutra (19/06)
+- **Notificações corrigidas** — posicionamento bottom/left no portal
+- **Nome do cliente clicável** no dashboard
+- **Sidebar com grupos e ícones coloridos**
+- **`docs/DESENVOLVIMENTO.md` criado**
 
 ### 2026-06-17 — Redesign geral
-- Migração de **top-nav para sidebar** lateral (sticky, 240px, full height)
-- **Dark mode** neutro estilo GitHub (`#0d1117` / `#161b22`) — rejeitada paleta azul-marinha anterior
-- **Filtro de tese** movido da barra flutuante para dentro da sidebar (`TeseFilterBar variant="sidebar"`)
-- **Landing page** com fundo animado — gradiente `background-size: 300% 300%` animado por `hero-gradient` (8s, ease, infinite)
-- **Perfil do cliente** (`ClientProfileView`) refeito — seções sem dados ocultas, campos individuais vazios omitidos
-- **"Minha equipe" → "Configurações"** com 3 tabs: Teses, Membros, Kanban
-- **Painel admin** — adicionada aba Teses com `TeseManager`
-- **Notificações** — lógica de posicionamento para sidebar (canto inferior esquerdo)
-- **Nav itens** não sumiam mais durante carregamento da sessão (`sessionCache` no `SessionProvider`)
-- **Commits reescritos** para usuário `MaulXD` (raulmacaluz@live.com) via `git filter-branch`
+- Migração **top-nav → sidebar** lateral
+- **Dark mode** inicial estilo GitHub (depois substituído por glass índigo)
+- **Filtro de tese** na sidebar
+- **Landing** com gradiente animado
+- **Perfil do cliente** refeito — campos vazios omitidos
+- **"Minha equipe" → "Configurações"**
+- **Admin** — aba Teses
+- **Nav visível** durante carregamento da sessão
