@@ -19,6 +19,7 @@ import {
   type AutoCaptureTracker,
   type PoseEvaluation,
 } from "@/lib/face-enrollment-capture";
+import { FACE_RECOGNITION_DETECT } from "@/lib/face-match";
 import {
   createLivenessTracker,
   resetLivenessTracker,
@@ -180,7 +181,7 @@ export function FaceEnrollmentCaptureView({
         return;
       }
       const opts = new faceapi.TinyFaceDetectorOptions(
-        livenessPassed ? { inputSize: 416, scoreThreshold: 0.5 } : LIVENESS_FACE_DETECT,
+        livenessPassed ? FACE_RECOGNITION_DETECT : LIVENESS_FACE_DETECT,
       );
 
       if (!livenessPassed) {

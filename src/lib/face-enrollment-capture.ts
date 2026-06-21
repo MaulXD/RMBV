@@ -29,6 +29,9 @@ export const ENROLLMENT_POSE_STEPS = [
 
 export const ENROLLMENT_CAPTURE_COUNT = ENROLLMENT_POSE_STEPS.length;
 
+/** Peso por pose no descritor salvo — frente pesa mais (ponto compara rosto frontal). */
+export const ENROLLMENT_DESCRIPTOR_WEIGHTS = [2.5, 1, 1, 0.75, 0.75] as const;
+
 export type PoseDirection = (typeof ENROLLMENT_POSE_STEPS)[number]["direction"];
 
 const STABLE_FRAMES_REQUIRED = 3;

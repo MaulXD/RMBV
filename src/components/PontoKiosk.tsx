@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { findBestFaceMatch, toDescriptorArray } from "@/lib/face-match";
+import { findBestFaceMatch, toDescriptorArray, FACE_RECOGNITION_DETECT, FACE_MATCH_STABLE_FRAMES, createMatchFrameTracker, resetMatchFrameTracker, tickStrongMatchFrame, tickNoFaceMatchFrame, type MatchFrameTracker } from "@/lib/face-match";
 import {
   createLivenessTracker,
   resetLivenessTracker,
@@ -44,6 +44,10 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   const [livenessPhase, setLivenessPhase] = useState<LivenessPhase | null>(null);
   const [livenessFaceLost, setLivenessFaceLost] = useState(false);
   const detectingRef = useRef(false);
+  const matchTrackerRef = useRef<MatchFrameTracker>(createMatchFrameTracker());
+  const pendingUserIdRef = useRef<string | null>(null);
+  const [matchHint, setMatchHint] = useState("");
+  const [matchProgress, setMatchProgress] = useState(0);
 
   useLivenessAudioFeedback(status === "liveness", livenessPhase, livenessFaceLost);
   const livenessBusyRef = useRef(false);
@@ -141,7 +145,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setLivenessPhase(live.phase);
       setLivenessMsg(live.message);
       if (live.passed) {
-        window.setTimeout(() => setStatus("ready"), LIVENESS_COMPLETE_DELAY_MS);
+        window.setTimeout(() => {
+          matchTrackerRef.current = resetMatchFrameTracker();
+          pendingUserIdRef.current = null;
+          setMatchProgress(0);
+          setMatchHint("");
+          setStatus("ready");
+        }, LIVENESS_COMPLETE_DELAY_MS);
       }
     } catch {
       setLivenessMsg("Erro na verificação. Tente novamente.");
@@ -152,24 +162,18 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   const detectAndMatch = useCallback(async () => {
     if (detectingRef.current || cooldownRef.current || !videoRef.current || !modelsLoaded) return;
     if (!isVideoReadyForDetection(videoRef.current)) return;
-    if (status !== "ready") return;
+    if (status !== "ready" && status !== "detecting") return;
 
     detectingRef.current = true;
     setStatus("detecting");
 
     try {
       const faceapi = await import("@vladmandic/face-api");
-      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+      const options = new faceapi.TinyFaceDetectorOptions(FACE_RECOGNITION_DETECT);
       const detection = await faceapi
         .detectSingleFace(videoRef.current, options)
         .withFaceLandmarks(true)
         .withFaceDescriptor();
-
-      if (!detection) {
-        setStatus("ready");
-        detectingRef.current = false;
-        return;
-      }
 
       if (knownUsers.length === 0) {
         setStatus("no-match");
@@ -178,44 +182,101 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         return;
       }
 
-      const descriptor = detection.descriptor;
-      const match = findBestFaceMatch(descriptor, knownUsers);
+      if (!detection) {
+        const tick = tickNoFaceMatchFrame(matchTrackerRef.current);
+        pendingUserIdRef.current = null;
+        setMatchProgress(tick.progress);
+        if (tick.status === "reject") {
+          setStatus("no-match");
+          matchTrackerRef.current = resetMatchFrameTracker();
+          setMatchProgress(0);
+          setMatchHint("");
+          setTimeout(() => setStatus("ready"), 3000);
+        } else {
+          setMatchHint("Centralize o rosto");
+          setStatus("ready");
+        }
+        detectingRef.current = false;
+        return;
+      }
+
+      const match = findBestFaceMatch(detection.descriptor, knownUsers);
 
       if (!match) {
+        matchTrackerRef.current = resetMatchFrameTracker();
+        pendingUserIdRef.current = null;
+        setMatchProgress(0);
+        setMatchHint("Não reconhecido — ajuste posição e luz");
         setStatus("no-match");
+        setTimeout(() => {
+          setStatus("ready");
+          setMatchHint("");
+        }, 3000);
+        detectingRef.current = false;
+        return;
+      }
+
+      if (pendingUserIdRef.current && pendingUserIdRef.current !== match.item.id) {
+        matchTrackerRef.current = resetMatchFrameTracker();
+      }
+      pendingUserIdRef.current = match.item.id;
+
+      const tick = tickStrongMatchFrame(matchTrackerRef.current, match.distance);
+      setMatchProgress(tick.progress);
+
+      if (tick.status === "ready") {
+        const { item: bestMatch } = match;
+        const confidence = tick.averageConfidence;
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const res = await fetch(`/api/ponto/last?userId=${bestMatch.id}&date=${todayStr}`);
+        const data = await res.json();
+        const type = (data.nextType ?? "ENTRADA") as PontoType;
+
+        await fetch("/api/ponto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: bestMatch.id, teamId, type, confidence, origin: "KIOSK" }),
+        });
+
+        setResult({ userName: bestMatch.name, type, confidence });
+        setStatus("success");
+        cooldownRef.current = true;
+        matchTrackerRef.current = resetMatchFrameTracker();
+        pendingUserIdRef.current = null;
+        setMatchProgress(0);
+        setMatchHint("");
+        setTimeout(() => {
+          setStatus("ready");
+          setResult(null);
+          cooldownRef.current = false;
+        }, 4000);
+        detectingRef.current = false;
+        return;
+      }
+
+      if (tick.status === "reject") {
+        setStatus("no-match");
+        matchTrackerRef.current = resetMatchFrameTracker();
+        pendingUserIdRef.current = null;
+        setMatchProgress(0);
+        setMatchHint("");
         setTimeout(() => setStatus("ready"), 3000);
         detectingRef.current = false;
         return;
       }
 
-      const { item: bestMatch, confidence } = match;
-
-      // Determine type: toggle based on last record
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const res = await fetch(`/api/ponto/last?userId=${bestMatch.id}&date=${todayStr}`);
-      const data = await res.json();
-      const type = (data.nextType ?? "ENTRADA") as
-        | "ENTRADA"
-        | "SAIDA"
-        | "INTERVALO_INICIO"
-        | "INTERVALO_FIM";
-
-      await fetch("/api/ponto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: bestMatch.id, teamId, type, confidence, origin: "KIOSK" }),
-      });
-
-      setResult({ userName: bestMatch.name, type, confidence });
-      setStatus("success");
-      cooldownRef.current = true;
-      setTimeout(() => {
+      if (tick.status === "building") {
+        setMatchHint(
+          `${match.item.name.split(" ")[0]} — ${Math.round(tick.averageConfidence * 100)}% (${tick.streak}/${FACE_MATCH_STABLE_FRAMES})`,
+        );
+      } else {
+        setMatchHint(`Confiança baixa (${Math.round(tick.confidence * 100)}%) — ajuste posição`);
         setStatus("ready");
-        setResult(null);
-        cooldownRef.current = false;
-      }, 4000);
+      }
     } catch {
       setStatus("ready");
+      setMatchHint("");
     }
     detectingRef.current = false;
   }, [status, modelsLoaded, knownUsers, teamId]);
@@ -229,8 +290,8 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
 
   // Auto-detect loop
   useEffect(() => {
-    if (status !== "ready") return;
-    const interval = setInterval(() => { void detectAndMatch(); }, 800);
+    if (status !== "ready" && status !== "detecting") return;
+    const interval = setInterval(() => { void detectAndMatch(); }, 700);
     return () => clearInterval(interval);
   }, [status, detectAndMatch]);
 
@@ -330,7 +391,15 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
                 : "Olhe para a câmera para registrar o ponto"}
             </p>
           ) : status === "detecting" ? (
-            <p className="text-sm text-amber-400">Reconhecendo...</p>
+            <div className="space-y-2 px-2">
+              <p className="text-sm text-amber-400">{matchHint || "Reconhecendo..."}</p>
+              <div className="mx-auto h-1.5 w-48 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full bg-amber-400 transition-all duration-200"
+                  style={{ width: `${Math.round(matchProgress * 100)}%` }}
+                />
+              </div>
+            </div>
           ) : null}
         </div>
       </div>
