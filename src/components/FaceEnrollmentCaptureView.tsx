@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
 import { LivenessCornerBanner } from "./LivenessCornerBanner";
+import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
+import { warmupLivenessAudio } from "@/lib/face-liveness-audio";
 import {
   ENROLLMENT_CAPTURE_COUNT,
   ENROLLMENT_POSE_STEPS,
@@ -20,6 +22,7 @@ import {
   resetLivenessTracker,
   tickLiveness,
   type LivenessTracker,
+  type LivenessPhase,
   LIVENESS_POLL_MS,
   LIVENESS_FACE_DETECT,
   isVideoReadyForDetection,
@@ -82,6 +85,8 @@ export function FaceEnrollmentCaptureView({
   const [livenessPassed, setLivenessPassed] = useState(false);
   const [livenessMsg, setLivenessMsg] = useState("Olhe para a câmera com os olhos abertos");
   const [livenessProgress, setLivenessProgress] = useState(0);
+  const [livenessPhase, setLivenessPhase] = useState<LivenessPhase | null>(null);
+  const [livenessFaceLost, setLivenessFaceLost] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trackerRef = useRef<AutoCaptureTracker>(resetAutoCaptureTracker());
@@ -90,6 +95,8 @@ export function FaceEnrollmentCaptureView({
   const pauseUntilRef = useRef(0);
 
   const isSaving = saving || savingExternal;
+
+  useLivenessAudioFeedback(scanning && !livenessPassed && !isSaving, livenessPhase, livenessFaceLost);
   const currentPose = ENROLLMENT_POSE_STEPS[captureIndex];
   const displayMsg = statusOverride ?? statusMsg;
 
@@ -122,6 +129,9 @@ export function FaceEnrollmentCaptureView({
     setLivenessPassed(false);
     setLivenessMsg("Olhe para a câmera com os olhos abertos");
     setLivenessProgress(0);
+    setLivenessPhase(null);
+    setLivenessFaceLost(false);
+    warmupLivenessAudio();
     setCaptures([]);
     setCaptureIndex(0);
     setPoseEval(null);
@@ -211,16 +221,21 @@ export function FaceEnrollmentCaptureView({
         if (!det) {
           setLivenessMsg("Rosto não detectado — centralize no oval");
           setLivenessProgress(0);
+          setLivenessFaceLost(true);
           detectingRef.current = false;
           return;
         }
+        setLivenessFaceLost(false);
         const live = tickLiveness(livenessRef.current, det.landmarks.positions);
         setLivenessMsg(live.message);
         setLivenessProgress(live.progress);
+        setLivenessPhase(live.phase);
         if (live.passed) {
-          pauseUntilRef.current = Date.now() + 500;
-          setLivenessPassed(true);
-          setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
+          pauseUntilRef.current = Date.now() + 1200;
+          window.setTimeout(() => {
+            setLivenessPassed(true);
+            setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
+          }, 1100);
         }
         detectingRef.current = false;
         return;

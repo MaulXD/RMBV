@@ -7,12 +7,15 @@ import {
   resetLivenessTracker,
   tickLiveness,
   type LivenessTracker,
+  type LivenessPhase,
   LIVENESS_POLL_MS,
   LIVENESS_FACE_DETECT,
   isVideoReadyForDetection,
   waitForVideoReady,
 } from "@/lib/face-liveness";
 import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
+import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
+import { warmupLivenessAudio } from "@/lib/face-liveness-audio";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -37,7 +40,11 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [livenessMsg, setLivenessMsg] = useState("Olhe para a câmera com os olhos abertos");
   const [livenessProgress, setLivenessProgress] = useState(0);
+  const [livenessPhase, setLivenessPhase] = useState<LivenessPhase | null>(null);
+  const [livenessFaceLost, setLivenessFaceLost] = useState(false);
   const detectingRef = useRef(false);
+
+  useLivenessAudioFeedback(status === "liveness", livenessPhase, livenessFaceLost);
   const livenessBusyRef = useRef(false);
   const cooldownRef = useRef(false);
   const livenessRef = useRef<LivenessTracker>(createLivenessTracker());
@@ -97,7 +104,10 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
             await waitForVideoReady(videoRef.current!);
             livenessRef.current = resetLivenessTracker();
             setLivenessProgress(0);
+            setLivenessPhase(null);
+            setLivenessFaceLost(false);
             setLivenessMsg("Olhe para a câmera com os olhos abertos");
+            warmupLivenessAudio();
             setStatus("liveness");
           });
         }
@@ -120,14 +130,17 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       if (!det) {
         setLivenessMsg("Centralize o rosto — olhos abertos");
         setLivenessProgress(0);
+        setLivenessFaceLost(true);
         livenessBusyRef.current = false;
         return;
       }
+      setLivenessFaceLost(false);
       const live = tickLiveness(livenessRef.current, det.landmarks.positions);
       setLivenessProgress(live.progress);
+      setLivenessPhase(live.phase);
       setLivenessMsg(live.message);
       if (live.passed) {
-        setStatus("ready");
+        window.setTimeout(() => setStatus("ready"), 1100);
       }
     } catch {
       setLivenessMsg("Erro na verificação. Tente novamente.");
