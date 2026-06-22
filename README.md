@@ -224,6 +224,8 @@ prisma/
 
 | Arquivo | Conteúdo |
 |---|---|
+| [docs/PRODUCAO.md](./docs/PRODUCAO.md) | **Operação em produção** — variáveis, deploy, ponto, quiosque, troubleshooting |
+| [docs/ROADMAP.md](./docs/ROADMAP.md) | **Melhorias sugeridas** — sprints futuras e backlog priorizado |
 | [docs/DESENVOLVIMENTO.md](./docs/DESENVOLVIMENTO.md) | **Documento vivo** — funcionamento detalhado, decisões técnicas e histórico de mudanças |
 | [docs/PASSO-A-PASSO.md](./docs/PASSO-A-PASSO.md) | Instalação, deploy e fluxo de uso |
 | [docs/RELATORIO-AUDITORIA.md](./docs/RELATORIO-AUDITORIA.md) | Auditoria técnica de 27/05/2026 |

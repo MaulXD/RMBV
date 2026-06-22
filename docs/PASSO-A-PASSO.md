@@ -101,7 +101,7 @@ npx vercel --prod
 
 7. Teste: `https://SEU-APP.vercel.app/api/health` → `"ok": true`
 
-Detalhes extras: [DEPLOY.md](../DEPLOY.md).
+Detalhes: [docs/PRODUCAO.md](./PRODUCAO.md) · Melhorias: [docs/ROADMAP.md](./ROADMAP.md)
 
 ---
 

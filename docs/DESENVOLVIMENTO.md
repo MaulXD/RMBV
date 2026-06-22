@@ -82,7 +82,7 @@ prisma/
 └── seed.ts
 ```
 
-> **Nota:** `AppShell.tsx` existe no repositório mas **não é mais usado** — o layout autenticado está em `(app)/layout.tsx` + `Sidebar.tsx`.
+> **Nota:** `AppShell.tsx` foi **removido** — o layout autenticado está em `(app)/layout.tsx` + `Sidebar.tsx`.
 
 ---
 
@@ -207,25 +207,31 @@ Modelo: `ChatMessage` (equipe + DM opcional por `receiverId`)
 
 ## 8. Ponto eletrônico facial
 
-Arquivo: `src/app/(app)/ponto/page.tsx`  
+Arquivos: `src/components/ponto/SelfServicePonto.tsx`, `src/components/ponto/AdminPontoView.tsx`, `src/lib/face-verify.ts`  
 Modelos: `/public/models` (face-api)  
-Modelo DB: `PontoRecord` (`ENTRADA` / `SAIDA`, `confidence`)
+Modelo DB: `PontoRecord` (`ENTRADA` / `SAIDA` / intervalo, `origin`, GPS)
 
-- Colaborador/Pesquisador: bater próprio ponto + cadastrar rosto em `/perfil`
+- Colaborador/Pesquisador: bater próprio ponto em `/ponto` + cadastrar rosto em `/perfil`
 - Gerente/Admin: painel da equipe + cadastro facial de membros
-- Confiança mínima exigida: **65%** (`MIN_CONFIDENCE = 0.65`)
+- **Validação no servidor** — `POST /api/ponto` exige descritor 128D; confiança calculada em `face-verify.ts`
+- Quiosque: `/kiosk?teamId=…&kioskKey=…` — match via `POST /api/ponto/match` com `X-Kiosk-Key`
+- `GET /api/ponto/faces` → **410 Gone** (não expõe templates)
+- Confiança mínima mobile: `FACE_SELFIE_MIN_CONFIDENCE` em `face-match.ts`
 - Descriptor facial em `User.faceDescriptor` (JSON)
+
+Ver operação em produção: [PRODUCAO.md](./PRODUCAO.md#6-ponto-eletrônico-facial-produção).
 
 ---
 
 ## 9. Controle de acesso e horários
 
-Arquivos: `src/app/(app)/acesso/page.tsx`, `src/components/AccessControlPanel.tsx`  
+Arquivos: `src/lib/schedule-access.ts`, `src/app/(app)/acesso/page.tsx`  
 Modelos: `UserSession` (logins), `UserAccessRule` (horário por colaborador)
 
 - Página **Acesso** — histórico de logins + regras de horário (dias, início, fim)
-- `COLABORADOR` fora do horário: `AccessBlockedScreen` full-screen com relógio ao vivo (login **não** bloqueia — bloqueio só após autenticar)
-- API: `GET /api/equipe/schedule-check` (checada a cada 60s + on focus)
+- `COLABORADOR` e `PESQUISADOR` fora do horário: `AccessBlockedScreen` + **403 nas APIs** (`withAuth` → `assertScheduleAccess`)
+- Login **não** bloqueia — bloqueio só após autenticar
+- API: `GET /api/equipe/schedule-check` (UI, a cada 60s + on focus); `{ skipSchedule: true }` em `/api/auth/me`
 
 ---
 
@@ -250,6 +256,8 @@ Login padrão pós-seed: **Admin** / **rmbvadmin**
 | `DATABASE_URL` | ✅ | Connection string PostgreSQL (`?sslmode=require`) |
 | `JWT_SECRET` | ✅ | Chave aleatória 32+ caracteres |
 | `BLOB_READ_WRITE_TOKEN` | Produção | Token Vercel Blob para uploads persistentes |
+| `KIOSK_API_KEY` | Quiosque | Chave dos tablets de ponto |
+| `CRON_SECRET` | Cron | Purge de retenção LGPD (30 dias) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | Seed | Credenciais iniciais |
 
 ---
@@ -258,10 +266,12 @@ Login padrão pós-seed: **Admin** / **rmbvadmin**
 
 O `vercel.json` executa no build:
 ```
-prisma generate → prisma db push → db:seed → next build
+prisma generate → prisma migrate deploy → next build
 ```
 
-Push em `main` dispara deploy automático. Router cache dinâmico desabilitado em rotas sensíveis para evitar UI stale pós-deploy.
+Push em `main` dispara deploy automático. Seed **não** roda no build.
+
+Documentação operacional: [PRODUCAO.md](./PRODUCAO.md). Melhorias planejadas: [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -271,15 +281,23 @@ Push em `main` dispara deploy automático. Router cache dinâmico desabilitado e
 |---|---|
 | Módulo APA (`/apa`) | ⏳ Placeholder "Em breve" |
 | Transferir equipe responsável por tese no TeseManager | ⏳ Pendente |
-| Testes automatizados (E2E / integração) | ❌ Não existem |
+| Testes automatizados (E2E / integração) | ✅ Smoke (14 testes) + CI — ampliar cobertura |
 | Paginação no dashboard principal (lista geral) | ⏳ Parcial — admin tem paginação customizável |
 | Reset de senha pelo admin via UI | ⏳ Pendente |
 | Desativar usuário/equipe sem apagar | ⏳ Pendente |
+| Rate limiting APIs públicas | ⏳ Ver [ROADMAP.md](./ROADMAP.md) Sprint 4 |
+| Tokens de quiosque por dispositivo | ⏳ Ver [ROADMAP.md](./ROADMAP.md) Sprint 4 |
 | `followUpAt` no schema Client | ⏳ Revertido até migração formal |
 
 ---
 
 ## 14. Histórico de alterações
+
+### 2026-06-05 — Sprints 1–3 (segurança, CI, manutenção)
+- **Sprint 1** — validação facial no servidor (`face-verify.ts`); quiosque com `KIOSK_API_KEY`; `faces` descontinuado; `migrate deploy` no build
+- **Sprint 2** — Playwright (14 testes), GitHub Actions CI, `npm run typecheck`
+- **Sprint 3** — refatoração `/ponto` em componentes; limites export (10k clientes, 500 bulk); horário no servidor (`schedule-access.ts`); remoção `AppShell.tsx`
+- Documentação: `docs/PRODUCAO.md`, `docs/ROADMAP.md`
 
 ### 2026-06-20 — Mobile, chat e ponto
 - **Route group `(app)`** — páginas autenticadas migradas; removidas duplicatas fora do grupo
