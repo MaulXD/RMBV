@@ -441,7 +441,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Rosto não cadastrado</p>
-                <p className="text-xs text-muted">Prova de vida + 5 poses para usar o ponto.</p>
+                <p className="text-xs text-muted">Prova de vida + 3 poses para usar o ponto.</p>
               </div>
             </div>
             {!enrolling && (

@@ -4,13 +4,11 @@ import { Icon } from "./ui/Icon";
 import type { PoseDirection } from "@/lib/face-enrollment-capture";
 
 const NUDGE_CLASS: Record<Exclude<PoseDirection, "center">, string> = {
-  left: "liveness-guide-nudge-left",
-  right: "liveness-guide-nudge-right",
   up: "liveness-guide-nudge-up",
   down: "liveness-guide-nudge-down",
 };
 
-/** Seta animada — esquerda/direita alinhadas ao preview espelhado (label = lado na tela). */
+/** Seta animada na borda da câmera durante o cadastro facial. */
 export function PoseDirectionGuide({
   direction,
   active,
@@ -43,10 +41,8 @@ export function PoseDirectionGuide({
 
   const side: Record<
     Exclude<PoseDirection, "center">,
-    { pos: string; icon: "chevronLeft" | "chevronRight" | "arrowUp" | "arrowDown"; label: string }
+    { pos: string; icon: "arrowUp" | "arrowDown"; label: string }
   > = {
-    left: { pos: "left-1 top-1/2 -translate-y-1/2", icon: "chevronLeft", label: "Esquerda" },
-    right: { pos: "right-1 top-1/2 -translate-y-1/2", icon: "chevronRight", label: "Direita" },
     up: { pos: "top-1 left-1/2 -translate-x-1/2", icon: "arrowUp", label: "Cima" },
     down: { pos: "bottom-1 left-1/2 -translate-x-1/2", icon: "arrowDown", label: "Baixo" },
   };
