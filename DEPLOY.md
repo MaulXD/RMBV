@@ -1,11 +1,15 @@
 # Deploy na Vercel (RMBV System)
 
+> Guia completo de produção: **[docs/PRODUCAO.md](./docs/PRODUCAO.md)**  
+> Melhorias sugeridas: **[docs/ROADMAP.md](./docs/ROADMAP.md)**
+
 ## Checklist rápido
 
 1. Banco **Neon PostgreSQL** (Marketplace Vercel ou [neon.tech](https://neon.tech))
 2. Variáveis no projeto Vercel (ver tabela abaixo)
-3. No PC: `db:push` + `db:seed` apontando para o mesmo banco
-4. Redeploy e testar `/api/health`
+3. No PC: `prisma migrate deploy` + `db:seed` apontando para o mesmo banco
+4. Definir `KIOSK_API_KEY` (tablets de ponto) e `CRON_SECRET` (purge LGPD)
+5. Redeploy e testar `/api/health`
 
 ## Variáveis obrigatórias (Vercel → Settings → Environment Variables)
 
@@ -22,6 +26,8 @@ Opcionais:
 | Variável | Descrição |
 |----------|-----------|
 | `BLOB_READ_WRITE_TOKEN` | Upload de documentos (Vercel Blob) |
+| `KIOSK_API_KEY` | Tablets de ponto (quiosque) |
+| `CRON_SECRET` | Cron de retenção LGPD (`/api/cron/purge-retention`) |
 | `ADV_*`, `GERENTE_*` | Usuários extras no seed |
 
 Ao instalar **Neon** pelo Marketplace da Vercel, `DATABASE_URL` é preenchida automaticamente.
@@ -43,6 +49,12 @@ npm run db:push
 npm run db:seed
 ```
 
+**Banco já existente (migrado com `db push`):** marque a migration inicial uma vez:
+
+```powershell
+npx prisma migrate resolve --applied 20250605120000_init
+```
+
 ## Deploy
 
 ```bash
@@ -50,7 +62,11 @@ npx vercel          # preview
 npx vercel --prod   # produção
 ```
 
-O `vercel.json` já executa `prisma generate` antes do build.
+O `vercel.json` executa no build:
+
+```
+prisma generate → prisma migrate deploy → next build
+```
 
 ## Verificar
 
