@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [kioskUrl, setKioskUrl] = useState("");
 
   useEffect(() => {
     if (user === null || (user && user.role !== "ADMIN")) {
@@ -69,6 +70,17 @@ export default function AdminPage() {
     fetch(`/api/teses?teamId=${teamId}`)
       .then((r) => r.json())
       .then((d) => setImportTeses(d.teses ?? []));
+  }, [teamId]);
+
+  useEffect(() => {
+    if (!teamId) {
+      setKioskUrl("");
+      return;
+    }
+    fetch(`/api/ponto/kiosk-link?teamId=${encodeURIComponent(teamId)}`)
+      .then((r) => r.json())
+      .then((d: { url?: string }) => setKioskUrl(d.url ?? ""))
+      .catch(() => setKioskUrl(""));
   }, [teamId]);
 
   async function handleUpload(e: React.FormEvent) {
@@ -298,10 +310,10 @@ export default function AdminPage() {
                   <div className="industrial-panel max-w-2xl p-4">
                     <p className="text-xs font-medium text-muted mb-1">Link do quiosque de ponto</p>
                     <code className="block rounded bg-surface px-3 py-2 text-xs break-all">
-                      {typeof window !== "undefined" ? window.location.origin : ""}/kiosk?teamId={teamId}
+                      {kioskUrl || "Configure KIOSK_API_KEY no servidor para gerar o link."}
                     </code>
                     <p className="mt-2 text-xs text-muted">
-                      Abra este link no celular ou tablet da equipe. A câmera iniciará automaticamente.
+                      Abra este link no tablet da equipe (inclui chave de segurança). Não compartilhe publicamente.
                     </p>
                   </div>
                 </div>

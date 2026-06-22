@@ -6,6 +6,7 @@ import {
   type PermissionAction,
   assertCategoryPermission,
 } from "./permissions";
+import { ScheduleBlockedError, assertScheduleAccess } from "./schedule-access";
 import type { SessionUser } from "./auth";
 
 export function jsonError(message: string, status: number) {
@@ -18,17 +19,26 @@ export async function requireAuth(): Promise<SessionUser> {
   return user;
 }
 
+export type WithAuthOptions = {
+  /** Pula verificação de horário (ex.: schedule-check, auth/me). */
+  skipSchedule?: boolean;
+};
+
 export async function withAuth(
-  handler: (user: SessionUser) => Promise<NextResponse>
+  handler: (user: SessionUser) => Promise<NextResponse>,
+  options?: WithAuthOptions,
 ) {
   try {
     const user = await requireAuth();
+    if (!options?.skipSchedule) {
+      await assertScheduleAccess(user);
+    }
     return await handler(user);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonError(err.message, 401);
     }
-    if (err instanceof PermissionDeniedError) {
+    if (err instanceof PermissionDeniedError || err instanceof ScheduleBlockedError) {
       return jsonError(err.message, 403);
     }
     console.error(err);

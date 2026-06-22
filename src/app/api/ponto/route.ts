@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/api";
+import { getSessionUser } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
+import { withAuth } from "@/lib/api";
 import { recordFaceAudit } from "@/lib/face-audit";
 import { nextPontoType } from "@/lib/ponto-hours";
 import { haversineMeters, isOfficeGpsConfigured } from "@/lib/gps-ponto";
+import { parseProbeDescriptor, verifyFaceProbe } from "@/lib/face-verify";
 
 export const runtime = "nodejs";
 
@@ -13,7 +15,8 @@ const recordSchema = z.object({
   userId: z.string().uuid(),
   teamId: z.string().uuid().optional().nullable(),
   type: z.enum(["ENTRADA", "SAIDA", "INTERVALO_INICIO", "INTERVALO_FIM"]).optional(),
-  confidence: z.number().min(0).max(1).optional(),
+  /** Descritor 128D capturado na hora — validado no servidor. */
+  descriptor: z.array(z.number()).length(128),
   origin: z.enum(["MOBILE", "KIOSK", "DESKTOP"]).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -100,6 +103,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
+    const sessionUser = await getSessionUser();
+    if (
+      sessionUser &&
+      parsed.data.userId !== sessionUser.id &&
+      !isAdmin(sessionUser)
+    ) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    }
+
+    const probe = parseProbeDescriptor(parsed.data.descriptor);
+    if (!probe) {
+      return NextResponse.json({ error: "Descritor facial inválido" }, { status: 400 });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: parsed.data.userId },
       select: {
@@ -118,6 +135,26 @@ export async function POST(request: Request) {
     if (!user.faceDescriptor || !user.lgpdFaceConsentAt) {
       return NextResponse.json(
         { error: "Cadastro facial e consentimento LGPD obrigatórios" },
+        { status: 403 },
+      );
+    }
+
+    const faceCheck = verifyFaceProbe(user.faceDescriptor, probe);
+    if (!faceCheck.ok) {
+      await recordFaceAudit({
+        actorId: parsed.data.userId,
+        targetUserId: parsed.data.userId,
+        teamId: parsed.data.teamId ?? user.teamId,
+        action: "PONTO_FAIL",
+        metadata: {
+          reason: faceCheck.reason,
+          origin: parsed.data.origin,
+          distance: faceCheck.distance,
+          confidence: faceCheck.confidence,
+        },
+      });
+      return NextResponse.json(
+        { error: "Rosto não reconhecido. Tente novamente com boa iluminação." },
         { status: 403 },
       );
     }
@@ -151,7 +188,7 @@ export async function POST(request: Request) {
         userId: parsed.data.userId,
         teamId: parsed.data.teamId ?? user.teamId,
         type,
-        confidence: parsed.data.confidence ?? null,
+        confidence: faceCheck.confidence,
         origin: parsed.data.origin ?? null,
         latitude: parsed.data.latitude ?? null,
         longitude: parsed.data.longitude ?? null,
@@ -169,7 +206,8 @@ export async function POST(request: Request) {
       metadata: {
         type,
         origin: parsed.data.origin,
-        confidence: parsed.data.confidence,
+        confidence: faceCheck.confidence,
+        distance: faceCheck.distance,
       },
     });
 

@@ -3,5 +3,5 @@ import { withAuth } from "@/lib/api";
 export const runtime = "nodejs";
 
 export async function GET() {
-  return withAuth(async (user) => NextResponse.json({ user }));
+  return withAuth(async (user) => NextResponse.json({ user }), { skipSchedule: true });
 }

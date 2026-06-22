@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Icon } from "@/components/ui/Icon";
 import {
-  findBestFaceMatch,
-  toDescriptorArray,
   FACE_RECOGNITION_DETECT,
   FACE_MATCH_STABLE_FRAMES,
   createMatchFrameTracker,
@@ -29,7 +27,7 @@ import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
 import { warmupLivenessAudio, getLivenessPassedDelayMs } from "@/lib/face-liveness-audio";
 
-type KnownUser = { id: string; name: string; descriptor: Float32Array };
+type VerifiedUser = { id: string; name: string };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
 type KioskStatus =
   | "loading-models"
@@ -67,11 +65,10 @@ const PUNCH_OPTIONS = [
   { type: "INTERVALO_FIM" as const, icon: "play" as const, title: "Fim intervalo", subtitle: "Retomar", accent: "violet" },
 ];
 
-export function PontoKiosk({ teamId }: { teamId: string }) {
+export function PontoKiosk({ teamId, kioskKey }: { teamId: string; kioskKey: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<KioskStatus>("loading-models");
   const [result, setResult] = useState<PontoResult | null>(null);
-  const [knownUsers, setKnownUsers] = useState<KnownUser[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [livenessMsg, setLivenessMsg] = useState("Olhe para a câmera com os olhos abertos");
@@ -83,9 +80,18 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
   const pendingUserIdRef = useRef<string | null>(null);
   const [matchHint, setMatchHint] = useState("");
   const [matchProgress, setMatchProgress] = useState(0);
-  const [verifiedUser, setVerifiedUser] = useState<KnownUser | null>(null);
+  const [verifiedUser, setVerifiedUser] = useState<VerifiedUser | null>(null);
   const [verifiedConfidence, setVerifiedConfidence] = useState<number | null>(null);
+  const [verifiedDescriptor, setVerifiedDescriptor] = useState<number[] | null>(null);
   const [suggestedType, setSuggestedType] = useState<PontoType>("ENTRADA");
+
+  const kioskHeaders = useCallback(
+    () => ({
+      "Content-Type": "application/json",
+      "X-Kiosk-Key": kioskKey,
+    }),
+    [kioskKey],
+  );
 
   useLivenessAudioFeedback(status === "liveness", livenessPhase, livenessFaceLost);
   const livenessBusyRef = useRef(false);
@@ -99,6 +105,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     setMatchHint("");
     setVerifiedUser(null);
     setVerifiedConfidence(null);
+    setVerifiedDescriptor(null);
   }, []);
 
   useEffect(() => {
@@ -124,22 +131,6 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     void load();
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    if (!teamId) return;
-    fetch(`/api/ponto/faces?teamId=${teamId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const users: KnownUser[] = (data.users ?? [])
-          .map((u: { id: string; name: string; faceDescriptor: unknown }) => {
-            const descriptor = toDescriptorArray(u.faceDescriptor);
-            if (!descriptor) return null;
-            return { id: u.id, name: u.name, descriptor };
-          })
-          .filter(Boolean) as KnownUser[];
-        setKnownUsers(users);
-      });
-  }, [teamId]);
 
   useEffect(() => {
     if (!modelsLoaded) return;
@@ -206,36 +197,39 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     livenessBusyRef.current = false;
   }, [status, resetMatchFlow]);
 
-  const openVerified = useCallback(async (user: KnownUser, confidence: number) => {
+  const openVerified = useCallback((
+    user: VerifiedUser,
+    confidence: number,
+    descriptor: number[],
+    nextType: PontoType,
+  ) => {
     setVerifiedUser(user);
     setVerifiedConfidence(confidence);
+    setVerifiedDescriptor(descriptor);
+    setSuggestedType(nextType);
     setStatus("verified");
     setMatchHint("");
-    try {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const res = await fetch(`/api/ponto/last?userId=${user.id}&date=${todayStr}`);
-      const data = await res.json();
-      setSuggestedType((data.nextType ?? "ENTRADA") as PontoType);
-    } catch {
-      setSuggestedType("ENTRADA");
-    }
   }, []);
 
   const submitPunch = useCallback(async (type: PontoType) => {
-    if (!verifiedUser || verifiedConfidence === null) return;
+    if (!verifiedUser || verifiedConfidence === null || !verifiedDescriptor) return;
     setStatus("submitting");
     try {
-      await fetch("/api/ponto", {
+      const res = await fetch("/api/ponto", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: kioskHeaders(),
         body: JSON.stringify({
           userId: verifiedUser.id,
           teamId,
           type,
-          confidence: verifiedConfidence,
+          descriptor: verifiedDescriptor,
           origin: "KIOSK",
         }),
       });
+      if (!res.ok) {
+        setStatus("verified");
+        return;
+      }
       setResult({ userName: verifiedUser.name, type, confidence: verifiedConfidence });
       setStatus("success");
       cooldownRef.current = true;
@@ -248,7 +242,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
     } catch {
       setStatus("verified");
     }
-  }, [verifiedUser, verifiedConfidence, teamId, resetMatchFlow]);
+  }, [verifiedUser, verifiedConfidence, verifiedDescriptor, teamId, resetMatchFlow, kioskHeaders]);
 
   const detectAndMatch = useCallback(async () => {
     if (detectingRef.current || cooldownRef.current || !videoRef.current || !modelsLoaded) return;
@@ -266,13 +260,6 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         .withFaceLandmarks(true)
         .withFaceDescriptor();
 
-      if (knownUsers.length === 0) {
-        setStatus("no-match");
-        setTimeout(() => setStatus("ready"), 3000);
-        detectingRef.current = false;
-        return;
-      }
-
       if (!detection) {
         const tick = tickNoFaceMatchFrame(matchTrackerRef.current);
         pendingUserIdRef.current = null;
@@ -289,9 +276,29 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         return;
       }
 
-      const match = findBestFaceMatch(detection.descriptor, knownUsers);
+      const probe = Array.from(detection.descriptor);
+      const matchRes = await fetch("/api/ponto/match", {
+        method: "POST",
+        headers: kioskHeaders(),
+        body: JSON.stringify({ teamId, descriptor: probe }),
+      });
 
-      if (!match) {
+      if (!matchRes.ok) {
+        setStatus("error");
+        setErrorMsg("Falha ao validar rosto. Verifique a chave do quiosque.");
+        detectingRef.current = false;
+        return;
+      }
+
+      const data = (await matchRes.json()) as {
+        matched: boolean;
+        user?: { id: string; name: string };
+        confidence?: number;
+        distance?: number;
+        nextType?: PontoType;
+      };
+
+      if (!data.matched || !data.user || data.distance === undefined) {
         resetMatchFlow();
         setStatus("no-match");
         setTimeout(() => setStatus("ready"), 3000);
@@ -299,16 +306,21 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
         return;
       }
 
-      if (pendingUserIdRef.current && pendingUserIdRef.current !== match.item.id) {
+      if (pendingUserIdRef.current && pendingUserIdRef.current !== data.user.id) {
         matchTrackerRef.current = resetMatchFrameTracker();
       }
-      pendingUserIdRef.current = match.item.id;
+      pendingUserIdRef.current = data.user.id;
 
-      const tick = tickStrongMatchFrame(matchTrackerRef.current, match.distance);
+      const tick = tickStrongMatchFrame(matchTrackerRef.current, data.distance);
       setMatchProgress(tick.progress);
 
       if (tick.status === "ready") {
-        await openVerified(match.item, tick.averageConfidence);
+        openVerified(
+          data.user,
+          tick.averageConfidence,
+          probe,
+          data.nextType ?? "ENTRADA",
+        );
         detectingRef.current = false;
         return;
       }
@@ -323,7 +335,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
 
       if (tick.status === "building") {
         setMatchHint(
-          `${match.item.name.split(" ")[0]} — ${Math.round(tick.averageConfidence * 100)}% (${tick.streak}/${FACE_MATCH_STABLE_FRAMES})`,
+          `${data.user.name.split(" ")[0]} — ${Math.round(tick.averageConfidence * 100)}% (${tick.streak}/${FACE_MATCH_STABLE_FRAMES})`,
         );
       } else {
         setMatchHint(`Confiança baixa (${Math.round(tick.confidence * 100)}%) — aproxime-se`);
@@ -334,7 +346,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setMatchHint("");
     }
     detectingRef.current = false;
-  }, [status, modelsLoaded, knownUsers, openVerified, resetMatchFlow]);
+  }, [status, modelsLoaded, teamId, openVerified, resetMatchFlow, kioskHeaders]);
 
   useEffect(() => {
     if (status !== "liveness") return;
@@ -485,9 +497,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">
-              {knownUsers.length === 0
-                ? "Nenhum rosto cadastrado nesta equipe"
-                : "Aproxime o rosto no molde para registrar o ponto"}
+              Aproxime o rosto no molde para registrar o ponto
             </p>
           ) : status === "detecting" ? (
             <div className="space-y-2 px-2">

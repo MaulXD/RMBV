@@ -3,14 +3,16 @@ import { withAuth } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+import { BULK_MAX_IDS } from "@/lib/export-limits";
+
 export const runtime = "nodejs";
 
 const bulkDeleteSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(50000),
+  ids: z.array(z.string().uuid()).min(1).max(BULK_MAX_IDS),
 });
 
 const bulkAssignTeseSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(50000),
+  ids: z.array(z.string().uuid()).min(1).max(BULK_MAX_IDS),
   teseId: z.string().uuid().nullable(),
 });
 

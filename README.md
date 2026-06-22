@@ -113,6 +113,8 @@ npm run dev       # http://localhost:3000
 | `ADMIN_EMAIL` | Seed | Padrão: `admin@sistema.local` |
 | `ADMIN_PASSWORD` | Seed | Padrão: `rmbvadmin` |
 | `ADMIN_NAME` | Seed | Padrão: `Admin` |
+| `KIOSK_API_KEY` | Quiosque | Chave secreta para tablets de ponto (`dev-kiosk-key` em desenvolvimento) |
+| `CRON_SECRET` | Cron | Protege `/api/cron/purge-retention` |
 
 ### Configurar Vercel Blob
 
@@ -125,20 +127,45 @@ Sem o token, uploads falham em produção (o filesystem da Vercel é efêmero). 
 
 ---
 
-## Deploy
+## Testes (Sprint 2)
+
+```bash
+# Verificação de tipos
+npm run typecheck
+
+# E2E (sobe o dev server automaticamente; exige DATABASE_URL e seed)
+npm run test:e2e
+
+# Interface visual do Playwright
+npm run test:e2e:ui
+```
+
+No CI (GitHub Actions), cada push/PR em `main` roda lint, typecheck e smoke tests com PostgreSQL.
+
+---
 
 O repositório tem deploy automático na Vercel a cada push em `main`.
 
 O `vercel.json` executa no build:
 ```
-prisma generate → prisma db push → db:seed → next build
+prisma generate → prisma migrate deploy → next build
+```
+
+O seed **não** roda no deploy. Execute manualmente quando necessário:
+```bash
+npm run db:seed
+```
+
+**Banco já existente (migrado com `db push`):** marque a migration inicial como aplicada uma vez:
+```bash
+npx prisma migrate resolve --applied 20250605120000_init
 ```
 
 ### Checklist inicial
 
 1. Importar o repo na Vercel
 2. Conectar banco **Neon** pelo Marketplace (preenche `DATABASE_URL`)
-3. Definir `JWT_SECRET` e variáveis de seed
+3. Definir `JWT_SECRET`, `KIOSK_API_KEY` e variáveis de seed (para `npm run db:seed` manual)
 4. *(Opcional)* Criar **Vercel Blob** e adicionar `BLOB_READ_WRITE_TOKEN`
 5. Deploy e validar `GET /api/health` → `"ok": true`
 
