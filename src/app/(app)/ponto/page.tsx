@@ -10,6 +10,11 @@ import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-live
 import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
 import { MultiCaptureFaceWizard } from "@/components/MultiCaptureFaceWizard";
 import {
+  faceVideoStyle,
+  FACE_OVAL_BORDER_CLASS,
+  FACE_OVAL_INSET,
+} from "@/lib/face-framing";
+import {
   hoursSummary,
   nextPontoType,
   pontoTypeLabel,
@@ -631,12 +636,13 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 ref={videoRef}
                 className="h-full w-full object-cover"
                 playsInline muted autoPlay
-                style={{ transform: "scaleX(-1) scale(1.58)", transformOrigin: "center 38%" }}
+                style={faceVideoStyle}
               />
               {(clockPhase === "liveness" || clockPhase === "ready" || clockPhase === "detecting") && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="h-[84%] w-[70%] rounded-[50%] border-[3px] border-dashed border-white/35" />
-                </div>
+                <div
+                  className={`pointer-events-none absolute ${FACE_OVAL_BORDER_CLASS} rounded-[50%] border-white/35`}
+                  style={FACE_OVAL_INSET}
+                />
               )}
               {/* Corner guides */}
               {clockPhase !== "success" && clockPhase !== "no-match" && clockPhase !== "verified" && (

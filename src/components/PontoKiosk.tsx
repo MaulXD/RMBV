@@ -45,6 +45,14 @@ type KioskStatus =
 
 type PontoResult = { userName: string; type: PontoType; confidence: number };
 
+import {
+  faceVideoStyle,
+  FACE_OVAL_BORDER_CLASS,
+  FACE_OVAL_INSET,
+} from "@/lib/face-framing";
+
+const MODEL_URL = "/models";
+
 const TYPE_LABEL: Record<PontoType, string> = {
   ENTRADA: "Entrada registrada",
   SAIDA: "Saída registrada",
@@ -58,11 +66,6 @@ const PUNCH_OPTIONS = [
   { type: "INTERVALO_INICIO" as const, icon: "clock" as const, title: "Início intervalo", subtitle: "Pausa", accent: "sky" },
   { type: "INTERVALO_FIM" as const, icon: "play" as const, title: "Fim intervalo", subtitle: "Retomar", accent: "violet" },
 ];
-
-const MODEL_URL = "/models";
-const VIDEO_ZOOM = "scaleX(-1) scale(1.58)";
-const VIDEO_ORIGIN = "center 38%";
-const FACE_OVAL_CLASS = "h-[84%] w-[70%] rounded-[50%] border-[3px] border-dashed border-white/40";
 
 export function PontoKiosk({ teamId }: { teamId: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -368,13 +371,14 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
             playsInline
             muted
             autoPlay
-            style={{ transform: VIDEO_ZOOM, transformOrigin: VIDEO_ORIGIN }}
+            style={faceVideoStyle}
           />
 
           {(status === "ready" || status === "detecting" || status === "liveness" || status === "verified" || status === "submitting") && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className={FACE_OVAL_CLASS} />
-            </div>
+            <div
+              className={`pointer-events-none absolute ${FACE_OVAL_BORDER_CLASS} rounded-[50%] border-white/40`}
+              style={FACE_OVAL_INSET}
+            />
           )}
 
           {status === "loading-models" || status === "loading-camera" ? (
