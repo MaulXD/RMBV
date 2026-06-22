@@ -309,8 +309,8 @@ export function FaceEnrollmentCaptureView({
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
       <div
-        className="relative mx-auto w-full max-w-[min(100%,280px)] overflow-hidden rounded-xl bg-black sm:max-w-xs"
-        style={{ aspectRatio: "3 / 4", maxHeight: "min(42dvh, 320px)" }}
+        className="relative mx-auto w-full max-w-[min(100%,340px)] overflow-hidden rounded-xl bg-black sm:max-w-sm"
+        style={{ aspectRatio: "3 / 4", maxHeight: "min(56dvh, 420px)" }}
       >
         <video
           ref={videoRef}
@@ -318,7 +318,7 @@ export function FaceEnrollmentCaptureView({
           playsInline
           muted
           autoPlay
-          style={{ transform: "scaleX(-1) scale(1.42)", transformOrigin: "center 42%" }}
+          style={{ transform: "scaleX(-1) scale(1.58)", transformOrigin: "center 38%" }}
         />
         <div className="pointer-events-none absolute inset-0">
           {!livenessPassed && (
@@ -336,7 +336,7 @@ export function FaceEnrollmentCaptureView({
           )}
           <div className="absolute inset-0 flex items-center justify-center">
             <div
-              className={`h-32 w-24 sm:h-40 sm:w-32 rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
+              className={`h-[84%] w-[70%] rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
             />
           </div>
         </div>

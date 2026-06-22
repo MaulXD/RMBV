@@ -625,17 +625,17 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
                 clockPhase === "liveness" ? "border-violet-400" :
                 clockPhase === "detecting" || clockPhase === "submitting" ? "border-amber-400" : "border-border/60"
               }`}
-              style={{ width: "min(100%, 280px)", aspectRatio: "3 / 4" }}
+              style={{ width: "min(100%, 340px)", aspectRatio: "3 / 4" }}
             >
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
                 playsInline muted autoPlay
-                style={{ transform: "scaleX(-1) scale(1.42)", transformOrigin: "center 40%" }}
+                style={{ transform: "scaleX(-1) scale(1.58)", transformOrigin: "center 38%" }}
               />
               {(clockPhase === "liveness" || clockPhase === "ready" || clockPhase === "detecting") && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="h-[70%] w-[54%] rounded-[50%] border-[3px] border-dashed border-white/35" />
+                  <div className="h-[84%] w-[70%] rounded-[50%] border-[3px] border-dashed border-white/35" />
                 </div>
               )}
               {/* Corner guides */}
