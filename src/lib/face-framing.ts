@@ -8,12 +8,15 @@ export const faceVideoStyle = {
   transformOrigin: FACE_VIDEO_ORIGIN,
 } as const;
 
-/** Inset no container da câmera — oval grande e estável (evita % height em flex). */
+/** Oval centralizado — 51% da largura e altura do preview. */
+const FACE_OVAL_SIZE_PERCENT = 51;
+const FACE_OVAL_MARGIN = `${(100 - FACE_OVAL_SIZE_PERCENT) / 2}%`;
+
 export const FACE_OVAL_INSET = {
-  top: "2%",
-  right: "5%",
-  bottom: "2%",
-  left: "5%",
+  top: FACE_OVAL_MARGIN,
+  right: FACE_OVAL_MARGIN,
+  bottom: FACE_OVAL_MARGIN,
+  left: FACE_OVAL_MARGIN,
 } as const;
 
 export const FACE_OVAL_BORDER_CLASS = "border-[3px] border-dashed";
