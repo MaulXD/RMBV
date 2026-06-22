@@ -5,7 +5,7 @@
 export const FACE_MATCH_MAX_DISTANCE = 0.6;
 
 /** Confiança mínima no ponto mobile (evita passar com ~2% no limiar). */
-export const FACE_SELFIE_MIN_CONFIDENCE = 0.55;
+export const FACE_SELFIE_MIN_CONFIDENCE = 0.51;
 
 /** Frames consecutivos com match forte antes de confirmar identidade. */
 export const FACE_MATCH_STABLE_FRAMES = 5;
