@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
 import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
-import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
+import { warmupLivenessAudio, getLivenessPassedDelayMs } from "@/lib/face-liveness-audio";
 import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
 import { MultiCaptureFaceWizard } from "@/components/MultiCaptureFaceWizard";
 import {
@@ -271,12 +271,14 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
       setLivenessPhase(live.phase);
       setClockMsg(live.message);
       if (live.passed) {
-        window.setTimeout(() => {
-          matchTrackerRef.current = resetMatchFrameTracker();
-          setMatchProgress(0);
-          setClockPhase("ready");
-          setClockMsg("Reconhecendo rosto...");
-        }, LIVENESS_COMPLETE_DELAY_MS);
+        void getLivenessPassedDelayMs().then((delayMs) => {
+          window.setTimeout(() => {
+            matchTrackerRef.current = resetMatchFrameTracker();
+            setMatchProgress(0);
+            setClockPhase("ready");
+            setClockMsg("Reconhecendo rosto...");
+          }, delayMs);
+        });
       }
     } catch {
       setClockMsg("Erro na verificação. Tente novamente.");
@@ -441,7 +443,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Rosto não cadastrado</p>
-                <p className="text-xs text-muted">Prova de vida + 3 poses para usar o ponto.</p>
+                <p className="text-xs text-muted">Prova de vida + cadastro facial para usar o ponto.</p>
               </div>
             </div>
             {!enrolling && (

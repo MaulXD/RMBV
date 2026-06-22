@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./ui/Icon";
 import { FaceEnrollmentCaptureView } from "./FaceEnrollmentCaptureView";
-import { ENROLLMENT_CAPTURE_COUNT } from "@/lib/face-enrollment-capture";
+import { ENROLLMENT_SAMPLE_FRAMES } from "@/lib/face-enrollment-capture";
 
 type Member = { id: string; name: string; role: string; isActive: boolean; hasFace: boolean };
 type EnrollMode = "camera" | "upload";
@@ -72,7 +72,7 @@ function EnrollmentModal({
             </h3>
             {enrollMode === "camera" && (
               <p className="mt-0.5 text-xs text-muted leading-snug">
-                {ENROLLMENT_CAPTURE_COUNT} poses · captura automática com validação de direção
+                Prova de vida + {ENROLLMENT_SAMPLE_FRAMES} amostras · captura automática
               </p>
             )}
           </div>

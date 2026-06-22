@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui/Icon";
 import { LivenessCornerBanner } from "./LivenessCornerBanner";
 import { LivenessEyeGuide } from "./LivenessEyeGuide";
-import { PoseDirectionGuide } from "./PoseDirectionGuide";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
-import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
+import { resetLivenessAudioFeedback, warmupLivenessAudio, getLivenessPassedDelayMs } from "@/lib/face-liveness-audio";
 import {
-  ENROLLMENT_CAPTURE_COUNT,
+  ENROLLMENT_SAMPLE_FRAMES,
   ENROLLMENT_POSE_STEPS,
   computePoseMetrics,
   evaluatePose,
@@ -19,7 +18,6 @@ import {
   type AutoCaptureTracker,
   type PoseEvaluation,
 } from "@/lib/face-enrollment-capture";
-import { FACE_RECOGNITION_DETECT } from "@/lib/face-match";
 import {
   createLivenessTracker,
   resetLivenessTracker,
@@ -35,6 +33,7 @@ import {
   FACE_OVAL_BORDER_CLASS,
   FACE_OVAL_INSET,
 } from "@/lib/face-framing";
+import { FACE_RECOGNITION_DETECT } from "@/lib/face-match";
 
 const MODEL_URL = "/models";
 
@@ -105,6 +104,7 @@ export function FaceEnrollmentCaptureView({
     setLivenessPhase(null);
     setLivenessFaceLost(false);
     warmupLivenessAudio();
+    resetLivenessAudioFeedback();
     setCaptures([]);
     setCaptureIndex(0);
     setPoseEval(null);
@@ -139,12 +139,11 @@ export function FaceEnrollmentCaptureView({
   }, [scanning, captureIndex]);
 
   const onPoseCaptured = useCallback(async (descriptor: number[], nextCaptures: number[][]) => {
-    pauseUntilRef.current = Date.now() + 900;
+    pauseUntilRef.current = Date.now() + 500;
     trackerRef.current = resetAutoCaptureTracker();
     setStableProgress(0);
-    setPoseEval(null);
 
-    if (nextCaptures.length >= ENROLLMENT_CAPTURE_COUNT) {
+    if (nextCaptures.length >= ENROLLMENT_SAMPLE_FRAMES) {
       setCaptures(nextCaptures);
       setSaving(true);
       setScanning(false);
@@ -160,8 +159,8 @@ export function FaceEnrollmentCaptureView({
     }
 
     setCaptures(nextCaptures);
-    setCaptureIndex(nextCaptures.length);
-    setStatusMsg(ENROLLMENT_POSE_STEPS[nextCaptures.length]!.hint);
+    setPoseEval(null);
+    setStatusMsg(`Mantenha o rosto no molde (${nextCaptures.length}/${ENROLLMENT_SAMPLE_FRAMES})`);
   }, [onComplete]);
 
   const runAutoCapture = useCallback(async () => {
@@ -204,11 +203,13 @@ export function FaceEnrollmentCaptureView({
         setLivenessProgress(live.progress);
         setLivenessPhase(live.phase);
         if (live.passed) {
-          pauseUntilRef.current = Date.now() + LIVENESS_COMPLETE_DELAY_MS + 200;
-          window.setTimeout(() => {
-            setLivenessPassed(true);
-            setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
-          }, LIVENESS_COMPLETE_DELAY_MS);
+          void getLivenessPassedDelayMs().then((delayMs) => {
+            pauseUntilRef.current = Date.now() + delayMs + 200;
+            window.setTimeout(() => {
+              setLivenessPassed(true);
+              setStatusMsg(ENROLLMENT_POSE_STEPS[0]!.hint);
+            }, delayMs);
+          });
         }
         detectingRef.current = false;
         return;
@@ -266,11 +267,11 @@ export function FaceEnrollmentCaptureView({
 
       if (tick.ready && tick.descriptor) {
         const next = [...captures, tick.descriptor];
-        setPoseEval({ ok: true, kind: "ok", message: `Captura ${next.length}/${ENROLLMENT_CAPTURE_COUNT} concluída!`, alignment: 1 });
-        setStatusMsg(`Captura ${next.length}/${ENROLLMENT_CAPTURE_COUNT} ok!`);
+        setPoseEval({ ok: true, kind: "ok", message: `Amostra ${next.length}/${ENROLLMENT_SAMPLE_FRAMES}`, alignment: 1 });
+        setStatusMsg(`Amostra ${next.length}/${ENROLLMENT_SAMPLE_FRAMES} ok`);
         await onPoseCaptured(tick.descriptor, next);
       } else {
-        setStatusMsg(`${evaluation.message} — estabilizando (${Math.min(trackerRef.current.stableCount + 1, 3)}/3)`);
+        setStatusMsg(`${evaluation.message} — estabilizando (${Math.min(trackerRef.current.stableCount + 1, 2)}/2)`);
       }
     } catch {
       setStatusMsg("Erro na detecção. Ajuste a posição.");
@@ -280,7 +281,7 @@ export function FaceEnrollmentCaptureView({
 
   useEffect(() => {
     if (!modelsLoaded || !scanning || isSaving) return;
-    const ms = livenessPassed ? 450 : LIVENESS_POLL_MS;
+    const ms = livenessPassed ? 350 : LIVENESS_POLL_MS;
     const id = setInterval(() => void runAutoCapture(), ms);
     return () => clearInterval(id);
   }, [modelsLoaded, scanning, isSaving, livenessPassed, runAutoCapture, captureIndex]);
@@ -330,13 +331,6 @@ export function FaceEnrollmentCaptureView({
               <LivenessEyeGuide phase={livenessPhase} />
             </>
           )}
-          {livenessPassed && currentPose && (
-            <PoseDirectionGuide
-              direction={currentPose.direction}
-              active={poseEval?.kind === "wrong_pose"}
-              ok={poseEval?.ok === true && stableProgress > 0}
-            />
-          )}
           <div
             className={`absolute ${FACE_OVAL_BORDER_CLASS} rounded-[50%] transition-all duration-300 ${ringColor}`}
             style={FACE_OVAL_INSET}
@@ -357,7 +351,7 @@ export function FaceEnrollmentCaptureView({
               <p className="text-sm font-semibold text-foreground">
                 {!livenessPassed
                   ? "Prova de vida"
-                  : `${captureIndex + 1}/${ENROLLMENT_CAPTURE_COUNT} · ${currentPose!.label}`}
+                  : `Cadastro · ${captures.length}/${ENROLLMENT_SAMPLE_FRAMES} amostras`}
               </p>
               <p className="mt-0.5 text-xs text-muted">
                 {!livenessPassed
@@ -367,14 +361,14 @@ export function FaceEnrollmentCaptureView({
             </div>
             {livenessPassed && (
               <div className="flex shrink-0 gap-1 pt-0.5">
-                {ENROLLMENT_POSE_STEPS.map((step, i) => (
+                {Array.from({ length: ENROLLMENT_SAMPLE_FRAMES }, (_, i) => (
                   <span
-                    key={step.direction}
-                    title={step.label}
+                    key={i}
+                    title={`Amostra ${i + 1}`}
                     className={`h-2 w-5 sm:w-6 rounded-full transition-colors ${
                       i < captures.length
                         ? "bg-emerald-500"
-                        : i === captureIndex
+                        : i === captures.length
                           ? "bg-primary animate-pulse"
                           : "bg-border"
                     }`}
@@ -428,7 +422,7 @@ export function FaceEnrollmentCaptureView({
               ? "Salvando..."
               : !livenessPassed
                 ? "Feche os olhos por um momento, depois abra quando ouvir Pronto"
-                : "Captura automática — siga a seta na lateral da câmera"}
+                : "Mantenha o rosto de frente no molde — captura automática"}
           </p>
         </div>
       )}

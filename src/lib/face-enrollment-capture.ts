@@ -1,40 +1,34 @@
-/** Passos do cadastro facial multi-pose (3 capturas automáticas). */
+/** Cadastro facial — só frente, sem inclinar a cabeça. */
 export const ENROLLMENT_POSE_STEPS = [
   {
     label: "Frente",
-    hint: "Olhe direto para a câmera",
+    hint: "Olhe direto para a câmera e mantenha o rosto no molde",
     direction: "center" as const,
-  },
-  {
-    label: "Para cima",
-    hint: "Incline a cabeça levemente para cima",
-    direction: "up" as const,
-  },
-  {
-    label: "Para baixo",
-    hint: "Incline a cabeça levemente para baixo",
-    direction: "down" as const,
   },
 ] as const;
 
+/** Passo único na UI (após prova de vida). */
 export const ENROLLMENT_CAPTURE_COUNT = ENROLLMENT_POSE_STEPS.length;
 
-/** Peso por pose no descritor salvo — frente pesa mais (ponto compara rosto frontal). */
-export const ENROLLMENT_DESCRIPTOR_WEIGHTS = [2.5, 1, 1] as const;
+/** Amostras estáveis na mesma pose — média melhora o reconhecimento no ponto. */
+export const ENROLLMENT_SAMPLE_FRAMES = 4;
+
+export const ENROLLMENT_DESCRIPTOR_WEIGHTS = [1] as const;
+
+/** Pesos quando envia ENROLLMENT_SAMPLE_FRAMES amostras da frente. */
+export const ENROLLMENT_SAMPLE_WEIGHTS = [1.5, 1, 1, 1] as const;
 
 export type PoseDirection = (typeof ENROLLMENT_POSE_STEPS)[number]["direction"];
 
-const STABLE_FRAMES_REQUIRED = 3;
-const MIN_DETECTION_SCORE = 0.6;
-const MIN_QUALITY = 0.55;
-const MAX_CENTER_OFFSET = 0.35;
-const MAX_FRAME_JITTER = 0.06;
+const STABLE_FRAMES_REQUIRED = 2;
+const MIN_DETECTION_SCORE = 0.55;
+const MIN_QUALITY = 0.48;
+const MAX_CENTER_OFFSET = 0.38;
+const MAX_FRAME_JITTER = 0.08;
 
-const YAW_CENTER_MAX = 0.12;
-const PITCH_CENTER_MIN = 0.4;
-const PITCH_CENTER_MAX = 0.54;
-const PITCH_UP_MAX = 0.36;
-const PITCH_DOWN_MIN = 0.58;
+const YAW_CENTER_MAX = 0.16;
+const PITCH_UP_MAX = 0.32;
+const PITCH_DOWN_MIN = 0.62;
 
 export type FaceBox = { x: number; y: number; width: number; height: number };
 
@@ -82,75 +76,35 @@ function clamp01(v: number) {
 export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): PoseEvaluation {
   const { yaw, pitch } = metrics;
 
-  switch (direction) {
-    case "center": {
-      if (Math.abs(yaw) > YAW_CENTER_MAX) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: yaw > 0 ? "Centralize — vire um pouco para a esquerda" : "Centralize — vire um pouco para a direita",
-          alignment: clamp01(1 - Math.abs(yaw) / 0.35),
-        };
-      }
-      if (pitch < PITCH_UP_MAX) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Olhe reto — cabeça inclinada para cima demais",
-          alignment: clamp01((pitch - 0.25) / 0.15),
-        };
-      }
-      if (pitch > PITCH_DOWN_MIN) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Olhe reto — cabeça inclinada para baixo demais",
-          alignment: clamp01((0.7 - pitch) / 0.15),
-        };
-      }
-      return { ok: true, kind: "ok", message: "Pose correta — mantenha", alignment: 1 };
-    }
-    case "up": {
-      if (pitch >= PITCH_CENTER_MIN) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Incline a cabeça mais para cima",
-          alignment: clamp01((PITCH_CENTER_MIN - pitch) / 0.12),
-        };
-      }
-      if (Math.abs(yaw) > YAW_CENTER_MAX * 1.5) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Mantenha o rosto centralizado ao inclinar",
-          alignment: 0.35,
-        };
-      }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha inclinado para cima", alignment: clamp01((PITCH_CENTER_MIN - pitch) / 0.1) };
-    }
-    case "down": {
-      if (pitch <= PITCH_CENTER_MAX) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Incline a cabeça mais para baixo",
-          alignment: clamp01((pitch - PITCH_CENTER_MAX) / 0.12),
-        };
-      }
-      if (Math.abs(yaw) > YAW_CENTER_MAX * 1.5) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Mantenha o rosto centralizado ao inclinar",
-          alignment: 0.35,
-        };
-      }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha inclinado para baixo", alignment: clamp01((pitch - PITCH_CENTER_MAX) / 0.1) };
-    }
-    default:
-      return { ok: false, kind: "wrong_pose", message: "Ajuste a pose", alignment: 0 };
+  if (direction !== "center") {
+    return { ok: false, kind: "wrong_pose", message: "Ajuste a pose", alignment: 0 };
   }
+
+  if (Math.abs(yaw) > YAW_CENTER_MAX) {
+    return {
+      ok: false,
+      kind: "wrong_pose",
+      message: yaw > 0 ? "Centralize — vire levemente para a esquerda" : "Centralize — vire levemente para a direita",
+      alignment: clamp01(1 - Math.abs(yaw) / 0.4),
+    };
+  }
+  if (pitch < PITCH_UP_MAX) {
+    return {
+      ok: false,
+      kind: "wrong_pose",
+      message: "Olhe reto para a câmera",
+      alignment: clamp01((pitch - 0.22) / 0.15),
+    };
+  }
+  if (pitch > PITCH_DOWN_MIN) {
+    return {
+      ok: false,
+      kind: "wrong_pose",
+      message: "Olhe reto para a câmera",
+      alignment: clamp01((0.75 - pitch) / 0.15),
+    };
+  }
+  return { ok: true, kind: "ok", message: "Mantenha o rosto no molde", alignment: 1 };
 }
 
 export function faceCenterScore(
@@ -177,7 +131,7 @@ export function frameQuality(
 ): number {
   if (detectionScore < MIN_DETECTION_SCORE) return 0;
   const center = faceCenterScore(box, videoW, videoH, MAX_CENTER_OFFSET);
-  const sizeScore = Math.min(1, box.width / (videoW * 0.28));
+  const sizeScore = Math.min(1, box.width / (videoW * 0.26));
   return detectionScore * 0.45 + center * 0.4 + sizeScore * 0.15;
 }
 

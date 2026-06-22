@@ -9,7 +9,7 @@ import {
   warmupLivenessAudio,
 } from "@/lib/face-liveness-audio";
 
-/** Feedback de voz na prova de vida — fala ao mudar de fase. */
+/** Feedback de voz na prova de vida — MP3 enfileirados, sem cortar. */
 export function useLivenessAudioFeedback(
   active: boolean,
   phase: LivenessPhase | null,
@@ -20,18 +20,12 @@ export function useLivenessAudioFeedback(
 
   useEffect(() => {
     warmupLivenessAudio();
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      const onVoices = () => warmupLivenessAudio();
-      window.speechSynthesis.addEventListener("voiceschanged", onVoices);
-      return () => window.speechSynthesis.removeEventListener("voiceschanged", onVoices);
-    }
   }, []);
 
   useEffect(() => {
     if (!active) {
       lastPhaseRef.current = null;
       faceLostSpokenRef.current = false;
-      resetLivenessAudioFeedback();
       return;
     }
 
