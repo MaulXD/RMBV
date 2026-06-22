@@ -8,12 +8,12 @@ const PUBLIC_PREFIX_PATHS = [
   "/kiosk",
   "/api/auth/login",
   "/api/health",
-  "/api/ponto/faces",
-  "/api/ponto/last",
 ];
 
-function isPublicApiPostPonto(pathname: string, method: string) {
-  return pathname === "/api/ponto" && method === "POST";
+function isPublicApiPonto(pathname: string, method: string) {
+  if (pathname === "/api/ponto" && method === "POST") return true;
+  if (pathname === "/api/ponto/match" && method === "POST") return true;
+  return false;
 }
 
 function isPublicCron(pathname: string, request: NextRequest) {
@@ -42,7 +42,7 @@ async function hasValidSession(request: NextRequest) {
 
 function isPublicPath(pathname: string, request: NextRequest) {
   if (pathname === "/") return true;
-  if (isPublicApiPostPonto(pathname, request.method)) return true;
+  if (isPublicApiPonto(pathname, request.method)) return true;
   if (isPublicCron(pathname, request)) return true;
   return PUBLIC_PREFIX_PATHS.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),

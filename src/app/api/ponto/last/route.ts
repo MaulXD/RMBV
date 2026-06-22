@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
+import { isValidKioskKey, readKioskKeyFromRequest } from "@/lib/kiosk-auth";
 import { nextPontoType } from "@/lib/ponto-hours";
 
 export const runtime = "nodejs";
@@ -11,6 +14,17 @@ export async function GET(request: Request) {
 
   if (!userId || !date) {
     return NextResponse.json({ lastType: null, nextType: "ENTRADA" });
+  }
+
+  const kioskOk = isValidKioskKey(readKioskKeyFromRequest(request));
+  if (!kioskOk) {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+    if (!isAdmin(sessionUser) && userId !== sessionUser.id) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    }
   }
 
   const start = new Date(`${date}T00:00:00`);

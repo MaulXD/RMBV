@@ -47,7 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, pathname]);
 
   useEffect(() => {
-    if (!user || user.role !== "COLABORADOR") return;
+    if (!user || (user.role !== "COLABORADOR" && user.role !== "PESQUISADOR")) return;
     let cancelled = false;
     const check = () => {
       fetch("/api/equipe/schedule-check")
