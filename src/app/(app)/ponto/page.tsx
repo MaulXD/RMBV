@@ -320,7 +320,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
         setClockMsg(
           tick.confidence > 0
             ? `Confiança insuficiente (${Math.round(tick.confidence * 100)}%). Centralize o rosto e melhore a luz.`
-            : "Rosto não detectado. Centralize-se no oval e tente novamente.",
+            : "Rosto não detectado. Centralize-se no molde e tente novamente.",
         );
         matchTrackerRef.current = resetMatchFrameTracker();
         setMatchProgress(0);
@@ -341,7 +341,7 @@ function SelfServicePonto({ user }: { user: SessionUser }) {
             : `Confiança ${Math.round(tick.confidence * 100)}% — centralize o rosto`,
         );
       } else {
-        setClockMsg("Centralize o rosto no oval");
+        setClockMsg("Centralize o rosto no molde");
       }
     } catch {
       setClockPhase("ready");

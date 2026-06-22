@@ -192,7 +192,7 @@ export function FaceEnrollmentCaptureView({
       if (!livenessPassed) {
         const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true);
         if (!det) {
-          setLivenessMsg("Rosto não detectado — centralize no oval");
+          setLivenessMsg("Rosto não detectado — centralize no molde");
           setLivenessProgress(0);
           setLivenessFaceLost(true);
           detectingRef.current = false;
@@ -222,7 +222,7 @@ export function FaceEnrollmentCaptureView({
       if (!det) {
         setPoseEval({ ok: false, kind: "no_face", message: "Rosto não detectado", alignment: 0 });
         setStableProgress(0);
-        setStatusMsg(`${currentPose!.hint} — centralize o rosto no oval`);
+        setStatusMsg(`${currentPose!.hint} — centralize o rosto no molde`);
         trackerRef.current = resetAutoCaptureTracker();
         detectingRef.current = false;
         return;
