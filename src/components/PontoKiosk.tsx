@@ -60,8 +60,9 @@ const PUNCH_OPTIONS = [
 ];
 
 const MODEL_URL = "/models";
-const VIDEO_ZOOM = "scaleX(-1) scale(1.48)";
-const VIDEO_ORIGIN = "center 40%";
+const VIDEO_ZOOM = "scaleX(-1) scale(1.58)";
+const VIDEO_ORIGIN = "center 38%";
+const FACE_OVAL_CLASS = "h-[84%] w-[70%] rounded-[50%] border-[3px] border-dashed border-white/40";
 
 export function PontoKiosk({ teamId }: { teamId: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -359,7 +360,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       <div className="relative w-full max-w-md">
         <div
           className={`relative mx-auto overflow-hidden rounded-2xl border-4 transition-colors duration-300 ${borderClass}`}
-          style={{ width: "min(100%, 400px)", aspectRatio: "3 / 4" }}
+          style={{ width: "min(100%, 420px)", aspectRatio: "3 / 4" }}
         >
           <video
             ref={videoRef}
@@ -372,7 +373,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
 
           {(status === "ready" || status === "detecting" || status === "liveness" || status === "verified" || status === "submitting") && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="h-[70%] w-[54%] rounded-[50%] border-[3px] border-dashed border-white/40" />
+              <div className={FACE_OVAL_CLASS} />
             </div>
           )}
 
