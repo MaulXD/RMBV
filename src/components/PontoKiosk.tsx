@@ -27,7 +27,7 @@ import {
 import { LivenessCornerBanner } from "@/components/LivenessCornerBanner";
 import { LivenessEyeGuide } from "@/components/LivenessEyeGuide";
 import { useLivenessAudioFeedback } from "@/hooks/useLivenessAudioFeedback";
-import { warmupLivenessAudio, LIVENESS_COMPLETE_DELAY_MS } from "@/lib/face-liveness-audio";
+import { warmupLivenessAudio, getLivenessPassedDelayMs } from "@/lib/face-liveness-audio";
 
 type KnownUser = { id: string; name: string; descriptor: Float32Array };
 type PontoType = "ENTRADA" | "SAIDA" | "INTERVALO_INICIO" | "INTERVALO_FIM";
@@ -193,10 +193,12 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
       setLivenessPhase(live.phase);
       setLivenessMsg(live.message);
       if (live.passed) {
-        window.setTimeout(() => {
-          resetMatchFlow();
-          setStatus("ready");
-        }, LIVENESS_COMPLETE_DELAY_MS);
+        void getLivenessPassedDelayMs().then((delayMs) => {
+          window.setTimeout(() => {
+            resetMatchFlow();
+            setStatus("ready");
+          }, delayMs);
+        });
       }
     } catch {
       setLivenessMsg("Erro na verificação. Tente novamente.");

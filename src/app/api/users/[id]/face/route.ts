@@ -11,7 +11,7 @@ import {
   canEnrollTeamMemberFace,
   canRemoveTeamMemberFace,
 } from "@/lib/team-face-enrollment";
-import { ENROLLMENT_CAPTURE_COUNT, ENROLLMENT_DESCRIPTOR_WEIGHTS } from "@/lib/face-enrollment-capture";
+import { ENROLLMENT_CAPTURE_COUNT, ENROLLMENT_DESCRIPTOR_WEIGHTS, ENROLLMENT_SAMPLE_FRAMES, ENROLLMENT_SAMPLE_WEIGHTS } from "@/lib/face-enrollment-capture";
 
 export const runtime = "nodejs";
 
@@ -26,9 +26,11 @@ const saveSchema = z.object({
 function resolveDescriptor(body: z.infer<typeof saveSchema>): number[] | null {
   if (body.descriptors?.length) {
     const weights =
-      body.descriptors.length === ENROLLMENT_CAPTURE_COUNT
-        ? ENROLLMENT_DESCRIPTOR_WEIGHTS
-        : undefined;
+      body.descriptors.length === ENROLLMENT_SAMPLE_FRAMES
+        ? ENROLLMENT_SAMPLE_WEIGHTS
+        : body.descriptors.length === ENROLLMENT_CAPTURE_COUNT
+          ? ENROLLMENT_DESCRIPTOR_WEIGHTS
+          : undefined;
     return averageFaceDescriptors(body.descriptors, weights);
   }
   if (body.descriptor?.length) return body.descriptor;

@@ -1,7 +1,7 @@
 import type { LivenessPhase } from "@/lib/face-liveness";
 
-/** Aguarda o áudio de conclusão antes de avançar o fluxo. */
-export const LIVENESS_COMPLETE_DELAY_MS = 3400;
+/** Fallback se a duração do MP3 ainda não carregou. */
+export const LIVENESS_COMPLETE_DELAY_MS = 4200;
 
 const LIVENESS_CUES: Record<LivenessPhase, string> = {
   need_face: "/audio/liveness/liveness-need-face.mp3",
@@ -12,9 +12,12 @@ const LIVENESS_CUES: Record<LivenessPhase, string> = {
 
 const FACE_LOST_CUE = "/audio/liveness/liveness-face-lost.mp3";
 
+const cueDurationMs = new Map<string, number>();
+const playQueue: string[] = [];
+let queuePlaying = false;
+let currentAudio: HTMLAudioElement | null = null;
+
 let sharedAudioCtx: AudioContext | null = null;
-let activeAudio: HTMLAudioElement | null = null;
-const preloaded = new Map<string, HTMLAudioElement>();
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -29,23 +32,59 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-function getAudio(src: string): HTMLAudioElement {
-  let audio = preloaded.get(src);
-  if (!audio) {
-    audio = new Audio(src);
-    audio.preload = "auto";
-    preloaded.set(src, audio);
-  }
-  return audio;
+function cacheCueDuration(src: string, ms: number) {
+  cueDurationMs.set(src, ms);
 }
 
-function playCue(src: string) {
+function loadCueDuration(src: string): Promise<number> {
+  const cached = cueDurationMs.get(src);
+  if (cached) return Promise.resolve(cached);
+
+  return new Promise((resolve) => {
+    const audio = new Audio(src);
+    const finish = (ms: number) => {
+      cacheCueDuration(src, ms);
+      resolve(ms);
+    };
+    audio.addEventListener(
+      "loadedmetadata",
+      () => finish(Math.ceil(audio.duration * 1000) + 400),
+      { once: true },
+    );
+    audio.addEventListener("error", () => finish(LIVENESS_COMPLETE_DELAY_MS), { once: true });
+    audio.load();
+  });
+}
+
+function drainPlayQueue() {
+  if (queuePlaying || playQueue.length === 0) return;
+  const src = playQueue.shift()!;
+  queuePlaying = true;
+  const audio = new Audio(src);
+  currentAudio = audio;
+  const done = () => {
+    if (currentAudio === audio) currentAudio = null;
+    queuePlaying = false;
+    drainPlayQueue();
+  };
+  audio.addEventListener("ended", done, { once: true });
+  audio.addEventListener("error", done, { once: true });
+  void audio.play().catch(done);
+}
+
+/** Enfileira áudio — toca um após o outro sem cortar. */
+function playCue(src: string, { priority = false }: { priority?: boolean } = {}) {
   if (typeof window === "undefined") return;
-  resetLivenessAudioFeedback();
-  const audio = getAudio(src);
-  audio.currentTime = 0;
-  activeAudio = audio;
-  void audio.play().catch(() => {});
+  if (priority) {
+    playQueue.length = 0;
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+    queuePlaying = false;
+  }
+  playQueue.push(src);
+  drainPlayQueue();
 }
 
 function playTone(freq: number, start: number, duration: number, volume = 0.14) {
@@ -73,12 +112,10 @@ function playToneSequence(notes: Array<{ freq: number; at: number; dur: number; 
   }
 }
 
-/** Melodia opcional (reserva para feedback sem voz). */
 export function playLivenessThankYouTone() {
   playToneSequence([
     { freq: 523.25, at: 0, dur: 0.16, vol: 0.11 },
     { freq: 659.25, at: 0.18, dur: 0.16, vol: 0.12 },
-    { freq: 783.99, at: 0.36, dur: 0.22, vol: 0.13 },
   ]);
 }
 
@@ -87,26 +124,33 @@ export function playLivenessSuccessTone() {
 }
 
 export function playLivenessAttentionTone() {
-  playCue(FACE_LOST_CUE);
+  playCue(FACE_LOST_CUE, { priority: true });
 }
 
 export function resetLivenessAudioFeedback() {
-  if (activeAudio) {
-    activeAudio.pause();
-    activeAudio.currentTime = 0;
-    activeAudio = null;
+  playQueue.length = 0;
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
   }
+  queuePlaying = false;
 }
 
 export function cueLivenessPhase(phase: LivenessPhase) {
   playCue(LIVENESS_CUES[phase]);
 }
 
+/** Aguarda o MP3 de conclusão terminar antes de avançar o fluxo. */
+export async function getLivenessPassedDelayMs(): Promise<number> {
+  return loadCueDuration(LIVENESS_CUES.passed);
+}
+
 /** Pré-carrega áudios (necessário após gesto do usuário no mobile). */
 export function warmupLivenessAudio() {
   if (typeof window === "undefined") return;
-  for (const src of [...Object.values(LIVENESS_CUES), FACE_LOST_CUE]) {
-    void getAudio(src).load();
+  const all = [...Object.values(LIVENESS_CUES), FACE_LOST_CUE];
+  for (const src of all) {
+    void loadCueDuration(src);
   }
   void getAudioContext()?.resume();
 }

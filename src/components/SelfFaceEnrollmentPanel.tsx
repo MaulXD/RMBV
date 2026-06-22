@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Icon } from "./ui/Icon";
 import { MultiCaptureFaceWizard } from "./MultiCaptureFaceWizard";
 
-/** Cadastro / recadastro facial do próprio usuário — fluxo multi-pose + prova de vida. */
+/** Cadastro / recadastro facial do próprio usuário — prova de vida + amostras de frente. */
 export function SelfFaceEnrollmentPanel({
   userId,
   onUpdated,
@@ -59,8 +59,8 @@ export function SelfFaceEnrollmentPanel({
 
       <p className="mb-3 text-xs text-muted">
         {hasFace
-          ? "Recadastre com prova de vida e 3 poses para melhorar o reconhecimento no ponto."
-          : "Cadastre com prova de vida e 3 poses (frente, cima e baixo)."}
+          ? "Recadastre com prova de vida e amostras de frente para melhorar o reconhecimento no ponto."
+          : "Cadastre com prova de vida — mantenha o rosto de frente no molde."}
       </p>
 
       {!wizardOpen && (
