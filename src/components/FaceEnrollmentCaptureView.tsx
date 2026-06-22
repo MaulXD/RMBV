@@ -30,6 +30,11 @@ import {
   LIVENESS_FACE_DETECT,
   isVideoReadyForDetection,
 } from "@/lib/face-liveness";
+import {
+  faceVideoStyle,
+  FACE_OVAL_BORDER_CLASS,
+  FACE_OVAL_INSET,
+} from "@/lib/face-framing";
 
 const MODEL_URL = "/models";
 
@@ -309,8 +314,8 @@ export function FaceEnrollmentCaptureView({
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
       <div
-        className="relative mx-auto w-full max-w-[min(100%,340px)] overflow-hidden rounded-xl bg-black sm:max-w-sm"
-        style={{ aspectRatio: "3 / 4", maxHeight: "min(56dvh, 420px)" }}
+        className="relative mx-auto w-full overflow-hidden rounded-xl bg-black"
+        style={{ aspectRatio: "3 / 4", width: "100%", maxHeight: "min(65dvh, 520px)" }}
       >
         <video
           ref={videoRef}
@@ -318,7 +323,7 @@ export function FaceEnrollmentCaptureView({
           playsInline
           muted
           autoPlay
-          style={{ transform: "scaleX(-1) scale(1.58)", transformOrigin: "center 38%" }}
+          style={faceVideoStyle}
         />
         <div className="pointer-events-none absolute inset-0">
           {!livenessPassed && (
@@ -334,11 +339,10 @@ export function FaceEnrollmentCaptureView({
               ok={poseEval?.ok === true && stableProgress > 0}
             />
           )}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div
-              className={`h-[84%] w-[70%] rounded-[50%] border-[3px] border-dashed transition-all duration-300 ${ringColor}`}
-            />
-          </div>
+          <div
+            className={`absolute ${FACE_OVAL_BORDER_CLASS} rounded-[50%] transition-all duration-300 ${ringColor}`}
+            style={FACE_OVAL_INSET}
+          />
         </div>
 
         {isSaving && (
