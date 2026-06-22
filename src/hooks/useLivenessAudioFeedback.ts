@@ -9,7 +9,7 @@ import {
   warmupLivenessAudio,
 } from "@/lib/face-liveness-audio";
 
-/** Feedback sonoro na prova de vida — tons por fase, sem voz sintética. */
+/** Feedback de voz na prova de vida — fala ao mudar de fase. */
 export function useLivenessAudioFeedback(
   active: boolean,
   phase: LivenessPhase | null,
@@ -20,6 +20,11 @@ export function useLivenessAudioFeedback(
 
   useEffect(() => {
     warmupLivenessAudio();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      const onVoices = () => warmupLivenessAudio();
+      window.speechSynthesis.addEventListener("voiceschanged", onVoices);
+      return () => window.speechSynthesis.removeEventListener("voiceschanged", onVoices);
+    }
   }, []);
 
   useEffect(() => {
