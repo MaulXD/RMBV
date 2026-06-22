@@ -280,7 +280,7 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           resetMatchFlow();
           setTimeout(() => setStatus("ready"), 3000);
         } else {
-          setMatchHint("Aproxime o rosto no oval");
+          setMatchHint("Aproxime o rosto no molde");
           setStatus("ready");
         }
         detectingRef.current = false;
@@ -479,13 +479,13 @@ export function PontoKiosk({ teamId }: { teamId: string }) {
           ) : status === "liveness" ? (
             <div className="space-y-3 px-2">
               <p className="text-base font-bold leading-snug text-violet-300">{livenessMsg}</p>
-              <p className="text-xs text-white/40">Aproxime o rosto no oval — feche os olhos e abra ao ouvir o sinal</p>
+              <p className="text-xs text-white/40">Aproxime o rosto no molde — feche os olhos e abra ao ouvir o sinal</p>
             </div>
           ) : status === "ready" ? (
             <p className="text-sm text-white/40">
               {knownUsers.length === 0
                 ? "Nenhum rosto cadastrado nesta equipe"
-                : "Aproxime o rosto no oval para registrar o ponto"}
+                : "Aproxime o rosto no molde para registrar o ponto"}
             </p>
           ) : status === "detecting" ? (
             <div className="space-y-2 px-2">

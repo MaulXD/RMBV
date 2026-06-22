@@ -1,18 +1,20 @@
 import type { LivenessPhase } from "@/lib/face-liveness";
 
-/** Aguarda fala + melodia de conclusão antes de avançar o fluxo. */
-export const LIVENESS_COMPLETE_DELAY_MS = 2800;
+/** Aguarda o áudio de conclusão antes de avançar o fluxo. */
+export const LIVENESS_COMPLETE_DELAY_MS = 3400;
 
-const PHASE_CUE: Record<LivenessPhase, string> = {
-  need_face: "Olhe para a câmera com os olhos abertos",
-  need_close: "Feche os olhos por um momento",
-  need_open: "Pronto",
-  passed: "Verificação concluída",
+const LIVENESS_CUES: Record<LivenessPhase, string> = {
+  need_face: "/audio/liveness/liveness-need-face.mp3",
+  need_close: "/audio/liveness/liveness-need-close.mp3",
+  need_open: "/audio/liveness/liveness-need-open.mp3",
+  passed: "/audio/liveness/liveness-passed.mp3",
 };
 
-const FACE_LOST_CUE = "Centralize o rosto no oval";
+const FACE_LOST_CUE = "/audio/liveness/liveness-face-lost.mp3";
 
 let sharedAudioCtx: AudioContext | null = null;
+let activeAudio: HTMLAudioElement | null = null;
+const preloaded = new Map<string, HTMLAudioElement>();
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -27,47 +29,23 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-function scorePortugueseVoice(voice: SpeechSynthesisVoice): number {
-  const name = voice.name.toLowerCase();
-  const lang = voice.lang.toLowerCase();
-  let score = 0;
-  if (lang === "pt-br") score += 100;
-  else if (lang.startsWith("pt")) score += 60;
-  if (name.includes("google")) score += 35;
-  if (/luciana|francisca|joana|fernanda|vitória|vitoria|camila/.test(name)) score += 28;
-  if (/natural|premium|enhanced|neural/.test(name)) score += 18;
-  if (/microsoft.*david|daniel|heloisa|male|homem|zira/.test(name)) score -= 30;
-  if (voice.localService) score += 4;
-  return score;
-}
-
-function pickPortugueseVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  let best: SpeechSynthesisVoice | null = null;
-  let bestScore = -Infinity;
-  for (const voice of voices) {
-    if (!voice.lang.toLowerCase().startsWith("pt")) continue;
-    const score = scorePortugueseVoice(voice);
-    if (score > bestScore) {
-      bestScore = score;
-      best = voice;
-    }
+function getAudio(src: string): HTMLAudioElement {
+  let audio = preloaded.get(src);
+  if (!audio) {
+    audio = new Audio(src);
+    audio.preload = "auto";
+    preloaded.set(src, audio);
   }
-  return best;
+  return audio;
 }
 
-function speakPortuguese(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "pt-BR";
-  utterance.rate = 0.94;
-  utterance.pitch = 0.98;
-  const voice = pickPortugueseVoice();
-  if (voice) utterance.voice = voice;
-  synth.speak(utterance);
+function playCue(src: string) {
+  if (typeof window === "undefined") return;
+  resetLivenessAudioFeedback();
+  const audio = getAudio(src);
+  audio.currentTime = 0;
+  activeAudio = audio;
+  void audio.play().catch(() => {});
 }
 
 function playTone(freq: number, start: number, duration: number, volume = 0.14) {
@@ -95,14 +73,12 @@ function playToneSequence(notes: Array<{ freq: number; at: number; dur: number; 
   }
 }
 
-/** Melodia suave após a fala de conclusão. */
+/** Melodia opcional (reserva para feedback sem voz). */
 export function playLivenessThankYouTone() {
   playToneSequence([
     { freq: 523.25, at: 0, dur: 0.16, vol: 0.11 },
     { freq: 659.25, at: 0.18, dur: 0.16, vol: 0.12 },
     { freq: 783.99, at: 0.36, dur: 0.22, vol: 0.13 },
-    { freq: 987.77, at: 0.62, dur: 0.28, vol: 0.12 },
-    { freq: 880, at: 0.95, dur: 0.45, vol: 0.1 },
   ]);
 }
 
@@ -111,25 +87,26 @@ export function playLivenessSuccessTone() {
 }
 
 export function playLivenessAttentionTone() {
-  speakPortuguese(FACE_LOST_CUE);
+  playCue(FACE_LOST_CUE);
 }
 
 export function resetLivenessAudioFeedback() {
-  if (typeof window !== "undefined" && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.currentTime = 0;
+    activeAudio = null;
   }
 }
 
 export function cueLivenessPhase(phase: LivenessPhase) {
-  speakPortuguese(PHASE_CUE[phase]);
-  if (phase === "passed") {
-    window.setTimeout(() => playLivenessThankYouTone(), 1100);
-  }
+  playCue(LIVENESS_CUES[phase]);
 }
 
-/** Carrega vozes TTS (necessário em Safari/iOS). */
+/** Pré-carrega áudios (necessário após gesto do usuário no mobile). */
 export function warmupLivenessAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.getVoices();
+  if (typeof window === "undefined") return;
+  for (const src of [...Object.values(LIVENESS_CUES), FACE_LOST_CUE]) {
+    void getAudio(src).load();
+  }
   void getAudioContext()?.resume();
 }
