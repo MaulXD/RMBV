@@ -59,8 +59,8 @@ export function SelfFaceEnrollmentPanel({
 
       <p className="mb-3 text-xs text-muted">
         {hasFace
-          ? "Recadastre com prova de vida e 5 poses para melhorar o reconhecimento no ponto."
-          : "Cadastre com prova de vida e 5 poses (frente, cima, baixo, esquerda e direita)."}
+          ? "Recadastre com prova de vida e 3 poses para melhorar o reconhecimento no ponto."
+          : "Cadastre com prova de vida e 3 poses (frente, cima e baixo)."}
       </p>
 
       {!wizardOpen && (

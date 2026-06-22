@@ -1,4 +1,4 @@
-/** Passos do cadastro facial multi-pose (5 capturas automáticas). */
+/** Passos do cadastro facial multi-pose (3 capturas automáticas). */
 export const ENROLLMENT_POSE_STEPS = [
   {
     label: "Frente",
@@ -15,22 +15,12 @@ export const ENROLLMENT_POSE_STEPS = [
     hint: "Incline a cabeça levemente para baixo",
     direction: "down" as const,
   },
-  {
-    label: "Esquerda",
-    hint: "Vire levemente a cabeça para a esquerda",
-    direction: "left" as const,
-  },
-  {
-    label: "Direita",
-    hint: "Vire levemente a cabeça para a direita",
-    direction: "right" as const,
-  },
 ] as const;
 
 export const ENROLLMENT_CAPTURE_COUNT = ENROLLMENT_POSE_STEPS.length;
 
 /** Peso por pose no descritor salvo — frente pesa mais (ponto compara rosto frontal). */
-export const ENROLLMENT_DESCRIPTOR_WEIGHTS = [2.5, 1, 1, 0.75, 0.75] as const;
+export const ENROLLMENT_DESCRIPTOR_WEIGHTS = [2.5, 1, 1] as const;
 
 export type PoseDirection = (typeof ENROLLMENT_POSE_STEPS)[number]["direction"];
 
@@ -41,21 +31,10 @@ const MAX_CENTER_OFFSET = 0.35;
 const MAX_FRAME_JITTER = 0.06;
 
 const YAW_CENTER_MAX = 0.12;
-/** Inclinação lateral mínima (raw camera — não espelhada). */
-const YAW_SIDE_MIN = 0.16;
 const PITCH_CENTER_MIN = 0.4;
 const PITCH_CENTER_MAX = 0.54;
 const PITCH_UP_MAX = 0.36;
 const PITCH_DOWN_MIN = 0.58;
-/** Pitch tolerante quando a cabeça está virada (métrica inclina com yaw). */
-const PITCH_SIDE_MIN = 0.26;
-const PITCH_SIDE_MAX = 0.68;
-const MAX_CENTER_OFFSET_SIDE = 0.52;
-const MAX_FRAME_JITTER_SIDE = 0.11;
-
-function isSidePose(direction: PoseDirection) {
-  return direction === "left" || direction === "right";
-}
 
 export type FaceBox = { x: number; y: number; width: number; height: number };
 
@@ -81,20 +60,18 @@ function avgPoints(points: LandmarkPoint[]): LandmarkPoint {
   };
 }
 
-/** Métricas de pose a partir dos 68 landmarks (face-api). */
 export function computePoseMetrics(positions: LandmarkPoint[]): PoseMetrics {
   const leftEye = avgPoints([36, 37, 38, 39, 40, 41].map((i) => positions[i]!));
   const rightEye = avgPoints([42, 43, 44, 45, 46, 47].map((i) => positions[i]!));
   const nose = positions[30]!;
-  const jaw = positions[8]!;
-
+  const chin = positions[8]!;
+  const forehead = positions[27]!;
   const eyeCenterX = (leftEye.x + rightEye.x) / 2;
   const eyeCenterY = (leftEye.y + rightEye.y) / 2;
   const eyeDist = Math.hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y) || 1;
-
+  const faceHeight = Math.hypot(chin.x - forehead.x, chin.y - forehead.y) || 1;
   const yaw = (nose.x - eyeCenterX) / eyeDist;
-  const pitch = (nose.y - eyeCenterY) / (jaw.y - nose.y || 1);
-
+  const pitch = (nose.y - eyeCenterY) / faceHeight;
   return { yaw, pitch };
 }
 
@@ -171,45 +148,6 @@ export function evaluatePose(direction: PoseDirection, metrics: PoseMetrics): Po
       }
       return { ok: true, kind: "ok", message: "Boa! Mantenha inclinado para baixo", alignment: clamp01((pitch - PITCH_CENTER_MAX) / 0.1) };
     }
-    case "left": {
-      /** Preview espelhado: “esquerda” na tela = yaw positivo no frame raw. */
-      if (yaw < YAW_SIDE_MIN) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Vire a cabeça para a esquerda",
-          alignment: clamp01((YAW_SIDE_MIN - yaw) / YAW_SIDE_MIN),
-        };
-      }
-      if (pitch < PITCH_SIDE_MIN || pitch > PITCH_SIDE_MAX) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Mantenha o queixo na horizontal",
-          alignment: 0.4,
-        };
-      }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à esquerda", alignment: clamp01(yaw / 0.32) };
-    }
-    case "right": {
-      if (yaw > -YAW_SIDE_MIN) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Vire a cabeça para a direita",
-          alignment: clamp01((YAW_SIDE_MIN + yaw) / YAW_SIDE_MIN),
-        };
-      }
-      if (pitch < PITCH_SIDE_MIN || pitch > PITCH_SIDE_MAX) {
-        return {
-          ok: false,
-          kind: "wrong_pose",
-          message: "Mantenha o queixo na horizontal",
-          alignment: 0.4,
-        };
-      }
-      return { ok: true, kind: "ok", message: "Boa! Mantenha virado à direita", alignment: clamp01(Math.abs(yaw) / 0.32) };
-    }
     default:
       return { ok: false, kind: "wrong_pose", message: "Ajuste a pose", alignment: 0 };
   }
@@ -236,18 +174,10 @@ export function frameQuality(
   box: FaceBox,
   videoW: number,
   videoH: number,
-  direction: PoseDirection = "center",
 ): number {
-  const side = isSidePose(direction);
-  const minScore = side ? 0.5 : MIN_DETECTION_SCORE;
-  if (detectionScore < minScore) return 0;
-  const center = faceCenterScore(
-    box,
-    videoW,
-    videoH,
-    side ? MAX_CENTER_OFFSET_SIDE : MAX_CENTER_OFFSET,
-  );
-  const sizeScore = Math.min(1, box.width / (videoW * (side ? 0.24 : 0.28)));
+  if (detectionScore < MIN_DETECTION_SCORE) return 0;
+  const center = faceCenterScore(box, videoW, videoH, MAX_CENTER_OFFSET);
+  const sizeScore = Math.min(1, box.width / (videoW * 0.28));
   return detectionScore * 0.45 + center * 0.4 + sizeScore * 0.15;
 }
 
@@ -291,12 +221,8 @@ export function tickAutoCapture(
   quality: number,
   box: FaceBox,
   poseOk: boolean,
-  direction: PoseDirection = "center",
 ): { ready: boolean; descriptor: number[] | null } {
-  const minQuality = isSidePose(direction) ? 0.48 : MIN_QUALITY;
-  const maxJitter = isSidePose(direction) ? MAX_FRAME_JITTER_SIDE : MAX_FRAME_JITTER;
-
-  if (!poseOk || quality < minQuality) {
+  if (!poseOk || quality < MIN_QUALITY) {
     tracker.stableCount = 0;
     tracker.bestQuality = 0;
     tracker.bestDescriptor = null;
@@ -305,7 +231,7 @@ export function tickAutoCapture(
   }
 
   const center = boxCenter(box);
-  if (!isBoxStable(tracker.lastCenter, center, box.width, maxJitter)) {
+  if (!isBoxStable(tracker.lastCenter, center, box.width, MAX_FRAME_JITTER)) {
     tracker.stableCount = 0;
     tracker.bestQuality = quality;
     tracker.bestDescriptor = Array.from(descriptor);
