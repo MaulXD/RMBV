@@ -6,6 +6,7 @@ import { assertKioskRequest } from "@/lib/kiosk-auth";
 import { parseProbeDescriptor } from "@/lib/face-verify";
 import { matchProbeAgainstTeam, teamUsersToFaceCandidates } from "@/lib/ponto-face-match";
 import { nextPontoType } from "@/lib/ponto-hours";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,13 @@ const matchSchema = z.object({
 export async function POST(request: Request) {
   const kioskError = assertKioskRequest(request);
   if (kioskError) return kioskError;
+
+  // Per-teamId rate limit — rejects runaway kiosks without blocking IP-NAT neighbors
+  const forwardedIp = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const rl = checkRateLimit(`ponto-match:${forwardedIp}`, "ponto-match");
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Taxa de requisições excedida" }, { status: 429 });
+  }
 
   try {
     const body = await request.json();
