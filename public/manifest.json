@@ -3,16 +3,39 @@
   "short_name": "RMBV",
   "description": "Gestão de clientes, Kanban, chamados e ferramentas PDF",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#0f766e",
+  "theme_color": "#2563eb",
   "lang": "pt-BR",
+  "dir": "ltr",
   "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/favicon.ico",
       "sizes": "64x64",
       "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Lista de clientes"
+    },
+    {
+      "name": "Kanban",
+      "short_name": "Kanban",
+      "url": "/kanban",
+      "description": "Quadro de tarefas"
+    },
+    {
+      "name": "Ponto",
+      "short_name": "Ponto",
+      "url": "/ponto",
+      "description": "Registro de ponto"
     }
   ]
 }

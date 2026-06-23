@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { useSession } from "./SessionProvider";
 import { Icon } from "./ui/Icon";
 
@@ -20,7 +21,16 @@ function initials(name: string) {
 
 function Avatar({ user, size = 28 }: { user: { name: string; avatarUrl: string | null }; size?: number }) {
   if (user.avatarUrl) {
-    return <img src={user.avatarUrl} alt={user.name} className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />;
+    return (
+      <Image
+        src={user.avatarUrl}
+        alt={user.name}
+        width={size}
+        height={size}
+        className="rounded-full object-cover shrink-0"
+        unoptimized={user.avatarUrl.startsWith("/")}
+      />
+    );
   }
   return (
     <div className="rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 font-semibold" style={{ width: size, height: size, fontSize: size * 0.38 }}>

@@ -6,13 +6,16 @@ O que já foi entregue (Sprints 1–3) e o que vale implementar em seguida, orde
 
 ---
 
-## Entregue recentemente (Sprints 1–3)
+## Entregue recentemente (Sprints 1–4)
 
 | Sprint | Entrega | Status |
 |---|---|---|
 | **1 — Segurança do ponto** | Validação facial no servidor, quiosque com `KIOSK_API_KEY`, `faces` descontinuado, `migrate deploy` | ✅ |
 | **2 — Testes e CI** | Playwright (14 testes), GitHub Actions, `typecheck` | ✅ |
 | **3 — Manutenção** | Refatoração `/ponto`, limites de export (10k/500), horário no servidor, remoção `AppShell` | ✅ |
+| **4 — Mobile UX + Ações + Cartas** | MobileBottomNav, ChatFloating full-screen mobile, ponto facial self-service, 65% confiança, página Ações (processos, 4 etapas, CSV), página Cartas (endereço estruturado, ViaCEP, export PDF/CSV), aba Ações no perfil do cliente | ✅ |
+
+> **Migração pendente:** `npx prisma db push` para campos `Acao` e endereço no `Client` (BD Neon inacessível na última sessão).
 
 ---
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Icon, type IconName } from "./ui/Icon";
@@ -29,11 +30,13 @@ function userInitials(name: string) {
 function UserAvatar({ user, size = 32 }: { user: { name: string; avatarUrl: string | null }; size?: number }) {
   if (user.avatarUrl) {
     return (
-      <img
+      <Image
         src={user.avatarUrl}
         alt={user.name}
+        width={size}
+        height={size}
         className="rounded-full object-cover shrink-0"
-        style={{ width: size, height: size }}
+        unoptimized={user.avatarUrl.startsWith("/")}
       />
     );
   }
