@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -208,6 +209,7 @@ export default function CartasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [semEndereco, setSemEndereco] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -262,14 +264,17 @@ export default function CartasPage() {
   };
 
   const toggleAll = () => {
-    if (selected.size === clients.length) {
+    if (selected.size === displayClients.length && displayClients.length > 0) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(clients.map((c) => c.id)));
+      setSelected(new Set(displayClients.map((c) => c.id)));
     }
   };
 
-  const selectedClients = clients.filter((c) => selected.has(c.id));
+  const displayClients = semEndereco
+    ? clients.filter((c) => !c.logradouro && !c.cep)
+    : clients;
+  const selectedClients = displayClients.filter((c) => selected.has(c.id));
 
   if (!user) return null;
   if (!["ADMIN", "ADV", "GERENTE"].includes(user.role)) {
@@ -340,6 +345,15 @@ export default function CartasPage() {
           <option value="SEM_SUCESSO">Sem sucesso</option>
           <option value="TENTE_NOVAMENTE">Tente novamente</option>
         </select>
+        <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-muted hover:text-foreground">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 rounded"
+            checked={semEndereco}
+            onChange={(e) => setSemEndereco(e.target.checked)}
+          />
+          Sem endereço
+        </label>
       </div>
 
       {loading ? (
@@ -358,7 +372,7 @@ export default function CartasPage() {
                 <th className="px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={selected.size === clients.length && clients.length > 0}
+                    checked={selected.size === displayClients.length && displayClients.length > 0}
                     onChange={toggleAll}
                     className="h-4 w-4 rounded border-border"
                   />
@@ -368,7 +382,7 @@ export default function CartasPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {clients.map((c) => (
+              {displayClients.map((c) => (
                 <tr key={c.id} className={`bg-surface-elevated transition-colors ${selected.has(c.id) ? "bg-primary/5" : "hover:bg-surface"}`}>
                   <td className="px-4 py-3">
                     <input
@@ -379,7 +393,9 @@ export default function CartasPage() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-foreground">{c.name}</span>
+                    <Link href={`/clients/${c.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                      {c.name}
+                    </Link>
                     {c.cod && <span className="ml-1.5 text-xs text-muted">#{c.cod}</span>}
                     {c.teseRef && (
                       <div
@@ -402,8 +418,8 @@ export default function CartasPage() {
           </table>
           <div className="border-t border-border px-4 py-2 text-xs text-muted">
             {selected.size > 0
-              ? `${selected.size} de ${clients.length} selecionado${selected.size !== 1 ? "s" : ""}`
-              : `${clients.length} cliente${clients.length !== 1 ? "s" : ""}`}
+              ? `${selected.size} de ${displayClients.length} selecionado${selected.size !== 1 ? "s" : ""}`
+              : `${displayClients.length} cliente${displayClients.length !== 1 ? "s" : ""}${semEndereco ? " sem endereço" : ""}`}
           </div>
         </div>
       )}
