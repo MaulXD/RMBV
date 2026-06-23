@@ -14,6 +14,7 @@ import { useSession } from "@/components/SessionProvider";
 import { ChatFloating } from "@/components/ChatFloating";
 import { AccountSetupGuard } from "@/components/AccountSetupGuard";
 import { PontoExitReminder } from "@/components/PontoExitReminder";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
@@ -148,7 +149,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="safe-area-bottom flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+          <main className="flex-1 px-4 py-4 pb-20 sm:px-6 sm:py-6 lg:px-8 lg:pb-6">
             <AccountSetupGuard>
               {user && <PontoExitReminder />}
               {user && <OnboardingTour />}
@@ -159,6 +160,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {user && <GlobalSearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />}
+      {user && (
+        <MobileBottomNav
+          onMenuOpen={() => setSidebarOpen(true)}
+          onChatToggle={() => setChatOpen((o) => !o)}
+          chatUnread={chatUnread}
+          chatOpen={chatOpen}
+        />
+      )}
       {user && (
         <ChatFloating
           open={chatOpen}
