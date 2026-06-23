@@ -272,6 +272,13 @@ export default function CartasPage() {
   const selectedClients = clients.filter((c) => selected.has(c.id));
 
   if (!user) return null;
+  if (!["ADMIN", "ADV", "GERENTE"].includes(user.role)) {
+    return (
+      <div className="flex items-center justify-center py-24 text-muted">
+        Sem permissão para acessar esta página.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
