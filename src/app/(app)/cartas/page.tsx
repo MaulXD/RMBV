@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type ClientCartas = {
   id: string;
@@ -27,6 +28,11 @@ type CepData = {
   cidade: string;
   uf: string;
 };
+
+function formatCep(raw: string) {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
 
 function AddressCell({ client, onSave }: {
   client: ClientCartas;
@@ -113,9 +119,9 @@ function AddressCell({ client, onSave }: {
         <div className="relative flex-1">
           <input
             className="input w-full py-1 text-xs"
-            placeholder="CEP"
+            placeholder="CEP (00000-000)"
             value={form.cep}
-            onChange={(e) => setForm((p) => ({ ...p, cep: e.target.value }))}
+            onChange={(e) => setForm((p) => ({ ...p, cep: formatCep(e.target.value) }))}
             onBlur={(e) => lookupCep(e.target.value)}
             maxLength={9}
           />
@@ -204,13 +210,14 @@ export default function CartasPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
+  const debouncedSearch = useDebounce(search);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
-      if (search) params.set("search", search);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await fetch(`/api/cartas?${params}`);
       if (res.ok) {
         const data = await res.json() as { clients: ClientCartas[] };
@@ -219,12 +226,12 @@ export default function CartasPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleSaveAddress = useCallback(async (id: string, data: Partial<ClientCartas>) => {
-    const res = await fetch(`/api/clients/${id}`, {
+    const res = await fetch(`/api/clients/${id}/address`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
