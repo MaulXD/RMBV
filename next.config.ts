@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
     // Evita o padrão "opções só aparecem no F5" após deploys.
     staleTimes: { dynamic: 0, static: 180 },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

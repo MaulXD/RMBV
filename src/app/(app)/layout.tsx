@@ -15,6 +15,7 @@ import { ChatFloating } from "@/components/ChatFloating";
 import { AccountSetupGuard } from "@/components/AccountSetupGuard";
 import { PontoExitReminder } from "@/components/PontoExitReminder";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { KeyboardShortcutsModal, useKeyboardShortcutsShortcut, useGotoShortcuts } from "@/components/KeyboardShortcutsModal";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
@@ -30,8 +31,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     allowedDays: number[];
   } | null>(null);
 
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
   const openSearch = useCallback(() => setSearchOpen(true), []);
   useGlobalSearchShortcut(openSearch);
+  useKeyboardShortcutsShortcut(useCallback(() => setShortcutsOpen(true), []));
+  useGotoShortcuts();
 
   useEffect(() => {
     if (!user) { setKanbanOverdueCount(0); return; }
@@ -160,6 +165,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {user && <GlobalSearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />}
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {user && (
         <MobileBottomNav
           onMenuOpen={() => setSidebarOpen(true)}

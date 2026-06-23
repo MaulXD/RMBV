@@ -12,6 +12,7 @@ import { TeseManager } from "@/components/TeseManager";
 import { AdminClientsPanel } from "@/components/AdminClientsPanel";
 import { BackupPanel } from "@/components/BackupPanel";
 import { TeamFaceEnrollmentPanel } from "@/components/TeamFaceEnrollmentPanel";
+import { FaceAuditStatsPanel } from "@/components/FaceAuditStatsPanel";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
@@ -305,7 +306,7 @@ export default function AdminPage() {
                 </select>
               </div>
               {teamId && (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <TeamFaceEnrollmentPanel teamId={teamId} />
                   <div className="industrial-panel max-w-2xl p-4">
                     <p className="text-xs font-medium text-muted mb-1">Link do quiosque de ponto</p>
@@ -315,6 +316,10 @@ export default function AdminPage() {
                     <p className="mt-2 text-xs text-muted">
                       Abra este link no tablet da equipe (inclui chave de segurança). Não compartilhe publicamente.
                     </p>
+                  </div>
+                  <div>
+                    <h3 className="mb-3 text-sm font-semibold">Auditoria de reconhecimento facial</h3>
+                    <FaceAuditStatsPanel teamId={teamId} />
                   </div>
                 </div>
               )}

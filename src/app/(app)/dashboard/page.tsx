@@ -41,16 +41,39 @@ function DashboardContent() {
     if (user?.role === "ADMIN") return "Todas as equipes";
     return user?.teamName ?? null;
   });
+  function readSavedFilters() {
+    try {
+      const raw = localStorage.getItem("dashboard-filters");
+      return raw ? JSON.parse(raw) as { status?: string; workflow?: string; pageSize?: number } : {};
+    } catch { return {}; }
+  }
+
+  function saveFilters(patch: { status?: string; workflow?: string; pageSize?: number }) {
+    try {
+      const current = readSavedFilters();
+      localStorage.setItem("dashboard-filters", JSON.stringify({ ...current, ...patch }));
+    } catch { /* ignore */ }
+  }
+
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [workflowFilter, setWorkflowFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    try { return typeof window !== "undefined" ? (JSON.parse(localStorage.getItem("dashboard-filters") ?? "{}") as { status?: string }).status ?? "" : ""; } catch { return ""; }
+  });
+  const [workflowFilter, setWorkflowFilter] = useState<string>(() => {
+    try { return typeof window !== "undefined" ? (JSON.parse(localStorage.getItem("dashboard-filters") ?? "{}") as { workflow?: string }).workflow ?? "" : ""; } catch { return ""; }
+  });
   const [followUpDue, setFollowUpDue] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<ClientPageSize>(DEFAULT_CLIENT_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState<ClientPageSize>(() => {
+    try {
+      const saved = typeof window !== "undefined" ? (JSON.parse(localStorage.getItem("dashboard-filters") ?? "{}") as { pageSize?: number }).pageSize : undefined;
+      return (saved as ClientPageSize) ?? DEFAULT_CLIENT_PAGE_SIZE;
+    } catch { return DEFAULT_CLIENT_PAGE_SIZE; }
+  });
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -177,6 +200,7 @@ function DashboardContent() {
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
+              saveFilters({ status: e.target.value });
               setPage(1);
             }}
           >
@@ -192,6 +216,7 @@ function DashboardContent() {
             value={workflowFilter}
             onChange={(e) => {
               setWorkflowFilter(e.target.value);
+              saveFilters({ workflow: e.target.value });
               setPage(1);
             }}
           >
@@ -280,6 +305,7 @@ function DashboardContent() {
           onPageChange={setPage}
         onPageSizeChange={(size) => {
           setPageSize(size);
+          saveFilters({ pageSize: size });
           setPage(1);
         }}
       />

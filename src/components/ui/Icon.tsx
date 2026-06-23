@@ -67,6 +67,7 @@ import {
   Printer,
   Scale,
   Mail,
+  Keyboard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -139,6 +140,7 @@ const icons = {
   printer: Printer,
   scale: Scale,
   mail: Mail,
+  keyboard: Keyboard,
 } as const;
 
 export type IconName = keyof typeof icons;
