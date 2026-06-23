@@ -40,6 +40,30 @@ function StageDot({ done, date }: { done: boolean; date: string | null }) {
 
 const ALLOWED_ROLES = ["ADMIN", "ADV", "GERENTE"];
 
+function exportAcoesCSV(acoes: Acao[]) {
+  const headers = ["Cliente", "COD", "Tese", "CNJ", "Valor Causa", "ADV confirmou", "Docs enviados", "Entrada", "Sentença", "Resultado"];
+  const rows = acoes.map((a) => [
+    a.client.name,
+    a.client.cod ?? "",
+    a.client.teseRef?.name ?? "",
+    a.numCNJ ?? "",
+    a.valorCausa != null ? a.valorCausa.toFixed(2).replace(".", ",") : "",
+    fmtDate(a.advConfirmadoAt) ?? "",
+    fmtDate(a.docsEnviadosAt) ?? "",
+    fmtDate(a.entradaAt) ?? "",
+    fmtDate(a.sentencaAt) ?? "",
+    a.sentencaResultado ?? "",
+  ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "acoes.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AcoesPage() {
   const { user } = useSession();
   const [acoes, setAcoes] = useState<Acao[]>([]);
@@ -99,6 +123,16 @@ export default function AcoesPage() {
           <h1 className="text-xl font-bold text-foreground">Ações</h1>
           <p className="text-sm text-muted">Processos judiciais e administrativos dos clientes</p>
         </div>
+        {!loading && filtered.length > 0 && (
+          <button
+            type="button"
+            onClick={() => exportAcoesCSV(filtered)}
+            className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm"
+          >
+            <Icon name="download" className="h-4 w-4" />
+            Exportar CSV
+          </button>
+        )}
       </div>
 
       {/* Stats */}
