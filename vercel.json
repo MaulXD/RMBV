@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/purge-retention",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/sla-alerts",
+      "schedule": "0 8 * * *"
     }
   ]
 }
