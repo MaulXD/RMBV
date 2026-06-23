@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -210,7 +210,19 @@ export default function CartasPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(search);
+
+  useEffect(() => {
+    if (!showExport) return;
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setShowExport(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showExport]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -270,7 +282,7 @@ export default function CartasPage() {
         </div>
 
         {selected.size > 0 && (
-          <div className="relative">
+          <div className="relative" ref={exportRef}>
             <button
               type="button"
               className="btn-primary flex items-center gap-2 px-4 py-2"
