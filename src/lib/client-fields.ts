@@ -119,6 +119,13 @@ export type ClientProfileData = {
   address1: string | null;
   address2: string | null;
   address3: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
   status: ClientStatus;
   workflowStatus: ClientWorkflowStatus;
   finalizationRequestedAt: string | null;
@@ -295,6 +302,13 @@ export function formatClientForApi(
     address1: string | null;
     address2: string | null;
     address3: string | null;
+    cep: string | null;
+    logradouro: string | null;
+    numero: string | null;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
     status: ClientStatus;
     workflowStatus: ClientWorkflowStatus;
     finalizationRequestedAt: Date | null;
@@ -332,6 +346,13 @@ export function formatClientForApi(
     address1: client.address1,
     address2: client.address2,
     address3: client.address3,
+    cep: client.cep,
+    logradouro: client.logradouro,
+    numero: client.numero,
+    complemento: client.complemento,
+    bairro: client.bairro,
+    cidade: client.cidade,
+    uf: client.uf,
     status: client.status,
     workflowStatus: client.workflowStatus,
     finalizationRequestedAt: client.finalizationRequestedAt?.toISOString() ?? null,

@@ -25,6 +25,13 @@ export const clientDataSchema = z.object({
   address2: optionalString,
   address3: optionalString,
   pesquisa: optionalString,
+  cep: optionalString,
+  logradouro: optionalString,
+  numero: optionalString,
+  complemento: optionalString,
+  bairro: optionalString,
+  cidade: optionalString,
+  uf: optionalString,
 });
 
 export type ClientDataInput = z.infer<typeof clientDataSchema>;

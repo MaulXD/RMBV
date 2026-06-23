@@ -63,6 +63,10 @@ import {
   Bell,
   Camera,
   ScanFace,
+  Download,
+  Printer,
+  Scale,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 
@@ -131,6 +135,10 @@ const icons = {
   camera: Camera,
   scanFace: ScanFace,
   phone: Phone,
+  download: Download,
+  printer: Printer,
+  scale: Scale,
+  mail: Mail,
 } as const;
 
 export type IconName = keyof typeof icons;
