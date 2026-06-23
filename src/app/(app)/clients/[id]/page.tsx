@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import type { Role, PhoneCheckResult } from "@prisma/client";
 import { useSession } from "@/components/SessionProvider";
 import { ClientProfileForm } from "@/components/ClientProfileForm";
@@ -30,7 +30,6 @@ type Category = { id: string; name: string };
 
 export default function ClientDetailPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const id = params.id as string;
   const { user } = useSession();
   const isAdmin = user?.role === "ADMIN";
@@ -44,7 +43,11 @@ export default function ClientDetailPage() {
   const [latestPhoneChecks, setLatestPhoneChecks] = useState<
     Partial<Record<string, PhoneCheckResult>>
   >({});
-  const initialTab = (searchParams.get("tab") as ClientProfileTab | null) ?? "perfil";
+  const initialTab = (): ClientProfileTab => {
+    if (typeof window === "undefined") return "perfil";
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return (tab as ClientProfileTab | null) ?? "perfil";
+  };
   const [activeTab, setActiveTab] = useState<ClientProfileTab>(initialTab);
   const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
   const [overwrittenFields, setOverwrittenFields] = useState<Set<string>>(new Set());
