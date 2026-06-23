@@ -84,6 +84,14 @@ export default function AcoesPage() {
     );
   });
 
+  const stats = {
+    total: acoes.length,
+    adv: acoes.filter((a) => a.advConfirmadoAt).length,
+    docs: acoes.filter((a) => a.docsEnviadosAt).length,
+    entrada: acoes.filter((a) => a.entradaAt).length,
+    sentenca: acoes.filter((a) => a.sentencaAt).length,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,6 +100,24 @@ export default function AcoesPage() {
           <p className="text-sm text-muted">Processos judiciais e administrativos dos clientes</p>
         </div>
       </div>
+
+      {/* Stats */}
+      {!loading && acoes.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "ADV confirmou", value: stats.adv, color: "text-sky-500", bg: "bg-sky-500/10" },
+            { label: "Docs enviados", value: stats.docs, color: "text-amber-500", bg: "bg-amber-500/10" },
+            { label: "Deu entrada", value: stats.entrada, color: "text-violet-500", bg: "bg-violet-500/10" },
+            { label: "Sentença", value: stats.sentenca, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          ].map((s) => (
+            <div key={s.label} className={`rounded-xl border border-border p-4 ${s.bg}`}>
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-muted">{s.label}</p>
+              <p className="mt-0.5 text-[10px] text-muted/60">de {stats.total} ações</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
