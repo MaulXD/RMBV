@@ -335,7 +335,14 @@ model Client {
   cidade       String?
   uf           String?
 
+  // Retorno agendado — denormalizado do último histórico com followUpAt
+  followUpAt   DateTime?
+
   @@index([teamId])
+  @@index([teamId, status])
+  @@index([teamId, workflowStatus])
+  @@index([teseId])
+  @@index([followUpAt])
 }
 
 model ClientRelative {
