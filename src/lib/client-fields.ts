@@ -370,3 +370,25 @@ export function formatClientForApi(
     })),
   };
 }
+
+type CompletenessInput = Pick<
+  ClientProfileData,
+  "cpf" | "birthDate" | "phone1" | "phone2" | "tese" | "cod" | "address1" | "logradouro"
+>;
+
+/** Retorna um objeto com score (0–100) e os campos que faltam. */
+export function clientCompleteness(c: CompletenessInput): { score: number; missing: string[] } {
+  const checks: { label: string; ok: boolean }[] = [
+    { label: "CPF", ok: !!c.cpf?.trim() },
+    { label: "Data de nascimento", ok: !!c.birthDate?.trim() },
+    { label: "Telefone", ok: !!(c.phone1?.trim() || c.phone2?.trim()) },
+    { label: "Tese", ok: !!c.tese?.trim() },
+    { label: "Cód. cliente", ok: !!c.cod?.trim() },
+    { label: "Endereço", ok: !!(c.address1?.trim() || c.logradouro?.trim()) },
+  ];
+  const filled = checks.filter((ch) => ch.ok).length;
+  return {
+    score: Math.round((filled / checks.length) * 100),
+    missing: checks.filter((ch) => !ch.ok).map((ch) => ch.label),
+  };
+}
