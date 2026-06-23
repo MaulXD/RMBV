@@ -121,6 +121,7 @@ model Team {
   accessRules       UserAccessRule[]
   pontoRecords      PontoRecord[]
   chatMessages      ChatMessage[]
+  acoes             Acao[]
   scheduleEnabled   Boolean  @default(true)
   scheduleDays      String   @default("[1,2,3,4,5]")
   scheduleStart     Int      @default(8)
@@ -190,6 +191,11 @@ model User {
   chatMessagesReceived        ChatMessage[]      @relation("ChatReceiver")
   faceAuditsAsActor           FaceAuditLog[]     @relation("FaceAuditActor")
   faceAuditsAsTarget          FaceAuditLog[]     @relation("FaceAuditTarget")
+  acoesCreated                Acao[]             @relation("AcaoCreator")
+  acoesAdvConfirmado          Acao[]             @relation("AcaoAdvConfirmado")
+  acoesDocsEnviados           Acao[]             @relation("AcaoDocsEnviados")
+  acoesEntrada                Acao[]             @relation("AcaoEntrada")
+  acoesSentenca               Acao[]             @relation("AcaoSentenca")
 
   @@index([teamId])
 }
@@ -318,6 +324,16 @@ model Client {
   checklistProgress ClientChecklistProgress[]
   chamados          Chamado[]
   relatives         ClientRelative[]
+  acoes             Acao[]
+
+  // Endereço estruturado (para cartas)
+  cep          String?
+  logradouro   String?
+  numero       String?
+  complemento  String?
+  bairro       String?
+  cidade       String?
+  uf           String?
 
   @@index([teamId])
 }
@@ -726,4 +742,42 @@ model ChatMessage {
 
   @@index([teamId, receiverId, createdAt])
   @@index([senderId])
+}
+
+model Acao {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  numCNJ      String?
+  valorCausa  Float?
+  createdById String
+  createdBy   User     @relation("AcaoCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  advConfirmadoAt   DateTime?
+  advConfirmadoById String?
+  advConfirmadoBy   User?     @relation("AcaoAdvConfirmado", fields: [advConfirmadoById], references: [id], onDelete: SetNull)
+  advNota           String?
+
+  docsEnviadosAt    DateTime?
+  docsEnviadosById  String?
+  docsEnviadosBy    User?     @relation("AcaoDocsEnviados", fields: [docsEnviadosById], references: [id], onDelete: SetNull)
+  docsNota          String?
+
+  entradaAt         DateTime?
+  entradaById       String?
+  entradaBy         User?     @relation("AcaoEntrada", fields: [entradaById], references: [id], onDelete: SetNull)
+  entradaNota       String?
+
+  sentencaAt        DateTime?
+  sentencaById      String?
+  sentencaBy        User?     @relation("AcaoSentenca", fields: [sentencaById], references: [id], onDelete: SetNull)
+  sentencaResultado String?
+  sentencaNota      String?
+
+  @@index([clientId])
+  @@index([teamId])
 }

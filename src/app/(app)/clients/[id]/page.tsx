@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import type { Role, PhoneCheckResult } from "@prisma/client";
 import { useSession } from "@/components/SessionProvider";
 import { ClientProfileForm } from "@/components/ClientProfileForm";
@@ -20,6 +20,7 @@ import { ClientUnifiedTimeline } from "@/components/ClientUnifiedTimeline";
 import { ClientMobileQuickActions } from "@/components/ClientMobileQuickActions";
 import { ClientChecklistSection } from "@/components/ChecklistTools";
 import { ClientRelativesPanel } from "@/components/ClientRelativesPanel";
+import { ClientAcoesTab } from "@/components/acoes/ClientAcoesTab";
 import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
@@ -29,9 +30,11 @@ type Category = { id: string; name: string };
 
 export default function ClientDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
   const { user } = useSession();
   const isAdmin = user?.role === "ADMIN";
+  const canSeeAcoes = user?.role === "ADMIN" || user?.role === "ADV" || user?.role === "GERENTE";
   const userRole = (user?.role ?? null) as Role | null;
   const [client, setClient] = useState<ClientProfileData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,7 +44,8 @@ export default function ClientDetailPage() {
   const [latestPhoneChecks, setLatestPhoneChecks] = useState<
     Partial<Record<string, PhoneCheckResult>>
   >({});
-  const [activeTab, setActiveTab] = useState<ClientProfileTab>("perfil");
+  const initialTab = (searchParams.get("tab") as ClientProfileTab | null) ?? "perfil";
+  const [activeTab, setActiveTab] = useState<ClientProfileTab>(initialTab);
   const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
   const [overwrittenFields, setOverwrittenFields] = useState<Set<string>>(new Set());
 
@@ -233,6 +237,7 @@ export default function ClientDetailPage() {
               <ClientRelativesPanel clientId={client.id} />
             </section>
           }
+          acoes={canSeeAcoes ? <ClientAcoesTab clientId={client.id} /> : undefined}
         />
       </div>
     </>
