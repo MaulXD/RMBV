@@ -26,6 +26,8 @@ export function useGlobalSearchShortcut(onOpen: () => void) {
   }, [onOpen]);
 }
 
+const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform);
+
 export function GlobalSearchPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -83,7 +85,7 @@ export function GlobalSearchPalette({ open, onClose }: { open: boolean; onClose:
             onKeyDown={(e) => e.key === "Escape" && onClose()}
           />
           <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[10px] text-muted sm:inline">
-            Ctrl+K
+            {isMac ? "⌘K" : "Ctrl+K"}
           </kbd>
         </div>
         <div className="max-h-80 overflow-y-auto py-2">
@@ -119,6 +121,20 @@ export function GlobalSearchPalette({ open, onClose }: { open: boolean; onClose:
           {!loading && query.trim().length >= 2 && sections.length === 0 && (
             <p className="px-4 py-6 text-center text-xs text-muted">Nenhum resultado</p>
           )}
+        </div>
+        <div className="flex items-center justify-between border-t border-border px-4 py-2">
+          <span className="text-[10px] text-muted/60">
+            <kbd className="rounded border border-border px-1 py-0.5 font-mono text-[10px]">↑↓</kbd> navegar ·{" "}
+            <kbd className="rounded border border-border px-1 py-0.5 font-mono text-[10px]">Enter</kbd> abrir ·{" "}
+            <kbd className="rounded border border-border px-1 py-0.5 font-mono text-[10px]">Esc</kbd> fechar
+          </span>
+          <button
+            type="button"
+            onClick={() => { onClose(); window.dispatchEvent(new KeyboardEvent("keydown", { key: "?" })); }}
+            className="text-[10px] text-muted/60 hover:text-muted"
+          >
+            <kbd className="rounded border border-border px-1 py-0.5 font-mono text-[10px]">?</kbd> atalhos
+          </button>
         </div>
       </div>
     </div>
