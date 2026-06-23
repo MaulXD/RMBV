@@ -2,7 +2,7 @@
 
 import type { PhoneCheckResult } from "@prisma/client";
 import type { ClientProfileData } from "@/lib/client-fields";
-import { CLIENT_FIELD_GROUPS, PHONE_FIELD_KEYS } from "@/lib/client-fields";
+import { CLIENT_FIELD_GROUPS, PHONE_FIELD_KEYS, clientCompleteness } from "@/lib/client-fields";
 import { StatusBadge } from "./StatusBadge";
 import { WorkflowBadge } from "./WorkflowBadge";
 import { CopyButton } from "./CopyButton";
@@ -27,6 +27,7 @@ export function ClientProfileView({
   })).filter((p) => p.value);
 
   const nonPhoneGroups = CLIENT_FIELD_GROUPS.filter((g) => g.title !== "Telefones");
+  const completeness = clientCompleteness(client);
 
   return (
     <div className="space-y-4">
@@ -55,6 +56,18 @@ export function ClientProfileView({
                 {c.name}
               </span>
             ))}
+            {completeness.score < 100 && (
+              <span
+                title={completeness.missing.length ? `Faltam: ${completeness.missing.join(", ")}` : "Cadastro completo"}
+                className={`rounded-md border px-2 py-0.5 text-xs font-medium ${
+                  completeness.score >= 67
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                }`}
+              >
+                {completeness.score}% preenchido
+              </span>
+            )}
           </div>
         </div>
       </div>
