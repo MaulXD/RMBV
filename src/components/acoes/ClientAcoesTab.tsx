@@ -3,12 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 
-type Stage = {
-  at: string | null;
-  byName: string | null;
-  nota: string | null;
-};
-
 type Acao = {
   id: string;
   numCNJ: string | null;
@@ -48,7 +42,6 @@ function StageBadge({
   done,
   onToggle,
   onNotaChange,
-  noteField,
   extra,
 }: {
   label: string;
@@ -58,7 +51,6 @@ function StageBadge({
   done: boolean;
   onToggle: () => void;
   onNotaChange: (v: string) => void;
-  noteField: string;
   extra?: React.ReactNode;
 }) {
   const [editingNota, setEditingNota] = useState(false);
@@ -216,7 +208,6 @@ function AcaoCard({ acao, onUpdate, onDelete }: {
           done={!!acao.advConfirmadoAt}
           onToggle={() => patch({ advConfirmado: !acao.advConfirmadoAt })}
           onNotaChange={(v) => patch({ advNota: v || null })}
-          noteField="advNota"
         />
         <StageBadge
           label="Documentos enviados"
@@ -226,7 +217,6 @@ function AcaoCard({ acao, onUpdate, onDelete }: {
           done={!!acao.docsEnviadosAt}
           onToggle={() => patch({ docsEnviados: !acao.docsEnviadosAt })}
           onNotaChange={(v) => patch({ docsNota: v || null })}
-          noteField="docsNota"
         />
         <StageBadge
           label="Deu entrada"
@@ -236,7 +226,6 @@ function AcaoCard({ acao, onUpdate, onDelete }: {
           done={!!acao.entradaAt}
           onToggle={() => patch({ entrada: !acao.entradaAt })}
           onNotaChange={(v) => patch({ entradaNota: v || null })}
-          noteField="entradaNota"
         />
         <StageBadge
           label="Sentença / resultado"
@@ -246,7 +235,6 @@ function AcaoCard({ acao, onUpdate, onDelete }: {
           done={!!acao.sentencaAt}
           onToggle={() => patch({ sentenca: !acao.sentencaAt })}
           onNotaChange={(v) => patch({ sentencaNota: v || null })}
-          noteField="sentencaNota"
           extra={
             acao.sentencaAt ? (
               <div className="mt-1.5">
