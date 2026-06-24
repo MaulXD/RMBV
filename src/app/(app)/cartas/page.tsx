@@ -148,6 +148,86 @@ function AddressCell({ client, onSave }: {
   );
 }
 
+function NovaAcaoModal({ client, onClose, onCreated }: {
+  client: ClientCartas;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [numCNJ, setNumCNJ] = useState("");
+  const [valorCausa, setValorCausa] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/acoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: client.id,
+          numCNJ: numCNJ.trim() || null,
+          valorCausa: valorCausa ? parseFloat(valorCausa.replace(",", ".")) : null,
+        }),
+      });
+      if (!res.ok) { setError("Erro ao criar ação"); return; }
+      onCreated();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface-elevated shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold">Nova Ação</h2>
+            <p className="text-xs text-muted truncate max-w-[220px]">{client.name}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-surface">
+            <Icon name="x" className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Número CNJ (opcional)</label>
+            <input
+              autoFocus
+              className="input w-full py-2 text-sm font-mono"
+              placeholder="0000000-00.0000.0.00.0000"
+              value={numCNJ}
+              onChange={(e) => setNumCNJ(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Valor da causa (opcional)</label>
+            <input
+              className="input w-full py-2 text-sm"
+              placeholder="0,00"
+              value={valorCausa}
+              onChange={(e) => setValorCausa(e.target.value.replace(/[^\d,.]/, ""))}
+            />
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
+          <button type="button" onClick={onClose} className="btn-ghost px-4 py-2 text-sm">Cancelar</button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Criar Ação"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function buildCSV(clients: ClientCartas[]): string {
   const headers = ["Nome", "CPF", "CEP", "Logradouro", "Número", "Complemento", "Bairro", "Cidade", "UF"];
   const rows = clients.map((c) => [
@@ -212,8 +292,11 @@ export default function CartasPage() {
   const [semEndereco, setSemEndereco] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
+  const [acaoModal, setAcaoModal] = useState<ClientCartas | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(search);
+
+  const canEdit = !!user && ["ADMIN", "ADV", "GERENTE"].includes(user.role);
 
   useEffect(() => {
     if (!showExport) return;
@@ -280,44 +363,58 @@ export default function CartasPage() {
 
   return (
     <div className="space-y-6">
+      {acaoModal && (
+        <NovaAcaoModal
+          client={acaoModal}
+          onClose={() => setAcaoModal(null)}
+          onCreated={() => { setAcaoModal(null); }}
+        />
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">Cartas</h1>
           <p className="text-sm text-muted">Endereços para envio de correspondência</p>
         </div>
 
-        {selected.size > 0 && (
-          <div className="relative" ref={exportRef}>
-            <button
-              type="button"
-              className="btn-primary flex items-center gap-2 px-4 py-2"
-              onClick={() => setShowExport((v) => !v)}
-            >
-              <Icon name="download" className="h-4 w-4" />
-              Extrair {selected.size} cliente{selected.size !== 1 ? "s" : ""}
-            </button>
-            {showExport && (
-              <div className="absolute right-0 top-full z-20 mt-1 rounded-lg border border-border bg-surface-elevated shadow-lg">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-surface"
-                  onClick={() => { downloadCSV(selectedClients); setShowExport(false); }}
-                >
-                  <Icon name="fileText" className="h-4 w-4 text-emerald-500" />
-                  Baixar CSV
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 border-t border-border px-4 py-2.5 text-sm hover:bg-surface"
-                  onClick={() => { printPDF(selectedClients); setShowExport(false); }}
-                >
-                  <Icon name="printer" className="h-4 w-4 text-blue-500" />
-                  Imprimir / PDF
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <div className="relative" ref={exportRef}>
+              <button
+                type="button"
+                className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
+                onClick={() => setShowExport((v) => !v)}
+              >
+                <Icon name="download" className="h-4 w-4" />
+                Extrair {selected.size}
+              </button>
+              {showExport && (
+                <div className="absolute right-0 top-full z-20 mt-1 rounded-lg border border-border bg-surface-elevated shadow-lg">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-surface"
+                    onClick={() => { downloadCSV(selectedClients); setShowExport(false); }}
+                  >
+                    <Icon name="fileText" className="h-4 w-4 text-emerald-500" />
+                    Baixar CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 border-t border-border px-4 py-2.5 text-sm hover:bg-surface"
+                    onClick={() => { printPDF(selectedClients); setShowExport(false); }}
+                  >
+                    <Icon name="printer" className="h-4 w-4 text-blue-500" />
+                    Imprimir / PDF
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          <Link href="/clients/new" className="btn-ghost flex items-center gap-1.5 px-3 py-2 text-sm">
+            <Icon name="userPlus" className="h-4 w-4" />
+            Novo cliente
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -356,10 +453,14 @@ export default function CartasPage() {
       ) : clients.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted">Nenhum cliente encontrado.</p>
+          <Link href="/clients/new" className="btn-primary mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-sm">
+            <Icon name="userPlus" className="h-4 w-4" />
+            Novo cliente
+          </Link>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[600px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-border bg-surface text-left">
                 <th className="px-4 py-3">
@@ -372,6 +473,7 @@ export default function CartasPage() {
                 </th>
                 <th className="px-4 py-3 font-medium text-muted">Cliente</th>
                 <th className="px-4 py-3 font-medium text-muted">Endereço</th>
+                {canEdit && <th className="w-10 px-2 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -405,6 +507,18 @@ export default function CartasPage() {
                   <td className="px-4 py-3">
                     <AddressCell client={c} onSave={handleSaveAddress} />
                   </td>
+                  {canEdit && (
+                    <td className="px-2 py-3">
+                      <button
+                        type="button"
+                        title="Nova Ação para este cliente"
+                        onClick={() => setAcaoModal(c)}
+                        className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-violet-500"
+                      >
+                        <Icon name="scale" className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
