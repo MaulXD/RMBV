@@ -6,8 +6,6 @@ import { getClientIfAllowed } from "@/lib/client-access";
 
 export const runtime = "nodejs";
 
-const ALLOWED_ROLES = ["ADMIN", "ADV", "GERENTE"] as const;
-
 const addressSchema = z.object({
   cep: z.string().optional().nullable(),
   logradouro: z.string().optional().nullable(),
@@ -23,10 +21,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withAuth(async (user) => {
-    if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-    }
-
     const { id } = await params;
     const client = await getClientIfAllowed(id, user);
     if (!client) {

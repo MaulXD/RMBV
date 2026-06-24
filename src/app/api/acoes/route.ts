@@ -6,14 +6,8 @@ import { teamScopeWhere } from "@/lib/team-access";
 
 export const runtime = "nodejs";
 
-const ALLOWED_ROLES = ["ADMIN", "ADV", "GERENTE"] as const;
-
 export async function GET(request: NextRequest) {
   return withAuth(async (user) => {
-    if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(request.url);
     const teseId = searchParams.get("teseId");
     const stage = searchParams.get("stage");
@@ -65,7 +59,7 @@ const createSchema = z.object({
 
 export async function POST(request: Request) {
   return withAuth(async (user) => {
-    if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
+    if (!["ADMIN", "ADV", "GERENTE"].includes(user.role)) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
 
