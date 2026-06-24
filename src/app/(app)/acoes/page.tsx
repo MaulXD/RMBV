@@ -38,8 +38,6 @@ function StageDot({ done, date }: { done: boolean; date: string | null }) {
   );
 }
 
-const ALLOWED_ROLES = ["ADMIN", "ADV", "GERENTE"];
-
 function exportAcoesCSV(acoes: Acao[]) {
   const headers = ["Cliente", "COD", "Tese", "CNJ", "Valor Causa", "ADV confirmou", "Docs enviados", "Entrada", "Sentença", "Resultado"];
   const rows = acoes.map((a) => [
@@ -89,13 +87,6 @@ export default function AcoesPage() {
   useEffect(() => { load(); }, [load]);
 
   if (!user) return null;
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="flex items-center justify-center py-24 text-muted">
-        Sem permissão para acessar esta página.
-      </div>
-    );
-  }
 
   const filtered = acoes.filter((a) => {
     if (!search.trim()) return true;

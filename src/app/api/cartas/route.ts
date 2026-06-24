@@ -5,14 +5,8 @@ import { buildClientWhere } from "@/lib/client-query";
 
 export const runtime = "nodejs";
 
-const ALLOWED_ROLES = ["ADMIN", "ADV", "GERENTE"] as const;
-
 export async function GET(request: NextRequest) {
   return withAuth(async (user) => {
-    if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const teseId = searchParams.get("teseId");

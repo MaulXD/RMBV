@@ -113,7 +113,7 @@ export function Sidebar({
               { href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" },
             ]
           : []),
-        ...(user && (user.role === "ADMIN" || user.role === "ADV" || user.role === "GERENTE")
+        ...(!isPesquisador
           ? [
               { href: "/acoes", label: "Ações", icon: "scale" as const, color: "text-violet-500" },
               { href: "/cartas", label: "Cartas", icon: "mail" as const, color: "text-pink-500" },
