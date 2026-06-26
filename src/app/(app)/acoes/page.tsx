@@ -38,7 +38,18 @@ type Acao = {
   };
 };
 
-type ClientResult = { id: string; label: string; sub?: string };
+type ClientResult = { id: string; label: string; sub?: string }
+
+type ProcessoResumo = {
+  numeroProcesso: string;
+  tribunal: string;
+  classe: string | null;
+  assunto: string | null;
+  vara: string | null;
+  dataAjuizamento: string | null;
+  valorAcao: number | null;
+  jaImportado: boolean;
+};
 
 function fmtDate(iso: string | null) {
   if (!iso) return null;
@@ -98,6 +109,8 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   const [valorCausa, setValorCausa] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [buscandoCPF, setBuscandoCPF] = useState(false);
+  const [processosEncontrados, setProcessosEncontrados] = useState<ProcessoResumo[] | null>(null);
   const debouncedQuery = useDebounce(query, 250);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -112,6 +125,31 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
       .catch(() => setResults([]))
       .finally(() => setSearching(false));
   }, [debouncedQuery, selected]);
+
+  const buscarPorCPF = async () => {
+    if (!selected) return;
+    setBuscandoCPF(true);
+    setProcessosEncontrados(null);
+    setError("");
+    try {
+      const res = await fetch("/api/acoes/buscar-cpf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: selected.id }),
+      });
+      const data = await res.json() as { processos?: ProcessoResumo[]; error?: string };
+      if (!res.ok) { setError(data.error ?? "Erro ao buscar processos"); return; }
+      setProcessosEncontrados(data.processos ?? []);
+    } finally {
+      setBuscandoCPF(false);
+    }
+  };
+
+  const selecionarProcesso = (p: ProcessoResumo) => {
+    setNumCNJ(p.numeroProcesso);
+    setNumProcesso(p.numeroProcesso);
+    setProcessosEncontrados(null);
+  };
 
   const handleSave = async () => {
     if (!selected) { setError("Selecione um cliente"); return; }
@@ -193,6 +231,54 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
               </div>
             )}
           </div>
+
+          {selected && (
+            <div>
+              <button
+                type="button"
+                onClick={buscarPorCPF}
+                disabled={buscandoCPF}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+              >
+                {buscandoCPF ? (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                ) : (
+                  <Icon name="search" className="h-3.5 w-3.5" />
+                )}
+                {buscandoCPF ? "Buscando no Datajud..." : "Buscar processos pelo CPF no Datajud"}
+              </button>
+
+              {processosEncontrados !== null && (
+                <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-border">
+                  {processosEncontrados.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-muted text-center">Nenhum processo encontrado para este CPF</p>
+                  ) : (
+                    <>
+                      <p className="border-b border-border px-3 py-1.5 text-[10px] font-semibold text-muted uppercase tracking-wide">
+                        {processosEncontrados.length} processo{processosEncontrados.length !== 1 ? "s" : ""} encontrado{processosEncontrados.length !== 1 ? "s" : ""}
+                      </p>
+                      {processosEncontrados.map((p) => (
+                        <button
+                          key={p.numeroProcesso}
+                          type="button"
+                          disabled={p.jaImportado}
+                          onClick={() => selecionarProcesso(p)}
+                          className="flex w-full flex-col gap-0.5 px-3 py-2 text-left text-xs hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed border-b border-border/40 last:border-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-primary">{p.numeroProcesso}</span>
+                            {p.jaImportado && <span className="text-[10px] text-muted">já importado</span>}
+                          </div>
+                          <span className="text-muted">{[p.tribunal, p.vara].filter(Boolean).join(" · ")}</span>
+                          {p.classe && <span className="text-muted/70">{p.classe}</span>}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">Número CNJ (opcional)</label>
