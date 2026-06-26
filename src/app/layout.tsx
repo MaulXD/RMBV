@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/SessionProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialog";
 import "./globals.css";
+import { CapacitorPushRegister } from "@/components/CapacitorPushRegister";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -65,6 +66,7 @@ export default function RootLayout({
             <ToastProvider>
               <ConfirmDialogProvider>
                 {children}
+                <CapacitorPushRegister />
               </ConfirmDialogProvider>
             </ToastProvider>
           </SessionProvider>
