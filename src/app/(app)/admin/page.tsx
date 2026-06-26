@@ -34,10 +34,11 @@ export default function AdminPage() {
   const [kioskUrl, setKioskUrl] = useState("");
 
   useEffect(() => {
+    if (loading) return;
     if (user === null || (user && user.role !== "ADMIN")) {
       router.replace("/dashboard");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
   useEffect(() => {
     fetch("/api/teams")
