@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fixingCategories, setFixingCategories] = useState(false);
   const [kioskUrl, setKioskUrl] = useState("");
 
   useEffect(() => {
@@ -304,6 +305,38 @@ export default function AdminPage() {
           )}
           {result && <p className="alert alert-success">{result}</p>}
           {error && <p className="alert alert-error">{error}</p>}
+
+          {teamId && importCategoryId && (
+            <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+              <p className="mb-2 text-xs font-medium text-muted">
+                Clientes sem categoria ficam invisíveis no sistema. Clique abaixo para corrigir todos os clientes da equipe selecionada que ainda não têm categoria.
+              </p>
+              <button
+                type="button"
+                disabled={fixingCategories || !importCategoryId}
+                onClick={async () => {
+                  setFixingCategories(true);
+                  setResult(null);
+                  setError(null);
+                  try {
+                    const res = await fetch("/api/admin/fix-categories", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ teamId, categoryId: importCategoryId }),
+                    });
+                    const data = await res.json() as { fixed?: number; message?: string; error?: string };
+                    if (res.ok) setResult(data.message ?? `${data.fixed} clientes corrigidos`);
+                    else setError(data.error ?? "Erro ao corrigir categorias");
+                  } finally {
+                    setFixingCategories(false);
+                  }
+                }}
+                className="btn-ghost border border-primary/30 px-4 py-2 text-sm text-primary hover:bg-primary/10 disabled:opacity-50"
+              >
+                {fixingCategories ? "Corrigindo..." : "Corrigir clientes sem categoria"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
