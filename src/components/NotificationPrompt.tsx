@@ -4,23 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 type PushState = "loading" | "unavailable" | "denied" | "granted" | "error";
 
-declare global {
-  interface Window {
-    PushNotifications?: {
-      requestPermissions: () => Promise<{ receive: string }>;
-      register: () => Promise<void>;
-      addListener: (
-        event: string,
-        cb: (...args: any[]) => void,
-      ) => Promise<{ remove: () => void }>;
-    };
-  }
-}
-
 export function NotificationPrompt() {
   const [state, setState] = useState<PushState>("loading");
   const [isNative, setIsNative] = useState(false);
   const inited = useRef(false);
+  const pushRef = useRef<any>(null);
 
   useEffect(() => {
     if (inited.current) return;
@@ -42,7 +30,7 @@ export function NotificationPrompt() {
           setState("unavailable");
           return;
         }
-        window.PushNotifications = PushNotifications;
+        pushRef.current = PushNotifications;
 
         const perm = await PushNotifications.requestPermissions();
         if (perm.receive === "granted") {
@@ -57,27 +45,31 @@ export function NotificationPrompt() {
     })();
   }, []);
 
-  async function doRegister(PN: typeof window.PushNotifications) {
+  async function doRegister(PN: any) {
     if (!PN) return;
     try {
       const regHandle = await PN.addListener("registration", (token: any) => {
         fetch("/api/ti/push-token", {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: token.value ?? token, platform: "android" }),
         }).catch(() => {});
       });
       await PN.register();
       regHandle.remove();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   async function handleEnable() {
-    if (!window.PushNotifications) return;
+    const PN = pushRef.current;
+    if (!PN) return;
     try {
-      const perm = await window.PushNotifications.requestPermissions();
+      const perm = await PN.requestPermissions();
       if (perm.receive === "granted") {
         setState("granted");
-        doRegister(window.PushNotifications);
+        doRegister(PN);
       } else {
         setState("denied");
       }
@@ -86,7 +78,7 @@ export function NotificationPrompt() {
     }
   }
 
-  if (state === "loading" || state === "granted" || !isNative) return null;
+  if (state === "loading" || state === "granted" || state === "unavailable") return null;
 
   return (
     <button
