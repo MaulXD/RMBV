@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { withAuth } from "@/lib/api";
+import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 
@@ -29,7 +29,7 @@ async function forwardToSheet(data: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
-  return withAuth(async (user) => {
+  try {
     const body = await request.json();
     const parsed = suporteSchema.safeParse(body);
     if (!parsed.success) {
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
+    const user = await getSessionUser().catch(() => null);
 
     const request_ = await prisma.supportRequest.create({
       data: {
@@ -45,24 +46,26 @@ export async function POST(request: Request) {
         necessidade: data.necessidade === "Outro" && data.outroTexto ? data.outroTexto : data.necessidade,
         outroTexto: data.outroTexto,
         obs: data.obs,
-        email: user.email,
-        requesterId: user.id,
+        email: user?.email ?? null,
+        requesterId: user?.id ?? null,
       },
     });
 
-    const admins = await prisma.user.findMany({
-      where: { role: "ADMIN", isActive: true },
-      select: { id: true },
-    });
-
-    for (const admin of admins) {
-      await createNotification(prisma, {
-        userId: admin.id,
-        type: "GENERAL",
-        title: "Nova solicitação de suporte",
-        body: `${data.name} (Sala ${data.sala}): ${data.necessidade}`,
-        href: "/suporte",
+    if (user) {
+      const admins = await prisma.user.findMany({
+        where: { role: { in: ["ADMIN", "TI"] }, isActive: true },
+        select: { id: true },
       });
+
+      for (const admin of admins) {
+        await createNotification(prisma, {
+          userId: admin.id,
+          type: "GENERAL",
+          title: "Nova solicitação de suporte",
+          body: `${data.name} (Sala ${data.sala}): ${data.necessidade}`,
+          href: "/ti/chamados",
+        });
+      }
     }
 
     void forwardToSheet({
@@ -71,10 +74,13 @@ export async function POST(request: Request) {
       necessidade: data.necessidade,
       outroTexto: data.outroTexto,
       obs: data.obs,
-      requesterId: user.id,
-      email: user.email,
+      requesterId: user?.id ?? null,
+      email: user?.email ?? null,
     });
 
     return NextResponse.json({ success: true, id: request_.id });
-  });
+  } catch (err) {
+    console.error("Erro ao criar solicitação de suporte:", err);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
 }

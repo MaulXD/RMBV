@@ -49,6 +49,10 @@ export async function GET(request: Request) {
       orderBy: { _count: { necessidade: "desc" } },
     });
 
+    const porMes = await prisma.$queryRawUnsafe<{ mes: string; total: number }[]>(
+      'SELECT to_char("createdAt", \'YYYY-MM\') as mes, COUNT(*)::int as total FROM "SupportRequest" GROUP BY mes ORDER BY mes',
+    );
+
     const totalPeriodo = await prisma.supportRequest.count({
       where: startDate || endDate ? where : undefined,
     });
@@ -66,6 +70,7 @@ export async function GET(request: Request) {
           necessidade: n.necessidade,
           count: n._count,
         })),
+        porMes: porMes.map((r) => ({ mes: r.mes, total: r.total })),
       },
     });
   });

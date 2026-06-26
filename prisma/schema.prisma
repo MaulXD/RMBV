@@ -31,6 +31,7 @@ enum Role {
   ADMIN
   ADV
   GERENTE
+  TI
   COLABORADOR
   PESQUISADOR
 }
@@ -197,6 +198,8 @@ model User {
   acoesEntrada                Acao[]             @relation("AcaoEntrada")
   acoesSentenca               Acao[]             @relation("AcaoSentenca")
   supportRequests             SupportRequest[]
+  assignedTickets             SupportRequest[]    @relation("AssignedTickets")
+  ticketResponses             SupportTicketResponse[]
 
   @@index([teamId])
 }
@@ -825,18 +828,44 @@ model Movimentacao {
   @@index([data])
 }
 
+enum TicketStatus {
+  ABERTO
+  EM_ANDAMENTO
+  RESOLVIDO
+  FECHADO
+}
+
 model SupportRequest {
-  id          String   @id @default(uuid())
-  name        String
-  sala        String
-  necessidade String
-  outroTexto  String?
-  obs         String?
-  email       String?
-  requesterId String?
-  requester   User?    @relation(fields: [requesterId], references: [id])
-  createdAt   DateTime @default(now())
+  id           String             @id @default(uuid())
+  name         String
+  sala         String
+  necessidade  String
+  outroTexto   String?
+  obs          String?
+  email        String?
+  requesterId  String?
+  requester    User?              @relation(fields: [requesterId], references: [id])
+  status       TicketStatus       @default(ABERTO)
+  assignedToId String?
+  assignedTo   User?              @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  responses    SupportTicketResponse[]
+  createdAt    DateTime           @default(now())
 
   @@index([requesterId])
+  @@index([assignedToId])
   @@index([createdAt])
+  @@index([status])
+}
+
+model SupportTicketResponse {
+  id        String         @id @default(uuid())
+  ticketId  String
+  ticket    SupportRequest @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  message   String
+  createdAt DateTime       @default(now())
+
+  @@index([ticketId])
+  @@index([userId])
 }
