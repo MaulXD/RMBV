@@ -75,24 +75,43 @@ export function parseClientsCsv(content: string): {
 
   const delimiter = lines[0].includes(";") ? ";" : ",";
   const headerCells = parseLine(lines[0], delimiter).map(normalizeHeader);
-  const expected = CSV_HEADERS.map((h) => normalizeHeader(h));
 
-  const headerOk =
-    headerCells.length >= expected.length &&
-    expected.every((h, i) => headerCells[i] === h);
+  // Map columns by header name — tolerates any column order
+  const idx = (name: string) => headerCells.indexOf(normalizeHeader(name));
 
-  if (!headerOk) {
-    errors.push(
-      `Cabeçalho inválido. Esperado: ${CSV_HEADERS.join(delimiter)}`
-    );
+  const iCod    = idx("CODIGO");
+  const iCpf    = idx("CPF");
+  const iNome   = idx("NOME");
+  const iObito  = idx("ÓBITO");
+  const iPhone1 = idx("TELEFONE1");
+  const iPhone2 = idx("TELEFONE 2");
+  const iPhone3 = idx("TELEFONE 3");
+  const iPhone4 = idx("TELEFONE 4");
+
+  if (iNome === -1) {
+    return { rows: [], errors: ["Coluna NOME não encontrada no cabeçalho"] };
   }
 
   const rows: CsvClientRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const values = parseLine(lines[i], delimiter);
-    const row = rowFromValues(values);
-    if (row) rows.push(row);
-    else errors.push(`Linha ${i + 1}: NOME obrigatório`);
+    const get = (colIdx: number) => {
+      if (colIdx === -1) return null;
+      const v = values[colIdx]?.trim();
+      return v ? v : null;
+    };
+    const name = get(iNome);
+    if (!name) { errors.push(`Linha ${i + 1}: NOME obrigatório`); continue; }
+    rows.push({
+      cod:    get(iCod),
+      cpf:    get(iCpf),
+      name,
+      obito:  get(iObito),
+      phone1: get(iPhone1),
+      phone2: get(iPhone2),
+      phone3: get(iPhone3),
+      phone4: get(iPhone4),
+    });
   }
 
   return { rows, errors };

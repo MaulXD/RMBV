@@ -301,12 +301,12 @@ export function ClientsTable({
                 <td className="px-4 py-2 text-sm font-semibold text-foreground">
                   <Link
                     href={`/clients/${client.id}`}
-                    className="hover:text-primary hover:underline underline-offset-2 transition-colors"
+                    className="text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
                   >
                     {client.name}
                   </Link>
                 </td>
-                <td className="px-4 py-2 text-sm text-muted">{client.cpf ?? "—"}</td>
+                <td className="px-4 py-2 text-sm text-muted whitespace-nowrap">{client.cpf ?? "—"}</td>
                 <td className="px-4 py-2">
                   <StatusBadge status={client.status} />
                 </td>
