@@ -39,6 +39,8 @@ export async function POST(request: Request) {
     const data = parsed.data;
     const user = await getSessionUser().catch(() => null);
 
+    const LUCIANO_ID = "34e83151-fd09-45de-a6c5-714f2ba1232d";
+
     const request_ = await prisma.supportRequest.create({
       data: {
         name: data.name,
@@ -48,24 +50,23 @@ export async function POST(request: Request) {
         obs: data.obs,
         email: user?.email ?? null,
         requesterId: user?.id ?? null,
+        assignedToId: LUCIANO_ID,
       },
     });
 
-    if (user) {
-      const admins = await prisma.user.findMany({
-        where: { role: { in: ["ADMIN", "TI"] }, isActive: true },
-        select: { id: true },
-      });
+    const notifyUsers = await prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "TI"] }, isActive: true },
+      select: { id: true },
+    });
 
-      for (const admin of admins) {
-        await createNotification(prisma, {
-          userId: admin.id,
-          type: "GENERAL",
-          title: "Nova solicitação de suporte",
-          body: `${data.name} (Sala ${data.sala}): ${data.necessidade}`,
-          href: "/ti/chamados",
-        });
-      }
+    for (const admin of notifyUsers) {
+      await createNotification(prisma, {
+        userId: admin.id,
+        type: "GENERAL",
+        title: "Nova solicitação de suporte",
+        body: `${data.name} (Sala ${data.sala}): ${data.necessidade}`,
+        href: "/ti/chamados",
+      });
     }
 
     void forwardToSheet({

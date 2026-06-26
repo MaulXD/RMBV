@@ -147,91 +147,118 @@ export default function TiChamadosPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-surface-elevated/50">
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Status</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Data</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Solicitante</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Sala</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Necessidade</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Responsável</th>
-                <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-widest text-muted">Resp.</th>
-                <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-widest text-muted">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><div className="h-4 w-full animate-pulse rounded bg-border/50" /></td>
-                    ))}
-                  </tr>
-                ))
-              ) : tickets.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted">
-                    Nenhum chamado encontrado
-                  </td>
-                </tr>
-              ) : (
-                tickets.map((t) => (
-                  <tr key={t.id} className="border-b border-border last:border-0 hover:bg-primary/[0.03]">
-                    <td className="px-4 py-2.5">
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors[t.status] || ""}`}>
-                        {statusLabels[t.status] || t.status}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-xs tabular-nums text-muted">
-                      {new Date(t.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-foreground">{t.name}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-muted">{t.sala}</td>
-                    <td className="max-w-[200px] truncate px-4 py-2.5 text-muted" title={t.necessidade}>{t.necessidade}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted">{t.assignedTo?.name ?? "-"}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <Link href={`/ti/chamados/${t.id}`} className="btn-ghost px-2 py-1 text-xs">
-                        <Icon name="chevronRight" className="h-4 w-4" />
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      {t.status !== "RESOLVIDO" && t.status !== "FECHADO" ? (
-                        <button
-                          type="button"
-                          className="rounded bg-green-500/15 px-2 py-1 text-[11px] font-medium text-green-600 hover:bg-green-500/25"
-                          onClick={() => { setResolvingId(t.id); setResolveObs(""); }}
-                        >
-                          Resolver
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-muted">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-border px-4 py-3">
-            <p className="text-xs text-muted">{total} chamado{(total !== 1 ? "s" : "")}</p>
-            <div className="flex items-center gap-1">
-              <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                <Icon name="chevronLeft" className="h-4 w-4" />
-              </button>
-              <span className="px-2 text-xs tabular-nums text-muted">{page} / {totalPages}</span>
-              <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-                <Icon name="chevronRight" className="h-4 w-4" />
-              </button>
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-44 animate-pulse rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm">
+              <div className="mb-3 h-4 w-1/3 rounded bg-border/50" />
+              <div className="space-y-2">
+                <div className="h-3 w-3/4 rounded bg-border/50" />
+                <div className="h-3 w-1/2 rounded bg-border/50" />
+                <div className="h-3 w-2/3 rounded bg-border/50" />
+              </div>
             </div>
+          ))}
+        </div>
+      ) : tickets.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-center">
+          <Icon name="messageSquare" className="mb-3 h-10 w-10 text-muted/40" />
+          <p className="text-sm text-muted">Nenhum chamado encontrado</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tickets.map((t) => (
+              <div
+                key={t.id}
+                className={`group relative rounded-2xl border bg-surface-elevated p-5 shadow-sm transition-all hover:shadow-md ${
+                  t.status === "ABERTO"
+                    ? "border-l-4 border-l-amber-500"
+                    : t.status === "EM_ANDAMENTO"
+                      ? "border-l-4 border-l-blue-500"
+                      : t.status === "RESOLVIDO"
+                        ? "border-l-4 border-l-green-500"
+                        : "border-l-4 border-l-neutral-400"
+                }`}
+              >
+                {/* Top row: status + date */}
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors[t.status] || ""}`}>
+                    <Icon
+                      name={t.status === "RESOLVIDO" ? "check" : t.status === "FECHADO" ? "x" : "circleDot"}
+                      className="h-3 w-3"
+                    />
+                    {statusLabels[t.status] || t.status}
+                  </span>
+                  <span className="whitespace-nowrap text-[11px] tabular-nums text-muted">
+                    {new Date(t.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+
+                {/* Solicitante */}
+                <div className="mb-1.5 flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                  <span className="truncate text-sm font-medium text-foreground">{t.name}</span>
+                </div>
+
+                {/* Sala */}
+                <div className="mb-1.5 flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                  <span className="truncate text-xs text-muted">Sala {t.sala}</span>
+                </div>
+
+                {/* Necessidade */}
+                <div className="mb-1.5 flex items-center gap-2">
+                  <Wrench className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                  <span className="truncate text-xs text-muted" title={t.necessidade}>{t.necessidade}</span>
+                </div>
+
+                {/* Responsável */}
+                <div className="mb-4 flex items-center gap-2">
+                  <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                  <span className="truncate text-xs text-muted">{t.assignedTo?.name ?? "Não atribuído"}</span>
+                </div>
+
+                {/* Actions row */}
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                  <Link
+                    href={`/ti/chamados/${t.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
+                  >
+                    Ver detalhes
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                  {t.status !== "RESOLVIDO" && t.status !== "FECHADO" ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-lg bg-green-500/15 px-3 py-1.5 text-[11px] font-medium text-green-600 transition-colors hover:bg-green-500/25"
+                      onClick={() => { setResolvingId(t.id); setResolveObs(""); }}
+                    >
+                      <Check className="h-3 w-3" />
+                      Resolver
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between rounded-2xl border border-border bg-surface-elevated px-4 py-3 shadow-sm">
+              <p className="text-xs text-muted">{total} chamado{(total !== 1 ? "s" : "")}</p>
+              <div className="flex items-center gap-1">
+                <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="px-2 text-xs tabular-nums text-muted">{page} / {totalPages}</span>
+                <button type="button" className="btn-ghost px-2 py-1 text-xs" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
       {resolvingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setResolvingId(null)}>
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface-elevated p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
