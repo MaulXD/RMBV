@@ -26,9 +26,7 @@ const contactMethods = [
 
 export default function SuportePage() {
   const { user } = useSession();
-  if (!user) return null;
-
-  const [name, setName] = useState(user.name || "");
+  const [name, setName] = useState(user?.name || "");
   const [sala, setSala] = useState("");
   const [necessidade, setNecessidade] = useState("");
   const [outroTexto, setOutroTexto] = useState("");
@@ -58,6 +56,8 @@ export default function SuportePage() {
       setSaving(false);
     }
   }
+
+  if (!user) return null;
 
   return (
     <div className="mx-auto max-w-3xl">
