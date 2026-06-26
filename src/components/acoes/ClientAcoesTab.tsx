@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 type Acao = {
   id: string;
   numCNJ: string | null;
+  numProcesso: string | null;
   valorCausa: number | null;
   createdAt: string;
   createdBy: { name: string };
@@ -22,6 +23,16 @@ type Acao = {
   sentencaBy: { name: string } | null;
   sentencaResultado: string | null;
   sentencaNota: string | null;
+  classe: string | null;
+  assunto: string | null;
+  vara: string | null;
+  tribunal: string | null;
+  ultimaMovimentacaoAt: string | null;
+  ultimaMovimentacaoText: string | null;
+  ultimaConsultaAt: string | null;
+  consultaStatus: string | null;
+  parteContraria: string | null;
+  _count: { movimentacoes: number } | null;
 };
 
 function fmtDate(iso: string | null) {
@@ -135,6 +146,23 @@ function AcaoCard({ acao, onUpdate, onDelete }: {
   const patch = useCallback(async (data: Record<string, unknown>) => {
     setBusy(true);
     try { await onUpdate(acao.id, data); } finally { setBusy(false); }
+  }, [acao.id, onUpdate]);
+
+  const [consulting, setConsulting] = useState(false);
+
+  const consultarProcesso = useCallback(async () => {
+    setConsulting(true);
+    try {
+      const res = await fetch(`/api/acoes/${acao.id}/consultar`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json() as { novasMovimentacoes: number };
+        if (data.novasMovimentacoes > 0) {
+          onUpdate(acao.id, { consultaStatus: "sucesso" });
+        }
+      }
+    } finally {
+      setConsulting(false);
+    }
   }, [acao.id, onUpdate]);
 
   return (
@@ -252,6 +280,75 @@ function AcaoCard({ acao, onUpdate, onDelete }: {
           }
         />
       </div>
+
+      {/* Acompanhamento processual */}
+      {(acao.numCNJ || acao.numProcesso) && (
+        <div className="mt-3 rounded-lg border border-border bg-surface p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-foreground">Acompanhamento processual</span>
+            <button
+              type="button"
+              onClick={consultarProcesso}
+              disabled={consulting}
+              className="btn-ghost flex items-center gap-1 px-2 py-0.5 text-[10px]"
+            >
+              {consulting ? (
+                <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              ) : (
+                <Icon name="rotateCw" className="h-3 w-3" />
+              )}
+              Consultar Datajud
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+            {acao.tribunal && (
+              <>
+                <span className="text-muted">Tribunal:</span>
+                <span className="text-foreground">{acao.tribunal}</span>
+              </>
+            )}
+            {acao.vara && (
+              <>
+                <span className="text-muted">Vara:</span>
+                <span className="text-foreground">{acao.vara}</span>
+              </>
+            )}
+            {acao.classe && (
+              <>
+                <span className="text-muted">Classe:</span>
+                <span className="text-foreground">{acao.classe}</span>
+              </>
+            )}
+            {acao.parteContraria && (
+              <>
+                <span className="text-muted">Parte contrária:</span>
+                <span className="text-foreground">{acao.parteContraria}</span>
+              </>
+            )}
+            {acao.ultimaMovimentacaoAt && (
+              <>
+                <span className="text-muted">Últ. mov.:</span>
+                <span className="text-foreground">{fmtDate(acao.ultimaMovimentacaoAt)}</span>
+              </>
+            )}
+            {acao._count?.movimentacoes != null && (
+              <>
+                <span className="text-muted">Movimentações:</span>
+                <span className="text-foreground">{acao._count.movimentacoes}</span>
+              </>
+            )}
+            {acao.ultimaConsultaAt && (
+              <>
+                <span className="text-muted">Cons. em:</span>
+                <span className="text-foreground">{fmtDate(acao.ultimaConsultaAt)}</span>
+              </>
+            )}
+          </div>
+          {acao.ultimaMovimentacaoText && (
+            <p className="mt-1.5 text-[10px] italic text-muted/70">&ldquo;{acao.ultimaMovimentacaoText}&rdquo;</p>
+          )}
+        </div>
+      )}
 
       <p className="mt-2 text-right text-[10px] text-muted/60">
         Criado por {acao.createdBy.name} em {fmtDate(acao.createdAt)}

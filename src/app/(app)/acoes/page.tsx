@@ -9,12 +9,26 @@ import { useDebounce } from "@/hooks/useDebounce";
 type Acao = {
   id: string;
   numCNJ: string | null;
+  numProcesso: string | null;
   valorCausa: number | null;
   advConfirmadoAt: string | null;
   docsEnviadosAt: string | null;
   entradaAt: string | null;
   sentencaAt: string | null;
   sentencaResultado: string | null;
+  classe: string | null;
+  assunto: string | null;
+  vara: string | null;
+  tribunal: string | null;
+  ultimaMovimentacaoAt: string | null;
+  ultimaMovimentacaoText: string | null;
+  ultimaConsultaAt: string | null;
+  consultaStatus: string | null;
+  parteContraria: string | null;
+  dataAjuizamento: string | null;
+  dataDistribuicao: string | null;
+  valorAtualizado: number | null;
+  _count: { movimentacoes: number } | null;
   client: {
     id: string;
     name: string;
@@ -80,6 +94,7 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<ClientResult | null>(null);
   const [numCNJ, setNumCNJ] = useState("");
+  const [numProcesso, setNumProcesso] = useState("");
   const [valorCausa, setValorCausa] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -109,6 +124,7 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
         body: JSON.stringify({
           clientId: selected.id,
           numCNJ: numCNJ.trim() || null,
+          numProcesso: numProcesso.trim() || null,
           valorCausa: valorCausa ? parseFloat(valorCausa.replace(",", ".")) : null,
         }),
       });
@@ -189,6 +205,16 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
           </div>
 
           <div>
+            <label className="mb-1 block text-xs font-medium text-muted">Número do Processo (opcional)</label>
+            <input
+              className="input w-full py-2 text-sm"
+              placeholder="0000000-00.0000.0.00.0000"
+              value={numProcesso}
+              onChange={(e) => setNumProcesso(e.target.value)}
+            />
+          </div>
+
+          <div>
             <label className="mb-1 block text-xs font-medium text-muted">Valor da causa (opcional)</label>
             <input
               className="input w-full py-2 text-sm"
@@ -218,13 +244,20 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
 }
 
 function exportAcoesCSV(acoes: Acao[]) {
-  const headers = ["Cliente", "COD", "Tese", "CNJ", "Valor Causa", "ADV confirmou", "Docs enviados", "Entrada", "Sentença", "Resultado"];
+  const headers = ["Cliente", "COD", "Tese", "CNJ", "Processo", "Valor Causa", "Tribunal", "Vara", "Classe", "Parte Contrária", "Últ. Mov.", "Movimentações", "ADV confirmou", "Docs enviados", "Entrada", "Sentença", "Resultado"];
   const rows = acoes.map((a) => [
     a.client.name,
     a.client.cod ?? "",
     a.client.teseRef?.name ?? "",
     a.numCNJ ?? "",
+    a.numProcesso ?? "",
     a.valorCausa != null ? a.valorCausa.toFixed(2).replace(".", ",") : "",
+    a.tribunal ?? "",
+    a.vara ?? "",
+    a.classe ?? "",
+    a.parteContraria ?? "",
+    fmtDate(a.ultimaMovimentacaoAt) ?? "",
+    a._count?.movimentacoes ?? 0,
     fmtDate(a.advConfirmadoAt) ?? "",
     fmtDate(a.docsEnviadosAt) ?? "",
     fmtDate(a.entradaAt) ?? "",
@@ -249,6 +282,11 @@ export default function AcoesPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [busyStage, setBusyStage] = useState<string | null>(null);
+
+  const [consulting, setConsulting] = useState<string | null>(null);
+  const [processualModal, setProcessualModal] = useState<Acao | null>(null);
+  const [movimentacoes, setMovimentacoes] = useState<Array<{ id: string; data: string; texto: string; tipo: string | null }>>([]);
+  const [loadingMovs, setLoadingMovs] = useState(false);
 
   const canEdit = !!user && ["ADMIN", "ADV", "GERENTE"].includes(user.role);
 
@@ -284,6 +322,42 @@ export default function AcoesPage() {
       }
     } finally {
       setBusyStage(null);
+    }
+  };
+
+  const consultarProcesso = async (acao: Acao) => {
+    setConsulting(acao.id);
+    try {
+      const res = await fetch(`/api/acoes/${acao.id}/consultar`, { method: "POST" });
+      if (res.ok) {
+        const result = await res.json() as { novasMovimentacoes: number };
+        setAcoes((prev) => prev.map((a) =>
+          a.id === acao.id ? { ...a, consultaStatus: "sucesso", ultimaConsultaAt: new Date().toISOString() } : a
+        ));
+        if (result.novasMovimentacoes > 0) {
+          load();
+        }
+      }
+    } finally {
+      setConsulting(null);
+    }
+  };
+
+  const openProcessualModal = async (acao: Acao) => {
+    setProcessualModal(acao);
+    setLoadingMovs(true);
+    try {
+      const res = await fetch(`/api/acoes/${acao.id}/consultar`);
+      if (res.ok) {
+        const data = await res.json() as {
+          movimentacoes: Array<{ id: string; data: string; texto: string; tipo: string | null }>;
+          resumo: Record<string, unknown>;
+        };
+        setMovimentacoes(data.movimentacoes);
+        setAcoes((prev) => prev.map((a) => a.id === acao.id ? { ...a, ...data.resumo } as Acao : a));
+      }
+    } finally {
+      setLoadingMovs(false);
     }
   };
 
@@ -411,15 +485,19 @@ export default function AcoesPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[700px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-border bg-surface text-left">
                 <th className="px-4 py-3 font-medium text-muted">Cliente</th>
-                <th className="px-4 py-3 font-medium text-muted">CNJ</th>
+                <th className="px-4 py-3 font-medium text-muted">CNJ / Processo</th>
+                <th className="px-3 py-3 font-medium text-muted">Tribunal</th>
+                <th className="px-3 py-3 font-medium text-muted">Última mov.</th>
+                <th className="px-3 py-3 text-center font-medium text-muted">Mov.</th>
                 <th className="px-3 py-3 text-center font-medium text-muted">ADV</th>
                 <th className="px-3 py-3 text-center font-medium text-muted">Docs</th>
                 <th className="px-3 py-3 text-center font-medium text-muted">Entrada</th>
                 <th className="px-3 py-3 text-center font-medium text-muted">Sentença</th>
+                <th className="px-3 py-3 text-center font-medium text-muted"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -443,11 +521,50 @@ export default function AcoesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {a.numCNJ ? (
-                      <span className="font-mono text-xs text-primary">{a.numCNJ}</span>
+                    <button type="button" className="text-left" onClick={() => openProcessualModal(a)}>
+                      {a.numCNJ ? (
+                        <span className="font-mono text-xs text-primary underline underline-offset-2 decoration-primary/30">{a.numCNJ}</span>
+                      ) : (
+                        <span className="text-xs text-muted/40">—</span>
+                      )}
+                      {a.numProcesso && a.numProcesso !== a.numCNJ && (
+                        <span className="ml-1 block text-[10px] text-muted/60">{a.numProcesso}</span>
+                      )}
+                    </button>
+                  </td>
+                  <td className="px-3 py-3">
+                    {a.tribunal ? (
+                      <div>
+                        <span className="text-xs text-foreground">{a.tribunal}</span>
+                        {a.vara && <span className="block text-[10px] text-muted/60">{a.vara}</span>}
+                      </div>
                     ) : (
                       <span className="text-xs text-muted/40">—</span>
                     )}
+                  </td>
+                  <td className="px-3 py-3">
+                    {a.ultimaMovimentacaoAt ? (
+                      <div>
+                        <span className="text-xs text-muted">{fmtDate(a.ultimaMovimentacaoAt)}</span>
+                        {a.ultimaMovimentacaoText && (
+                          <span className="block max-w-[180px] truncate text-[10px] text-muted/60" title={a.ultimaMovimentacaoText}>
+                            {a.ultimaMovimentacaoText}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted/40">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => openProcessualModal(a)}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                      title="Ver movimentações"
+                    >
+                      {a._count?.movimentacoes ?? 0}
+                    </button>
                   </td>
                   <td className="px-3 py-3 text-center">
                     <StageBtn
@@ -489,12 +606,151 @@ export default function AcoesPage() {
                       canEdit={canEdit}
                     />
                   </td>
+                  <td className="px-3 py-3 text-center">
+                    {a.numCNJ || a.numProcesso ? (
+                      <button
+                        type="button"
+                        onClick={() => consultarProcesso(a)}
+                        disabled={consulting === a.id}
+                        className="btn-ghost px-2 py-1 text-xs opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        title="Consultar Datajud"
+                      >
+                        {consulting === a.id ? (
+                          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        ) : (
+                          <Icon name="rotateCw" className="h-3.5 w-3.5 text-muted hover:text-primary" />
+                        )}
+                      </button>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div className="border-t border-border px-4 py-2 text-xs text-muted">
             {filtered.length} ação{filtered.length !== 1 ? "ões" : ""}
+          </div>
+        </div>
+      )}
+
+      {/* Processual Modal */}
+      {processualModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface-elevated shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold">Detalhes processuais</h2>
+                <p className="text-xs text-muted">{processualModal.client.name}</p>
+              </div>
+              <button type="button" onClick={() => setProcessualModal(null)} className="rounded-lg p-1 text-muted hover:bg-surface">
+                <Icon name="x" className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5">
+              {/* Resumo */}
+              <div className="mb-4 grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-muted">CNJ:</span>
+                  <p className="font-mono text-foreground">{processualModal.numCNJ || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted">Processo:</span>
+                  <p className="font-mono text-foreground">{processualModal.numProcesso || processualModal.numCNJ || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted">Tribunal:</span>
+                  <p className="text-foreground">{processualModal.tribunal || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted">Vara:</span>
+                  <p className="text-foreground">{processualModal.vara || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted">Classe:</span>
+                  <p className="text-foreground">{processualModal.classe || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted">Parte contrária:</span>
+                  <p className="text-foreground">{processualModal.parteContraria || "—"}</p>
+                </div>
+                {processualModal.dataDistribuicao && (
+                  <div>
+                    <span className="text-muted">Distribuição:</span>
+                    <p className="text-foreground">{fmtDate(processualModal.dataDistribuicao)}</p>
+                  </div>
+                )}
+                {processualModal.dataAjuizamento && (
+                  <div>
+                    <span className="text-muted">Ajuizamento:</span>
+                    <p className="text-foreground">{fmtDate(processualModal.dataAjuizamento)}</p>
+                  </div>
+                )}
+                {processualModal.valorAtualizado != null && (
+                  <div className="col-span-2">
+                    <span className="text-muted">Valor atualizado:</span>
+                    <p className="text-foreground">
+                      {processualModal.valorAtualizado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                  </div>
+                )}
+                {processualModal.ultimaConsultaAt && (
+                  <div className="col-span-2">
+                    <span className="text-muted">Última consulta:</span>
+                    <p className="text-foreground">
+                      {new Date(processualModal.ultimaConsultaAt).toLocaleString("pt-BR")}
+                      {processualModal.consultaStatus === "erro" && (
+                        <span className="ml-2 text-red-500">(erro)</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Movimentações
+                  {processualModal._count?.movimentacoes != null && (
+                    <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-primary">{processualModal._count.movimentacoes}</span>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => consultarProcesso(processualModal)}
+                  disabled={consulting === processualModal.id}
+                  className="btn-ghost flex items-center gap-1 px-2 py-1 text-xs"
+                >
+                  {consulting === processualModal.id ? (
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : (
+                    <Icon name="rotateCw" className="h-3 w-3" />
+                  )}
+                  Consultar Datajud
+                </button>
+              </div>
+
+              {loadingMovs ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              ) : movimentacoes.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border py-8 text-center">
+                  <p className="text-xs text-muted">Nenhuma movimentação encontrada.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {movimentacoes.map((m) => (
+                    <div key={m.id} className="rounded-lg border border-border bg-surface p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs text-foreground">{m.texto}</p>
+                        <span className="shrink-0 text-[10px] text-muted">{fmtDate(m.data)}</span>
+                      </div>
+                      {m.tipo && <span className="mt-1 inline-block rounded bg-primary/5 px-1.5 py-0.5 text-[10px] text-muted">Cód. {m.tipo}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

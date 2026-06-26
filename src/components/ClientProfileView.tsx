@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { PhoneCheckResult } from "@prisma/client";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { CLIENT_FIELD_GROUPS, PHONE_FIELD_KEYS, clientCompleteness } from "@/lib/client-fields";
@@ -8,6 +9,7 @@ import { WorkflowBadge } from "./WorkflowBadge";
 import { CopyButton } from "./CopyButton";
 import { WhatsAppButton } from "./WhatsAppButton";
 import { PhoneCheckButtons } from "./PhoneCheckButtons";
+import { Icon } from "./ui/Icon";
 
 export function ClientProfileView({
   client,
@@ -17,9 +19,14 @@ export function ClientProfileView({
 }: {
   client: ClientProfileData;
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
-  onPhoneCheckRecorded?: () => void;
+  onPhoneCheckRecorded?: () void;
   phoneActionsDisabled?: boolean;
 }) {
+  const [buscaCpfAberta, setBuscaCpfAberta] = useState(false);
+  const [buscando, setBuscando] = useState(false);
+  const [resultadosCpf, setResultadosCpf] = useState<Array<{ tribunal: string; processos: Array<{ numero: string; classe?: string; ultimaMovimentacao?: string }> }> | null>(null);
+  const [erroCpf, setErroCpf] = useState("");
+
   const filledPhones = PHONE_FIELD_KEYS.map((key, index) => ({
     key,
     label: `Telefone ${index + 1}`,
