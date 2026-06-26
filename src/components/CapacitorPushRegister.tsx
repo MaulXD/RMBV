@@ -31,7 +31,7 @@ export function CapacitorPushRegister() {
 
         setPermGranted(true);
 
-        unregRegistration = PushNotifications.addListener("registration", (token) => {
+        const regHandle = await PushNotifications.addListener("registration", (token) => {
           console.log("[Push] Token recebido:", token.value);
           fetch("/api/ti/push-token", {
             method: "POST",
@@ -40,15 +40,18 @@ export function CapacitorPushRegister() {
           })
             .then((r) => console.log("[Push] Token enviado ao servidor:", r.status))
             .catch((e) => console.error("[Push] Erro ao enviar token:", e));
-        }).remove;
+        });
+        unregRegistration = () => regHandle.remove();
 
-        unregError = PushNotifications.addListener("registrationError", (err) => {
+        const errHandle = await PushNotifications.addListener("registrationError", (err) => {
           console.error("[Push] Erro no registro:", err);
-        }).remove;
+        });
+        unregError = () => errHandle.remove();
 
-        unregReceived = PushNotifications.addListener("pushNotificationReceived", (n) => {
+        const notifHandle = await PushNotifications.addListener("pushNotificationReceived", (n) => {
           console.log("[Push] Notificação recebida em primeiro plano:", n.title);
-        }).remove;
+        });
+        unregReceived = () => notifHandle.remove();
 
         await PushNotifications.register();
         console.log("[Push] register() executado com sucesso");
