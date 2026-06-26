@@ -17,9 +17,16 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "env:setup-local": "node scripts/setup-local-env.mjs",
+    "capacitor:dev": "next dev --turbopack & sleep 3 && npx cap copy && npx cap open android",
+    "capacitor:sync": "npx cap copy",
+    "capacitor:open": "npx cap open android",
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/push-notifications": "^8.1.1",
     "@prisma/client": "^6.9.0",
     "@vercel/blob": "^2.4.0",
     "@vladmandic/face-api": "^1.7.15",
