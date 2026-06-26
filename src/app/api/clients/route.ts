@@ -41,10 +41,16 @@ export async function GET(request: Request) {
     const teamId = searchParams.get("teamId");
     const search = searchParams.get("search");
     const followUpDue = searchParams.get("followUpDue") === "true";
+    const pesquisaFilter = searchParams.get("pesquisaFilter");
     const page = normalizeClientPage(searchParams.get("page"));
     const pageSize = normalizeClientPageSize(
       searchParams.get("pageSize") ?? DEFAULT_CLIENT_PAGE_SIZE
     );
+
+    const rawSortBy = searchParams.get("sortBy") ?? "updatedAt";
+    const sortDir = searchParams.get("sortDir") === "asc" ? "asc" : "desc";
+    const validSortFields = ["name", "cod", "cpf", "status", "workflowStatus", "followUpAt", "updatedAt", "createdAt"];
+    const sortBy = validSortFields.includes(rawSortBy) ? rawSortBy : "updatedAt";
 
     const where = await buildClientWhere(user, {
       status,
@@ -54,6 +60,7 @@ export async function GET(request: Request) {
       teamId,
       search,
       followUpDue,
+      pesquisaFilter,
     });
 
     const total = await prisma.client.count({ where });
@@ -62,7 +69,7 @@ export async function GET(request: Request) {
 
     const clients = await prisma.client.findMany({
       where,
-      orderBy: { updatedAt: "desc" },
+      orderBy: { [sortBy]: sortDir },
       skip: (safePage - 1) * pageSize,
       take: pageSize,
       include: clientListInclude,

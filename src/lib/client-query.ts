@@ -11,6 +11,7 @@ export type ClientListFilters = {
   teamId?: string | null;
   search?: string | null;
   followUpDue?: boolean;
+  pesquisaFilter?: string | null;
 };
 
 function buildClientSearchWhere(search: string): Prisma.ClientWhereInput {
@@ -75,6 +76,28 @@ export async function buildClientWhere(
     ...(filters.followUpDue
       ? {
           followUpAt: { lte: new Date(new Date().toDateString()) },
+        }
+      : {}),
+    ...(filters.pesquisaFilter === "none"
+      ? { OR: [{ pesquisa: null }, { pesquisa: "" }] }
+      : filters.pesquisaFilter === "done"
+      ? { pesquisa: { not: null }, NOT: { pesquisa: "" } }
+      : filters.pesquisaFilter === "contacts"
+      ? {
+          pesquisa: { not: null },
+          NOT: { pesquisa: "" },
+          OR: [
+            { phone1: { not: null } },
+            { phone2: { not: null } },
+            { phone3: { not: null } },
+            { phone4: { not: null } },
+            { phone5: { not: null } },
+            { phone6: { not: null } },
+            { phone7: { not: null } },
+            { phone8: { not: null } },
+            { phone9: { not: null } },
+            { phone10: { not: null } },
+          ],
         }
       : {}),
   };
