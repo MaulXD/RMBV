@@ -61,12 +61,10 @@ export async function POST(request: Request) {
 
     let imported = 0;
     for (const row of rows) {
-      const { tese, ...rest } = row;
-      // Form selection takes priority; fall back to CSV TESE column
-      const teseData = overrideTeseData ?? await resolveTeseForClient({ tese, teamId });
+      const teseData = overrideTeseData ?? await resolveTeseForClient({ tese: null, teamId });
       await prisma.client.create({
         data: {
-          ...rest,
+          ...row,
           ...teseData,
           teamId,
           status: "AGUARDANDO",
