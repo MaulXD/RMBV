@@ -37,7 +37,6 @@ export async function POST(request: Request) {
       if (!tese) return NextResponse.json({ error: "Tese selecionada não encontrada" }, { status: 400 });
       overrideTeseData = { teseId: tese.id, tese: tese.name };
     } else if (teseName) {
-      // Find or create tese with this name for the team
       const existing = await prisma.tese.findFirst({ where: { name: teseName, teamId } });
       if (existing) {
         overrideTeseData = { teseId: existing.id, tese: existing.name };
@@ -59,24 +58,31 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve tese once for all rows (was being called per-row before)
+    const teseData = overrideTeseData ?? await resolveTeseForClient({ tese: null, teamId });
+
+    // Insert in batches of 500 to avoid DB statement size limits
+    const BATCH = 500;
     let imported = 0;
-    for (const row of rows) {
-      const teseData = overrideTeseData ?? await resolveTeseForClient({ tese: null, teamId });
-      await prisma.client.create({
-        data: {
+
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const batch = rows.slice(i, i + BATCH);
+      const result = await prisma.client.createMany({
+        data: batch.map((row) => ({
           ...row,
           ...teseData,
           teamId,
           status: "AGUARDANDO",
           createdById: user.id,
-        },
+        })),
+        skipDuplicates: true,
       });
-      imported++;
+      imported += result.count;
     }
 
     return NextResponse.json({
       imported,
-      skipped: errors.length,
+      skipped: rows.length - imported + errors.length,
       warnings: errors,
     });
   });
