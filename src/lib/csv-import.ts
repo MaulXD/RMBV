@@ -2,25 +2,13 @@ import { CSV_HEADERS } from "./client-fields";
 
 export type CsvClientRow = {
   cod: string | null;
-  tese: string | null;
-  name: string;
   cpf: string | null;
-  birthDate: string | null;
+  name: string;
   obito: string | null;
-  deathDate: string | null;
   phone1: string | null;
   phone2: string | null;
   phone3: string | null;
   phone4: string | null;
-  phone5: string | null;
-  phone6: string | null;
-  phone7: string | null;
-  phone8: string | null;
-  phone9: string | null;
-  phone10: string | null;
-  address1: string | null;
-  address2: string | null;
-  address3: string | null;
 };
 
 function normalizeHeader(h: string) {
@@ -60,25 +48,13 @@ function rowFromValues(values: string[]): CsvClientRow | null {
 
   return {
     cod: get(0),
-    tese: get(1),
+    cpf: get(1),
     name,
-    cpf: get(3),
-    birthDate: get(4),
-    obito: get(5),
-    deathDate: get(6),
-    phone1: get(7),
-    phone2: get(8),
-    phone3: get(9),
-    phone4: get(10),
-    phone5: get(11),
-    phone6: get(12),
-    phone7: get(13),
-    phone8: get(14),
-    phone9: get(15),
-    phone10: get(16),
-    address1: get(17),
-    address2: get(18),
-    address3: get(19),
+    obito: get(3),
+    phone1: get(4),
+    phone2: get(5),
+    phone3: get(6),
+    phone4: get(7),
   };
 }
 

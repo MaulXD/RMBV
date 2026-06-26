@@ -1,26 +1,14 @@
 import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 
 export const CSV_HEADERS = [
-  "COD",
-  "TESE",
-  "NOME",
+  "CODIGO",
   "CPF",
-  "DATA DE NASCIMENTO",
+  "NOME",
   "ÓBITO",
-  "DATA ÓBITO",
-  "TELEFONE 1",
+  "TELEFONE1",
   "TELEFONE 2",
   "TELEFONE 3",
   "TELEFONE 4",
-  "TELEFONE 5",
-  "TELEFONE 6",
-  "TELEFONE 7",
-  "TELEFONE 8",
-  "TELEFONE 9",
-  "TELEFONE 10",
-  "ENDERECO 1",
-  "ENDERECO 2",
-  "ENDERECO 3",
 ] as const;
 
 export const PHONE_FIELD_KEYS = [
@@ -141,30 +129,15 @@ export type ClientProfileData = {
 
 export function clientToExportRow(client: ClientProfileData) {
   return {
-    COD: client.cod ?? "",
-    TESE: client.tese ?? "",
-    NOME: client.name,
+    CODIGO: client.cod ?? "",
     CPF: client.cpf ?? "",
-    "DATA DE NASCIMENTO": client.birthDate ?? "",
+    NOME: client.name,
     ÓBITO: client.obito ?? "",
-    "DATA ÓBITO": client.deathDate ?? "",
-    "TELEFONE 1": client.phone1 ?? "",
+    TELEFONE1: client.phone1 ?? "",
     "TELEFONE 2": client.phone2 ?? "",
     "TELEFONE 3": client.phone3 ?? "",
     "TELEFONE 4": client.phone4 ?? "",
-    "TELEFONE 5": client.phone5 ?? "",
-    "TELEFONE 6": client.phone6 ?? "",
-    "TELEFONE 7": client.phone7 ?? "",
-    "TELEFONE 8": client.phone8 ?? "",
-    "TELEFONE 9": client.phone9 ?? "",
-    "TELEFONE 10": client.phone10 ?? "",
-    "ENDERECO 1": client.address1 ?? "",
-    "ENDERECO 2": client.address2 ?? "",
-    "ENDERECO 3": client.address3 ?? "",
     STATUS: STATUS_OPTIONS.find((s) => s.value === client.status)?.label ?? client.status,
-    "STATUS WORKFLOW":
-      WORKFLOW_OPTIONS.find((s) => s.value === client.workflowStatus)?.label ??
-      client.workflowStatus,
   };
 }
 
