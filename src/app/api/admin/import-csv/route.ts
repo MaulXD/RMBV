@@ -14,16 +14,12 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const file = formData.get("file");
-    const categoryId = String(formData.get("categoryId") ?? "");
     const teamId = String(formData.get("teamId") ?? "");
     const teseId = String(formData.get("teseId") ?? "").trim() || null;
     const teseName = String(formData.get("teseName") ?? "").trim() || null;
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Arquivo CSV obrigatório" }, { status: 400 });
-    }
-    if (!categoryId) {
-      return NextResponse.json({ error: "Categoria obrigatória" }, { status: 400 });
     }
     if (!teamId) {
       return NextResponse.json({ error: "Equipe obrigatória" }, { status: 400 });
@@ -32,11 +28,6 @@ export async function POST(request: Request) {
     const team = await prisma.team.findUnique({ where: { id: teamId } });
     if (!team) {
       return NextResponse.json({ error: "Equipe inválida" }, { status: 400 });
-    }
-
-    const category = await prisma.category.findUnique({ where: { id: categoryId } });
-    if (!category) {
-      return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
     }
 
     // Resolve the tese override chosen in the form (create if needed)
@@ -80,7 +71,6 @@ export async function POST(request: Request) {
           teamId,
           status: "AGUARDANDO",
           createdById: user.id,
-          categories: { create: [{ categoryId }] },
         },
       });
       imported++;

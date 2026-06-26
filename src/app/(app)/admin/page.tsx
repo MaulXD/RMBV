@@ -16,15 +16,12 @@ import { FaceAuditStatsPanel } from "@/components/FaceAuditStatsPanel";
 import { Icon } from "@/components/ui/Icon";
 import { SelectField } from "@/components/ui/SelectField";
 
-type Category = { id: string; name: string };
 type Tab = "equipes" | "usuarios" | "teses" | "clientes" | "importar" | "auditoria" | "backup" | "ponto";
 
 export default function AdminPage() {
   const router = useRouter();
   const { user } = useSession();
   const [tab, setTab] = useState<Tab>("equipes");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryId, setCategoryId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [importTeses, setImportTeses] = useState<{ id: string; name: string }[]>([]);
@@ -43,13 +40,6 @@ export default function AdminPage() {
   }, [user, router]);
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((d) => {
-        const cats = d.categories ?? [];
-        setCategories(cats);
-        if (cats[0]) setCategoryId(cats[0].id);
-      });
     fetch("/api/teams")
       .then((r) => r.json())
       .then((d) => {
@@ -86,7 +76,7 @@ export default function AdminPage() {
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !categoryId || !teamId) return;
+    if (!file || !teamId) return;
 
     setLoading(true);
     setError(null);
@@ -94,7 +84,6 @@ export default function AdminPage() {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("categoryId", categoryId);
     formData.append("teamId", teamId);
     if (importTeseId) formData.append("teseId", importTeseId);
     else if (importTeseName.trim()) formData.append("teseName", importTeseName.trim());
@@ -211,11 +200,6 @@ export default function AdminPage() {
               <SelectField label="Equipe" value={teamId} onChange={setTeamId} required>
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </SelectField>
-              <SelectField label="Categoria" value={categoryId} onChange={setCategoryId} required>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </SelectField>
 
