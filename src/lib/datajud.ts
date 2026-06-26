@@ -135,3 +135,74 @@ export async function validarConexaoDatajud(): Promise<{ ok: boolean; message: s
 }
 
 export { generateMovHash };
+
+export type DatajudProcessoResumo = {
+  numeroProcesso: string;
+  tribunal: string;
+  classe: string | null;
+  assunto: string | null;
+  vara: string | null;
+  dataAjuizamento: string | null;
+  valorAcao: number | null;
+};
+
+async function buscarPorCPFnumTribunal(cpf: string, tribunal: string): Promise<DatajudProcessoResumo[]> {
+  const key = apiKey();
+  const body = JSON.stringify({
+    query: {
+      nested: {
+        path: "partes",
+        query: { match: { "partes.documento": cpf } },
+      },
+    },
+    _source: ["numeroProcesso", "classe", "assunto", "orgaoJulgador", "dataAjuizamento", "valorAcao", "tribunal"],
+    size: 20,
+  });
+
+  const res = await fetch(`${API_BASE}/api_publica_${tribunal}/_search`, {
+    method: "POST",
+    headers: {
+      Authorization: `${AUTH_HEADER} ${key}`,
+      "Content-Type": "application/json",
+    },
+    body,
+  });
+
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  const hits = (data?.hits?.hits as Array<Record<string, unknown>>) ?? [];
+  return hits.map((h) => {
+    const s = h._source as Record<string, unknown>;
+    return {
+      numeroProcesso: String(s.numeroProcesso || ""),
+      tribunal: String(s.tribunal || tribunal),
+      classe: s.classe ? String((s.classe as Record<string, unknown>).nome || "") : null,
+      assunto: s.assunto ? String((s.assunto as Record<string, unknown>).nome || "") : null,
+      vara: s.orgaoJulgador ? String((s.orgaoJulgador as Record<string, unknown>).nome || "") : null,
+      dataAjuizamento: s.dataAjuizamento ? String(s.dataAjuizamento) : null,
+      valorAcao: s.valorAcao ? Number(s.valorAcao) : null,
+    };
+  });
+}
+
+export async function buscarProcessosPorCPF(cpf: string): Promise<DatajudProcessoResumo[]> {
+  const cleaned = cpf.replace(/\D/g, "");
+  const key = apiKey();
+  if (!key) throw new Error("DATAJUD_API_KEY não configurada");
+
+  const BATCH_SIZE = 5;
+  const resultados: DatajudProcessoResumo[] = [];
+
+  for (let i = 0; i < COMMON_TRIBUNAIS.length; i += BATCH_SIZE) {
+    const batch = COMMON_TRIBUNAIS.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(
+      batch.map((t) => buscarPorCPFnumTribunal(cleaned, t)),
+    );
+    for (const r of batchResults) {
+      if (r.status === "fulfilled") resultados.push(...r.value);
+    }
+  }
+
+  return resultados.filter((r) => r.numeroProcesso);
+}
