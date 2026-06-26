@@ -187,6 +187,7 @@ model User {
   onboarding                  UserOnboarding?
   sessions                    UserSession[]
   accessRule                  UserAccessRule?
+  pushTokens                  Json       @default("[]")
   pontoRecords                PontoRecord[]
   chatMessagesSent            ChatMessage[]      @relation("ChatSender")
   chatMessagesReceived        ChatMessage[]      @relation("ChatReceiver")
