@@ -24,8 +24,6 @@ type Stats = {
 
 export default function ReportsSuportePage() {
   const { user } = useSession();
-  if (!user || (user.role !== "ADMIN" && user.role !== "ADV")) return null;
-
   const [requests, setRequests] = useState<SupportRequest[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [total, setTotal] = useState(0);
@@ -63,6 +61,8 @@ export default function ReportsSuportePage() {
   }, [debouncedSearch, startDate, endDate, page]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  if (!user || (user.role !== "ADMIN" && user.role !== "ADV")) return null;
 
   return (
     <div>
