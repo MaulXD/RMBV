@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
@@ -81,6 +81,81 @@ export default function TiChamadosPage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
+  const lastTotalRef = useRef(total);
+
+  function playNotificationSound() {
+    try {
+      const ctx = new AudioContext();
+      const g = ctx.createGain();
+      g.gain.value = 0.15;
+      g.connect(ctx.destination);
+      [523, 659, 784].forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = freq;
+        o.connect(g);
+        o.start(ctx.currentTime + i * 0.12);
+        o.stop(ctx.currentTime + i * 0.12 + 0.15);
+      });
+    } catch { /* fallback silencioso */ }
+  }
+
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unavailable">("default");
+
+  useEffect(() => {
+    if (!("Notification" in window)) { setNotifPermission("unavailable"); return; }
+    setNotifPermission(Notification.permission);
+  }, []);
+
+  async function requestNotifPermission() {
+    if (!("Notification" in window)) return;
+    const p = await Notification.requestPermission();
+    setNotifPermission(p);
+  }
+
+  // SSE — tempo real
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/ti/tickets/events", { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok || !res.body) return;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "update") {
+                if (lastTotalRef.current > 0 && data.total > lastTotalRef.current) {
+                  playNotificationSound();
+                  if (notifPermission === "granted") {
+                    new Notification("Novo chamado de suporte!", {
+                      body: `${data.tickets?.[0]?.name ?? "Alguém"} abriu um chamado`,
+                      icon: "/favicon.ico",
+                    });
+                  }
+                }
+                lastTotalRef.current = data.total;
+                if (page === 1) void fetchData();
+              }
+            } catch { /* ignora */ }
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [notifPermission, page, fetchData]);
+
   if (!user || (user.role !== "TI" && user.role !== "ADMIN")) return null;
 
   async function handleResolve(ticketId: string) {
@@ -113,6 +188,22 @@ export default function TiChamadosPage() {
   return (
     <div>
       <PageHeader icon="messageSquare" title="Chamados TI" subtitle="Atendimento de solicitações de suporte" />
+
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs text-muted">Tempo real ativo</span>
+        </div>
+        {notifPermission !== "granted" && notifPermission !== "unavailable" && (
+          <button
+            type="button"
+            onClick={requestNotifPermission}
+            className="rounded-lg border border-border px-3 py-1 text-xs text-muted hover:bg-surface-elevated hover:text-foreground"
+          >
+            Ativar notificações
+          </button>
+        )}
+      </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
         {statusTabs.map((tab) => (
