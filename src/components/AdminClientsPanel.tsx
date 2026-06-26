@@ -138,6 +138,11 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Fix actions
+  const [fixingSwap, setFixingSwap] = useState(false);
+  const [fixingCategories, setFixingCategories] = useState(false);
+  const [firstCategoryId, setFirstCategoryId] = useState("");
+
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -149,6 +154,16 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
       .then((r) => r.json())
       .then((d) => setTeses(d.teses ?? []));
   }, [teamId]);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((d) => {
+        const list = (d.categories ?? []) as { id: string }[];
+        if (list[0]) setFirstCategoryId(list[0].id);
+      })
+      .catch(() => {});
+  }, []);
 
   const loadClients = useCallback(async () => {
     if (!teamId) return;
@@ -413,6 +428,67 @@ export function AdminClientsPanel({ teams }: { teams: Team[] }) {
         onPageChange={setPage}
         onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
       />
+
+      {/* Maintenance actions */}
+      <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
+        <p className="text-xs font-semibold text-muted uppercase tracking-widest">Manutenção de dados</p>
+
+        {actionResult && (
+          <p className={`text-xs ${actionResult.type === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+            {actionResult.text}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={fixingSwap || !teamId}
+            onClick={async () => {
+              setFixingSwap(true);
+              setActionResult(null);
+              try {
+                const res = await fetch("/api/admin/fix-swap-cpf-name", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ teamId }),
+                });
+                const data = await res.json() as { fixed?: number; message?: string; error?: string };
+                if (res.ok) setActionResult({ type: "success", text: data.message ?? `${data.fixed} clientes corrigidos` });
+                else setActionResult({ type: "error", text: data.error ?? "Erro ao corrigir CPF/Nome" });
+              } finally {
+                setFixingSwap(false);
+              }
+            }}
+            className="btn-ghost border border-amber-500/30 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-400"
+          >
+            {fixingSwap ? "Corrigindo..." : "Corrigir CPF e Nome trocados"}
+          </button>
+
+          <button
+            type="button"
+            disabled={fixingCategories || !teamId || !firstCategoryId}
+            onClick={async () => {
+              setFixingCategories(true);
+              setActionResult(null);
+              try {
+                const res = await fetch("/api/admin/fix-categories", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ teamId, categoryId: firstCategoryId }),
+                });
+                const data = await res.json() as { fixed?: number; message?: string; error?: string };
+                if (res.ok) setActionResult({ type: "success", text: data.message ?? `${data.fixed} clientes corrigidos` });
+                else setActionResult({ type: "error", text: data.error ?? "Erro ao corrigir categorias" });
+              } finally {
+                setFixingCategories(false);
+              }
+            }}
+            className="btn-ghost border border-primary/30 px-3 py-1.5 text-xs text-primary hover:bg-primary/10 disabled:opacity-50"
+          >
+            {fixingCategories ? "Corrigindo..." : "Corrigir clientes sem categoria"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
