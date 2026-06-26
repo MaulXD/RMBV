@@ -91,6 +91,56 @@ function ResearchBadge({ hasResearch, hasContacts }: { hasResearch: boolean; has
   );
 }
 
+function SortableHeader({
+  col,
+  label,
+  sortBy,
+  sortDir,
+  onSort,
+  center,
+}: {
+  col: string;
+  label: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  onSort?: (col: string) => void;
+  center?: boolean;
+}) {
+  const active = sortBy === col;
+  const cls = `px-4 py-2 text-[11px] font-semibold tracking-widest uppercase whitespace-nowrap ${center ? "text-center" : "text-left"}`;
+  if (!onSort) {
+    return <th className={`${cls} text-muted`}>{label}</th>;
+  }
+  return (
+    <th className={cls}>
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className={`inline-flex items-center gap-0.5 transition-colors hover:text-foreground ${active ? "text-primary" : "text-muted"}`}
+      >
+        {label}
+        <SortIcon active={active} dir={active ? (sortDir ?? "desc") : "desc"} />
+      </button>
+    </th>
+  );
+}
+
+function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className={`ml-1 inline h-3 w-3 shrink-0 transition-colors ${active ? "text-primary" : "text-muted/40"}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {dir === "asc" || !active ? <path d="M8 11V5M5 8l3-3 3 3" /> : <path d="M8 5v6M5 8l3 3 3-3" />}
+    </svg>
+  );
+}
+
 export function ClientsTable({
   clients,
   loading,
@@ -99,6 +149,9 @@ export function ClientsTable({
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
+  sortBy,
+  sortDir = "desc",
+  onSort,
 }: {
   clients: ClientRow[];
   loading?: boolean;
@@ -107,6 +160,9 @@ export function ClientsTable({
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   onToggleSelectAll?: () => void;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  onSort?: (col: string) => void;
 }) {
   if (loading) {
     return (
@@ -245,33 +301,15 @@ export function ClientsTable({
                 />
               </th>
             )}
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              COD
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Tese
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Nome
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              CPF
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Status
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Finalização
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Telefone
-            </th>
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Retorno
-            </th>
-            <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">
-              Pesquisa
-            </th>
+            <SortableHeader col="cod" label="COD" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">Tese</th>
+            <SortableHeader col="name" label="Nome" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHeader col="cpf" label="CPF" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHeader col="status" label="Status" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHeader col="workflowStatus" label="Finalização" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">Telefone</th>
+            <SortableHeader col="followUpAt" label="Retorno" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">Pesquisa</th>
             <th className="w-10" />
           </tr>
         </thead>

@@ -77,6 +77,9 @@ function DashboardContent() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [pesquisaFilter, setPesquisaFilter] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchAbort = useRef<AbortController | null>(null);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,7 +105,10 @@ function DashboardContent() {
       if (activeTeseId) params.set("teseId", activeTeseId);
       if (workflowFilter) params.set("workflowStatus", workflowFilter);
       if (followUpDue) params.set("followUpDue", "true");
+      if (pesquisaFilter) params.set("pesquisaFilter", pesquisaFilter);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (sortBy !== "updatedAt") params.set("sortBy", sortBy);
+      if (sortDir !== "desc") params.set("sortDir", sortDir);
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
 
@@ -125,7 +131,7 @@ function DashboardContent() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [teseHydrated, statusFilter, workflowFilter, followUpDue, activeTeseId, searchQuery, page, pageSize]);
+  }, [teseHydrated, statusFilter, workflowFilter, followUpDue, pesquisaFilter, activeTeseId, searchQuery, page, pageSize, sortBy, sortDir]);
 
   useEffect(() => {
     loadClients();
@@ -133,7 +139,7 @@ function DashboardContent() {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [activeTeseId, statusFilter, workflowFilter, followUpDue, searchQuery, page, pageSize]);
+  }, [activeTeseId, statusFilter, workflowFilter, followUpDue, pesquisaFilter, searchQuery, page, pageSize, sortBy, sortDir]);
 
   useEffect(() => {
     return () => {
@@ -239,6 +245,19 @@ function DashboardContent() {
             <Icon name="bell" className="h-3.5 w-3.5" />
             {followUpDue ? "Follow-ups ativos" : "Follow-ups"}
           </button>
+          <select
+            className="industrial-input min-w-[150px] flex-1"
+            value={pesquisaFilter}
+            onChange={(e) => {
+              setPesquisaFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Toda pesquisa</option>
+            <option value="none">Sem pesquisa</option>
+            <option value="done">Pesquisa feita</option>
+            <option value="contacts">Com contatos</option>
+          </select>
           <div className="relative min-w-[180px] flex-[2]">
             <Icon
               name="search"
@@ -294,6 +313,17 @@ function DashboardContent() {
         selectedIds={selectedIds}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onSort={(col) => {
+          if (col === sortBy) {
+            setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+          } else {
+            setSortBy(col);
+            setSortDir("asc");
+          }
+          setPage(1);
+        }}
       />
 
       <ClientsListPagination
