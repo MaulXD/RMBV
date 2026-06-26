@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
     const teamId = String(formData.get("teamId") ?? "");
+    const categoryId = String(formData.get("categoryId") ?? "").trim() || null;
     const teseId = String(formData.get("teseId") ?? "").trim() || null;
     const teseName = String(formData.get("teseName") ?? "").trim() || null;
 
@@ -24,13 +25,18 @@ export async function POST(request: Request) {
     if (!teamId) {
       return NextResponse.json({ error: "Equipe obrigatória" }, { status: 400 });
     }
-
-    const team = await prisma.team.findUnique({ where: { id: teamId } });
-    if (!team) {
-      return NextResponse.json({ error: "Equipe inválida" }, { status: 400 });
+    if (!categoryId) {
+      return NextResponse.json({ error: "Categoria obrigatória" }, { status: 400 });
     }
 
-    // Resolve the tese override chosen in the form (create if needed)
+    const [team, category] = await Promise.all([
+      prisma.team.findUnique({ where: { id: teamId } }),
+      prisma.category.findUnique({ where: { id: categoryId }, select: { id: true } }),
+    ]);
+    if (!team) return NextResponse.json({ error: "Equipe inválida" }, { status: 400 });
+    if (!category) return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
+
+    // Resolve tese override
     let overrideTeseData: { teseId: string | null; tese: string | null } | null = null;
     if (teseId) {
       const tese = await prisma.tese.findUnique({ where: { id: teseId }, select: { id: true, name: true } });
@@ -58,16 +64,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Resolve tese once for all rows (was being called per-row before)
     const teseData = overrideTeseData ?? await resolveTeseForClient({ tese: null, teamId });
 
-    // Insert in batches of 500 to avoid DB statement size limits
+    // Step 1: bulk insert clients in batches of 500
     const BATCH = 500;
-    let imported = 0;
-
     for (let i = 0; i < rows.length; i += BATCH) {
       const batch = rows.slice(i, i + BATCH);
-      const result = await prisma.client.createMany({
+      await prisma.client.createMany({
         data: batch.map((row) => ({
           ...row,
           ...teseData,
@@ -77,8 +80,26 @@ export async function POST(request: Request) {
         })),
         skipDuplicates: true,
       });
-      imported += result.count;
     }
+
+    // Step 2: find all clients in this team without any category and assign the selected one
+    const withoutCategory = await prisma.client.findMany({
+      where: { teamId, categories: { none: {} } },
+      select: { id: true },
+    });
+
+    if (withoutCategory.length > 0) {
+      const CAT_BATCH = 1000;
+      for (let i = 0; i < withoutCategory.length; i += CAT_BATCH) {
+        const batch = withoutCategory.slice(i, i + CAT_BATCH);
+        await prisma.clientCategory.createMany({
+          data: batch.map((c) => ({ clientId: c.id, categoryId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    const imported = withoutCategory.length;
 
     return NextResponse.json({
       imported,

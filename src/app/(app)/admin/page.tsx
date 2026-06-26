@@ -27,6 +27,8 @@ export default function AdminPage() {
   const [importTeses, setImportTeses] = useState<{ id: string; name: string }[]>([]);
   const [importTeseId, setImportTeseId] = useState("");
   const [importTeseName, setImportTeseName] = useState("");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [importCategoryId, setImportCategoryId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -50,6 +52,17 @@ export default function AdminPage() {
         }));
         setTeams(list);
         if (list[0]) setTeamId(list[0].id);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((d) => {
+        const list = (d.categories ?? []) as { id: string; name: string }[];
+        setCategories(list);
+        if (list[0]) setImportCategoryId(list[0].id);
       })
       .catch(() => {});
   }, []);
@@ -90,6 +103,7 @@ export default function AdminPage() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("teamId", teamId);
+    if (importCategoryId) formData.append("categoryId", importCategoryId);
     if (importTeseId) formData.append("teseId", importTeseId);
     else if (importTeseName.trim()) formData.append("teseName", importTeseName.trim());
 
@@ -210,6 +224,26 @@ export default function AdminPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">
+                  Categoria <span className="text-muted/60">(obrigatório — define quem pode ver os clientes)</span>
+                </label>
+                {categories.length === 0 ? (
+                  <p className="text-xs text-amber-500">Nenhuma categoria encontrada. Verifique as permissões.</p>
+                ) : (
+                  <select
+                    className="industrial-input"
+                    value={importCategoryId}
+                    onChange={(e) => setImportCategoryId(e.target.value)}
+                    required
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">
                   Tese <span className="text-muted/60">(obrigatório)</span>
                 </label>
                 {importTeses.length === 0 ? (
@@ -262,7 +296,7 @@ export default function AdminPage() {
                   required
                 />
               </div>
-              <button type="submit" className="btn-primary" disabled={loading || !file || importTeses.length === 0 || (!importTeseId && !importTeseName.trim())}>
+              <button type="submit" className="btn-primary" disabled={loading || !file || !importCategoryId || importTeses.length === 0 || (!importTeseId && !importTeseName.trim())}>
                 <Icon name="upload" className="h-4 w-4" />
                 {loading ? "Importando..." : "Subir CSV"}
               </button>
