@@ -210,26 +210,42 @@ export default function AdminPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">
-                  Tese <span className="text-muted/60">(obrigatório — selecione ou crie)</span>
+                  Tese <span className="text-muted/60">(obrigatório)</span>
                 </label>
-                <select
-                  className="industrial-input"
-                  value={importTeseId}
-                  onChange={(e) => { setImportTeseId(e.target.value); setImportTeseName(""); }}
-                >
-                  {importTeses.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                  <option value="">+ Nova tese (digitar nome abaixo)</option>
-                </select>
-                {!importTeseId && (
-                  <input
-                    className="industrial-input mt-2"
-                    placeholder="Nome da nova tese (será criada se não existir)"
-                    value={importTeseName}
-                    onChange={(e) => setImportTeseName(e.target.value)}
-                    required
-                  />
+                {importTeses.length === 0 ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-3 text-xs">
+                    <p className="text-amber-600 dark:text-amber-400 font-medium mb-1">Esta equipe não tem teses cadastradas.</p>
+                    <p className="text-muted mb-2">Crie ao menos uma tese antes de importar clientes.</p>
+                    <button
+                      type="button"
+                      onClick={() => setTab("teses")}
+                      className="text-primary underline underline-offset-2"
+                    >
+                      Ir para aba Teses
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      className="industrial-input"
+                      value={importTeseId}
+                      onChange={(e) => { setImportTeseId(e.target.value); setImportTeseName(""); }}
+                    >
+                      {importTeses.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                      <option value="">+ Nova tese (digitar nome abaixo)</option>
+                    </select>
+                    {!importTeseId && (
+                      <input
+                        className="industrial-input mt-2"
+                        placeholder="Nome da nova tese (será criada se não existir)"
+                        value={importTeseName}
+                        onChange={(e) => setImportTeseName(e.target.value)}
+                        required
+                      />
+                    )}
+                  </>
                 )}
                 <p className="mt-1 text-xs text-muted">
                   Todos os clientes deste CSV serão vinculados a esta tese. Substitui a coluna TESE do arquivo.
@@ -246,7 +262,7 @@ export default function AdminPage() {
                   required
                 />
               </div>
-              <button type="submit" className="btn-primary" disabled={loading || !file || (!importTeseId && !importTeseName.trim())}>
+              <button type="submit" className="btn-primary" disabled={loading || !file || importTeses.length === 0 || (!importTeseId && !importTeseName.trim())}>
                 <Icon name="upload" className="h-4 w-4" />
                 {loading ? "Importando..." : "Subir CSV"}
               </button>
