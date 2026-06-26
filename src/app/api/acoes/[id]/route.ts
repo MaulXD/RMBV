@@ -14,10 +14,12 @@ const acaoInclude = {
   docsEnviadosBy: { select: { id: true, name: true } },
   entradaBy: { select: { id: true, name: true } },
   sentencaBy: { select: { id: true, name: true } },
+  _count: { select: { movimentacoes: true } },
 } as const;
 
 const patchSchema = z.object({
   numCNJ: z.string().optional().nullable(),
+  numProcesso: z.string().optional().nullable(),
   valorCausa: z.number().optional().nullable(),
   // Stage toggles — pass true to mark now, false to clear
   advConfirmado: z.boolean().optional(),
@@ -29,6 +31,15 @@ const patchSchema = z.object({
   sentenca: z.boolean().optional(),
   sentencaResultado: z.string().optional().nullable(),
   sentencaNota: z.string().optional().nullable(),
+  // Processual fields
+  classe: z.string().optional().nullable(),
+  assunto: z.string().optional().nullable(),
+  vara: z.string().optional().nullable(),
+  foro: z.string().optional().nullable(),
+  tribunal: z.string().optional().nullable(),
+  sistema: z.string().optional().nullable(),
+  parteContraria: z.string().optional().nullable(),
+  valorAtualizado: z.number().optional().nullable(),
 });
 
 export async function GET(
@@ -68,6 +79,7 @@ export async function PATCH(
 
     const data: Record<string, unknown> = {};
     if (d.numCNJ !== undefined) data.numCNJ = d.numCNJ;
+    if (d.numProcesso !== undefined) data.numProcesso = d.numProcesso;
     if (d.valorCausa !== undefined) data.valorCausa = d.valorCausa;
 
     if (d.advConfirmado === true) {
@@ -106,6 +118,16 @@ export async function PATCH(
     }
     if (d.sentencaResultado !== undefined) data.sentencaResultado = d.sentencaResultado;
     if (d.sentencaNota !== undefined) data.sentencaNota = d.sentencaNota;
+
+    // Processual fields
+    if (d.classe !== undefined) data.classe = d.classe;
+    if (d.assunto !== undefined) data.assunto = d.assunto;
+    if (d.vara !== undefined) data.vara = d.vara;
+    if (d.foro !== undefined) data.foro = d.foro;
+    if (d.tribunal !== undefined) data.tribunal = d.tribunal;
+    if (d.sistema !== undefined) data.sistema = d.sistema;
+    if (d.parteContraria !== undefined) data.parteContraria = d.parteContraria;
+    if (d.valorAtualizado !== undefined) data.valorAtualizado = d.valorAtualizado;
 
     const acao = await prisma.acao.update({ where: { id }, data, include: acaoInclude });
     return NextResponse.json({ acao });

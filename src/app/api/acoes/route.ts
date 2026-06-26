@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         docsEnviadosBy: { select: { id: true, name: true } },
         entradaBy: { select: { id: true, name: true } },
         sentencaBy: { select: { id: true, name: true } },
+        _count: { select: { movimentacoes: true } },
       },
     });
 
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
 const createSchema = z.object({
   clientId: z.string().uuid(),
   numCNJ: z.string().optional().nullable(),
+  numProcesso: z.string().optional().nullable(),
   valorCausa: z.number().optional().nullable(),
 });
 
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
         clientId: parsed.data.clientId,
         teamId: client.teamId,
         numCNJ: parsed.data.numCNJ ?? null,
+        numProcesso: parsed.data.numProcesso ?? null,
         valorCausa: parsed.data.valorCausa ?? null,
         createdById: user.id,
       },
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
         docsEnviadosBy: { select: { id: true, name: true } },
         entradaBy: { select: { id: true, name: true } },
         sentencaBy: { select: { id: true, name: true } },
+        _count: { select: { movimentacoes: true } },
       },
     });
 

@@ -612,6 +612,7 @@ enum NotificationType {
   CHAMADO_SLA
   CLIENT_FINALIZATION
   CLIENT_DOCUMENT
+  PROCESSUAL_UPDATE
   GENERAL
 }
 
@@ -758,6 +759,7 @@ model Acao {
   teamId      String?
   team        Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   numCNJ      String?
+  numProcesso String?                        @unique
   valorCausa  Float?
   createdById String
   createdBy   User     @relation("AcaoCreator", fields: [createdById], references: [id])
@@ -785,6 +787,39 @@ model Acao {
   sentencaResultado String?
   sentencaNota      String?
 
+  // Acompanhamento processual
+  classe             String?
+  assunto            String?
+  vara               String?
+  foro               String?
+  tribunal           String?
+  sistema            String?                    @default("DATAJUD")
+  ultimaMovimentacaoAt   DateTime?
+  ultimaMovimentacaoText String?
+  dataAjuizamento    DateTime?
+  dataDistribuicao   DateTime?
+  valorAtualizado    Float?
+  parteContraria     String?
+  ultimaConsultaAt   DateTime?
+  consultaStatus     String?                    @default("pendente")
+
+  movimentacoes Movimentacao[]
+
   @@index([clientId])
   @@index([teamId])
+  @@index([numProcesso])
+}
+
+model Movimentacao {
+  id        String   @id @default(uuid())
+  acaoId    String
+  acao      Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  data      DateTime
+  texto     String   @db.Text
+  tipo      String?
+  hash      String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([acaoId])
+  @@index([data])
 }
