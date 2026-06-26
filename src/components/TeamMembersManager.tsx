@@ -38,6 +38,7 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
   const [gpsRequired, setGpsRequired] = useState(false);
   const [saving, setSaving] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +82,23 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete(memberId: string) {
+    if (!confirm("Tem certeza que deseja remover este membro da equipe?")) return;
+    setDeletingId(memberId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/teams/members/${memberId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao remover");
+      setMessage("Membro removido da equipe.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -224,6 +242,16 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
                         }`}
                       >
                         {isPatching ? "..." : m.isActive ? "Suspender" : "Reativar"}
+                      </button>
+                    )}
+                    {isEditable && (
+                      <button
+                        type="button"
+                        disabled={deletingId === m.id}
+                        onClick={() => void handleDelete(m.id)}
+                        className="btn-ghost px-1.5 py-1 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                      >
+                        {deletingId === m.id ? "..." : <Icon name="trash" className="h-3.5 w-3.5" />}
                       </button>
                     )}
                   </div>

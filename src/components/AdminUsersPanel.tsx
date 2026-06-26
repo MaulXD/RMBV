@@ -32,6 +32,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
     password: "",
   });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -104,6 +105,23 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete(userId: string) {
+    if (!confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) return;
+    setDeletingId(userId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao excluir");
+      setMessage("Usuário excluído.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -248,6 +266,14 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
                       </div>
                       <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => startEdit(u)}>
                         Editar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingId === u.id}
+                        onClick={() => void handleDelete(u.id)}
+                        className="btn-ghost px-2 py-1 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                      >
+                        {deletingId === u.id ? "..." : <Icon name="trash" className="h-3.5 w-3.5" />}
                       </button>
                     </div>
                   </div>

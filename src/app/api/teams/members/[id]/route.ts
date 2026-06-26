@@ -78,3 +78,38 @@ export async function PATCH(
     return NextResponse.json({ member: updated });
   });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return withAuth(async (user) => {
+    if (!canManageTeamMembers(user)) {
+      return NextResponse.json(
+        { error: "Apenas o ADV da equipe pode remover membros" },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, teamId: true, role: true },
+    });
+
+    if (!target || target.teamId !== user.teamId) {
+      return NextResponse.json({ error: "Membro não encontrado" }, { status: 404 });
+    }
+
+    if (target.role === "ADV" || target.role === "ADMIN") {
+      return NextResponse.json(
+        { error: "Não é possível remover este usuário" },
+        { status: 403 }
+      );
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  });
+}

@@ -59,3 +59,34 @@ export async function PATCH(
     return NextResponse.json({ team });
   });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return withAuth(async (user) => {
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const existing = await prisma.team.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Equipe não encontrada" }, { status: 404 });
+    }
+
+    const counts = await prisma.team.findUnique({
+      where: { id },
+      select: { _count: { select: { members: true, clients: true, teses: true } } },
+    });
+
+    if (counts && (counts._count.members > 0 || counts._count.clients > 0)) {
+      return NextResponse.json({
+        error: `Equipe possui ${counts._count.members} membro(s) e ${counts._count.clients} cliente(s). Remova-os antes de excluir.`,
+      }, { status: 400 });
+    }
+
+    await prisma.team.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  });
+}

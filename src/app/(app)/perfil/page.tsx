@@ -29,6 +29,12 @@ export default function PerfilPage() {
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   if (!user) return null;
 
@@ -158,6 +164,82 @@ export default function PerfilPage() {
               <span className="text-foreground font-medium">{user.teamName}</span>
             </div>
           )}
+        </div>
+
+        <div className="mt-6 border-t border-border pt-5">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Alterar senha</h2>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (pwNew !== pwConfirm) { setPwError("Senhas não conferem"); return; }
+              setPwSaving(true);
+              setPwError("");
+              setPwSuccess(false);
+              try {
+                const res = await fetch("/api/users/me/password", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+                });
+                if (!res.ok) {
+                  const d = await res.json() as { error?: string };
+                  throw new Error(d.error ?? "Erro ao alterar senha");
+                }
+                setPwSuccess(true);
+                setPwCurrent("");
+                setPwNew("");
+                setPwConfirm("");
+              } catch (err) {
+                setPwError(err instanceof Error ? err.message : "Erro ao alterar senha");
+              } finally {
+                setPwSaving(false);
+              }
+            }}
+            className="space-y-3"
+          >
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted">Senha atual</label>
+              <input
+                type="password"
+                className="industrial-input w-full"
+                value={pwCurrent}
+                onChange={(e) => { setPwCurrent(e.target.value); setPwSuccess(false); }}
+                required
+                minLength={1}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Nova senha</label>
+                <input
+                  type="password"
+                  className="industrial-input w-full"
+                  value={pwNew}
+                  onChange={(e) => { setPwNew(e.target.value); setPwSuccess(false); }}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Confirmar nova senha</label>
+                <input
+                  type="password"
+                  className="industrial-input w-full"
+                  value={pwConfirm}
+                  onChange={(e) => { setPwConfirm(e.target.value); setPwSuccess(false); }}
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+            {pwError && <p className="text-sm text-red-500">{pwError}</p>}
+            {pwSuccess && <p className="text-sm text-green-500">Senha alterada com sucesso!</p>}
+            <div className="flex justify-end">
+              <button type="submit" className="btn-primary text-sm" disabled={pwSaving}>
+                {pwSaving ? "Salvando..." : "Alterar senha"}
+              </button>
+            </div>
+          </form>
         </div>
 
         <SelfFaceEnrollmentPanel userId={user.id} />
