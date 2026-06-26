@@ -32,7 +32,9 @@ export async function GET(request: Request) {
       ];
     }
 
-    const [total, tickets] = await Promise.all([
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+    const [total, tickets, dailyRows] = await Promise.all([
       prisma.supportRequest.count({ where }),
       prisma.supportRequest.findMany({
         where,
@@ -45,7 +47,25 @@ export async function GET(request: Request) {
           _count: { select: { responses: true } },
         },
       }),
-    ]);
+      prisma.supportRequest.groupBy({
+        by: ["createdAt"],
+        where: { createdAt: { gte: fourteenDaysAgo } },
+        _count: { id: true },
+      }),
+    ] as const);
+
+    // Build daily chart data
+    const dailyMap = new Map<string, number>();
+    for (const row of dailyRows) {
+      const day = row.createdAt.toISOString().slice(0, 10);
+      dailyMap.set(day, (dailyMap.get(day) || 0) + row._count.id);
+    }
+    const dailyStats: { date: string; count: number }[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      dailyStats.push({ date: key, count: dailyMap.get(key) || 0 });
+    }
 
     const stats = {
       abertos: await prisma.supportRequest.count({ where: { status: "ABERTO" } }),
@@ -61,6 +81,7 @@ export async function GET(request: Request) {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
       stats,
+      dailyStats,
     });
   });
 }
