@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
+import { sendPushToTokens } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
 
     const notifyUsers = await prisma.user.findMany({
       where: { role: { in: ["ADMIN", "TI"] }, isActive: true },
-      select: { id: true },
+      select: { id: true, pushTokens: true },
     });
 
     for (const admin of notifyUsers) {
@@ -67,6 +68,29 @@ export async function POST(request: Request) {
         body: `${data.name} (Sala ${data.sala}): ${data.necessidade}`,
         href: "/ti/chamados",
       });
+    }
+
+    const allTokens = notifyUsers.flatMap((u) => (u.pushTokens as string[]) ?? []);
+    if (allTokens.length > 0) {
+      const result = await sendPushToTokens(allTokens, {
+        title: "Nova solicitação de suporte",
+        body: `${data.name} (Sala ${data.sala}): ${data.necessidade}`,
+        data: { href: "/ti/chamados" },
+      });
+
+      if (result && result.failedTokens.length > 0) {
+        const failed = new Set(result.failedTokens);
+        for (const user of notifyUsers) {
+          const tokens: string[] = (user.pushTokens as string[]) ?? [];
+          const filtered = tokens.filter((t) => !failed.has(t));
+          if (filtered.length !== tokens.length) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { pushTokens: filtered },
+            });
+          }
+        }
+      }
     }
 
     const payload = {
