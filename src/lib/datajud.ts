@@ -1,8 +1,3 @@
-export type DatajudConfig = {
-  apiKey: string;
-  baseUrl?: string;
-};
-
 export type DatajudProcesso = {
   numeroProcesso: string;
   classe?: { nome: string; codigo: number } | null;
@@ -23,88 +18,96 @@ export type DatajudMovimento = {
   codigo: number;
 };
 
-function getConfig(): DatajudConfig {
-  const apiKey = process.env.DATAJUD_API_KEY;
-  if (!apiKey) {
-    throw new Error("DATAJUD_API_KEY não configurada");
-  }
-  return {
-    apiKey,
-    baseUrl: process.env.DATAJUD_BASE_URL || "https://datajud.cnj.jus.br/api/v1",
-  };
+const API_BASE = "https://api-publica.datajud.cnj.jus.br";
+const AUTH_HEADER = "APIKey";
+
+const COMMON_TRIBUNAIS = [
+  "tjdft", "tjsp", "tjmg", "tjrj", "tjrs", "tjpr", "tjba",
+  "tjgo", "tjpe", "tjsc", "tjrn", "tjce",
+  "trf1", "trf2", "trf3", "trf4", "trf5", "trf6",
+  "trt2", "trt3", "trt4", "trt5",
+];
+
+function apiKey(): string {
+  const key = process.env.DATAJUD_API_KEY;
+  if (!key) throw new Error("DATAJUD_API_KEY não configurada");
+  return key;
 }
 
-function extractTribunal(numeroProcesso: string): string {
-  const partes = numeroProcesso.split("-");
-  if (partes.length < 2) return "desconhecido";
-  const dv = partes[1] || "";
-  const justica = dv.slice(3, 4);
-  const tribunal = dv.slice(4, 8);
-  const mapa: Record<string, string> = {
-    "1": "TJ", "2": "TRF", "3": "TRT", "4": "TRE", "5": "STM",
-  };
-  return `${mapa[justica] || "??"}-${tribunal}`;
-}
+async function consultarTribunal(numeroProcesso: string, tribunal: string): Promise<DatajudProcesso | null> {
+  const key = apiKey();
+  const url = `${API_BASE}/api_publica_${tribunal}/_search?q=numeroProcesso:"${numeroProcesso}"`;
 
-function generateMovHash(acaoId: string, data: string, texto: string): string {
-  const crypto = require("crypto");
-  return crypto.createHash("sha256").update(`${acaoId}:${data}:${texto}`).digest("hex");
-}
-
-export async function consultarProcesso(numeroProcesso: string): Promise<DatajudProcesso> {
-  const config = getConfig();
-  const cleaned = numeroProcesso.replace(/\D/g, "");
-  const url = `${config.baseUrl}/processos/${cleaned}`;
-
-  const response = await fetch(url, {
+  const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${config.apiKey}`,
+      Authorization: `${AUTH_HEADER} ${key}`,
       "Content-Type": "application/json",
     },
   });
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Processo não encontrado no Datajud");
-    }
-    if (response.status === 429) {
-      throw new Error("Limite de consultas Datajud excedido. Tente novamente mais tarde.");
-    }
-    throw new Error(`Erro Datajud: ${response.status} ${response.statusText}`);
+  if (!res.ok) {
+    if (res.status === 404 || res.status === 400) return null;
+    if (res.status === 429) throw new Error("Limite de consultas Datajud excedido");
+    throw new Error(`Erro Datajud (${tribunal}): ${res.status}`);
   }
 
-  const data = await response.json();
-  return parseDatajudResponse(cleaned, data);
+  const data = await res.json();
+  const hits = data?.hits?.hits as Array<Record<string, unknown>> | undefined;
+  if (!hits || hits.length === 0) return null;
+
+  const source = hits[0]?._source as Record<string, unknown> | undefined;
+  if (!source) return null;
+
+  return parseDatajudResponse(numeroProcesso, source, tribunal);
 }
 
-function parseDatajudResponse(numeroProcesso: string, raw: Record<string, unknown>): DatajudProcesso {
-  const movimentos = (raw.movimentos as Array<Record<string, unknown>> || []).map((m) => ({
+function parseDatajudResponse(
+  numeroProcesso: string,
+  source: Record<string, unknown>,
+  tribunal: string,
+): DatajudProcesso {
+  const movimentos = (source.movimentos as Array<Record<string, unknown>> || []).map((m) => ({
     dataHora: String(m.dataHora || m.data || ""),
     nome: String(m.nome || ""),
     complemento: m.complemento ? String(m.complemento) : null,
     codigo: Number(m.codigo || 0),
   }));
 
-  const tribunal = raw.tribunal ? String(raw.tribunal) : extractTribunal(numeroProcesso);
-
   return {
     numeroProcesso,
-    classe: raw.classe
-      ? { nome: String((raw.classe as Record<string, unknown>).nome || ""), codigo: Number((raw.classe as Record<string, unknown>).codigo || 0) }
+    classe: source.classe
+      ? { nome: String((source.classe as Record<string, unknown>).nome || ""), codigo: Number((source.classe as Record<string, unknown>).codigo || 0) }
       : null,
-    assunto: raw.assunto
-      ? { nome: String((raw.assunto as Record<string, unknown>).nome || ""), codigo: Number((raw.assunto as Record<string, unknown>).codigo || 0) }
+    assunto: source.assunto
+      ? { nome: String((source.assunto as Record<string, unknown>).nome || ""), codigo: Number((source.assunto as Record<string, unknown>).codigo || 0) }
       : null,
-    orgaoJulgador: raw.orgaoJulgador
-      ? { nome: String((raw.orgaoJulgador as Record<string, unknown>).nome || ""), codigo: Number((raw.orgaoJulgador as Record<string, unknown>).codigo || 0) }
+    orgaoJulgador: source.orgaoJulgador
+      ? { nome: String((source.orgaoJulgador as Record<string, unknown>).nome || ""), codigo: Number((source.orgaoJulgador as Record<string, unknown>).codigo || 0) }
       : null,
-    dataAjuizamento: raw.dataAjuizamento ? String(raw.dataAjuizamento) : null,
-    dataDistribuicao: raw.dataDistribuicao ? String(raw.dataDistribuicao) : null,
-    valorAcao: raw.valorAcao ? Number(raw.valorAcao) : null,
-    parteContraria: raw.parteContraria ? String(raw.parteContraria) : null,
-    tribunal,
+    dataAjuizamento: source.dataAjuizamento ? String(source.dataAjuizamento) : null,
+    dataDistribuicao: source.dataDistribuicao ? String(source.dataDistribuicao) : null,
+    valorAcao: source.valorAcao ? Number(source.valorAcao) : null,
+    parteContraria: source.parteContraria ? String(source.parteContraria) : null,
+    tribunal: source.tribunal ? String(source.tribunal) : tribunal,
     movimentos,
   };
+}
+
+export async function consultarProcesso(numeroProcesso: string): Promise<DatajudProcesso> {
+  const cleaned = numeroProcesso.replace(/\D/g, "");
+
+  for (const tribunal of COMMON_TRIBUNAIS) {
+    const result = await consultarTribunal(cleaned, tribunal);
+    if (result) return result;
+  }
+
+  throw new Error("Processo não encontrado no Datajud");
+}
+
+import crypto from "crypto";
+
+function generateMovHash(acaoId: string, data: string, texto: string): string {
+  return crypto.createHash("sha256").update(`${acaoId}:${data}:${texto}`).digest("hex");
 }
 
 export function formatNumeroCNJ(numCNJ: string): string {
@@ -117,12 +120,15 @@ export function formatNumeroCNJ(numCNJ: string): string {
 
 export async function validarConexaoDatajud(): Promise<{ ok: boolean; message: string }> {
   try {
-    const config = getConfig();
-    const response = await fetch(`${config.baseUrl}/health`, {
-      headers: { Authorization: `Bearer ${config.apiKey}` },
+    const key = apiKey();
+    const res = await fetch(`${API_BASE}/api_publica_tjdft/_search`, {
+      headers: {
+        Authorization: `${AUTH_HEADER} ${key}`,
+        "Content-Type": "application/json",
+      },
     });
-    if (response.ok) return { ok: true, message: "Conexão com Datajud OK" };
-    return { ok: false, message: `Datajud retornou ${response.status}` };
+    if (res.ok) return { ok: true, message: "Conexão com Datajud OK" };
+    return { ok: false, message: `Datajud retornou ${res.status}` };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Erro de conexão" };
   }
