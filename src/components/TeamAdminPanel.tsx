@@ -24,6 +24,7 @@ export function TeamAdminPanel({
   const [editName, setEditName] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -86,6 +87,23 @@ export function TeamAdminPanel({
     setEditingId(team.id);
     setEditName(team.name);
     setEditActive(team.isActive);
+  }
+
+  async function handleDelete(teamId: string) {
+    if (!confirm("Tem certeza que deseja excluir esta equipe? Esta ação é irreversível.")) return;
+    setDeletingId(teamId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao excluir");
+      setMessage("Equipe excluída.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function saveEdit() {
@@ -165,20 +183,30 @@ export function TeamAdminPanel({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium">
-                        {t.name}
-                        {!t.isActive && <span className="ml-2 text-xs text-red-500">(inativa)</span>}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {t.owner ? `ADV: ${t.owner.name}` : "Sem ADV"} · {t._count.members} membro(s) · {t._count.clients} cliente(s)
-                      </p>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">
+                          {t.name}
+                          {!t.isActive && <span className="ml-2 text-xs text-red-500">(inativa)</span>}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {t.owner ? `ADV: ${t.owner.name}` : "Sem ADV"} · {t._count.members} membro(s) · {t._count.clients} cliente(s)
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => startEdit(t)}>
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === t.id}
+                          onClick={() => void handleDelete(t.id)}
+                          className="btn-ghost px-2 py-1 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                        >
+                          {deletingId === t.id ? "..." : <Icon name="trash" className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
                     </div>
-                    <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => startEdit(t)}>
-                      Editar
-                    </button>
-                  </div>
                 )}
               </li>
             ))}

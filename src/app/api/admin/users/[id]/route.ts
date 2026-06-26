@@ -108,3 +108,23 @@ export async function PATCH(
     }
   });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return withAuth(async (user) => {
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing || existing.role === Role.ADMIN) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  });
+}
