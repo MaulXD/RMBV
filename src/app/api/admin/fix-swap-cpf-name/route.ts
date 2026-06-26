@@ -10,7 +10,6 @@ const schema = z.object({
   teamId: z.string().uuid().optional(),
 });
 
-// CPF pattern: 11 digits, optionally formatted as XXX.XXX.XXX-XX
 const CPF_RE = /^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/;
 
 export async function POST(request: Request) {
@@ -27,28 +26,21 @@ export async function POST(request: Request) {
 
     const { teamId } = parsed.data;
 
-    // Find clients whose name field looks like a CPF (data was swapped on import)
-    type SwapRow = { id: string; name: string; cpf: string | null };
-    const suspects: SwapRow[] = teamId
-      ? await prisma.$queryRaw`
-          SELECT id, name, cpf FROM "Client"
-          WHERE name ~ '^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$'
-            AND "teamId" = ${teamId}::uuid
-        `
-      : await prisma.$queryRaw`
-          SELECT id, name, cpf FROM "Client"
-          WHERE name ~ '^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$'
-        `;
+    // Fetch all clients for the team and filter by CPF pattern in JS
+    // (avoids raw SQL column-name issues across different Prisma/DB configs)
+    const all = await prisma.client.findMany({
+      where: teamId ? { teamId } : {},
+      select: { id: true, name: true, cpf: true },
+    });
 
-    if (suspects.length === 0) {
+    const toFix = all.filter((c) => c.name && CPF_RE.test(c.name));
+
+    if (toFix.length === 0) {
       return NextResponse.json({ fixed: 0, message: "Nenhum cliente com CPF/Nome trocados encontrado" });
     }
 
-    // Filter with JS regex as a safety double-check
-    const toFix = suspects.filter((c) => CPF_RE.test(c.name));
-
-    let fixed = 0;
     const BATCH = 200;
+    let fixed = 0;
     for (let i = 0; i < toFix.length; i += BATCH) {
       const batch = toFix.slice(i, i + BATCH);
       await Promise.all(
@@ -62,6 +54,6 @@ export async function POST(request: Request) {
       fixed += batch.length;
     }
 
-    return NextResponse.json({ fixed, message: `${fixed} cliente(s) corrigido(s): CPF e Nome foram trocados` });
+    return NextResponse.json({ fixed, message: `${fixed} cliente(s) corrigido(s)` });
   });
 }
