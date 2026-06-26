@@ -27,6 +27,7 @@
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@prisma/client": "^6.9.0",
     "@vercel/blob": "^2.4.0",
     "@vladmandic/face-api": "^1.7.15",
