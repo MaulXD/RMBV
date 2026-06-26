@@ -124,19 +124,72 @@ export async function DELETE(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
+    // Busca um admin de fallback para reassinar registros com campos não-nuláveis
+    const fallbackAdmin = await prisma.user.findFirst({
+      where: { role: "ADMIN", isActive: true, id: { not: id } },
+      orderBy: { createdAt: "asc" },
+    });
+    const fallbackId = fallbackAdmin?.id ?? user.id;
+
     await prisma.$transaction(async (tx) => {
+      // Notificações
       await tx.notification.deleteMany({ where: { userId: id } });
+
+      // Tickets de suporte (responses + desassociar)
       await tx.supportTicketResponse.deleteMany({ where: { userId: id } });
       await tx.supportRequest.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } });
       await tx.supportRequest.updateMany({ where: { requesterId: id }, data: { requesterId: null } });
+
+      // Auditoria e sessões
       await tx.auditLog.deleteMany({ where: { userId: id } });
       await tx.userSession.deleteMany({ where: { userId: id } });
-      await tx.chamadoComment.deleteMany({ where: { authorId: id } });
-      await tx.chamadoAttachment.deleteMany({ where: { uploadedById: id } });
-      await tx.chamado.deleteMany({ where: { requesterId: id } });
-      await tx.chamado.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } });
       await tx.userOnboarding.deleteMany({ where: { userId: id } });
       await tx.userAccessRule.deleteMany({ where: { userId: id } });
+
+      // Chamados
+      await tx.chamadoComment.deleteMany({ where: { authorId: id } });
+      await tx.chamadoAttachment.deleteMany({ where: { uploadedById: id } });
+      await tx.chamadoHistory.deleteMany({ where: { createdById: id } });
+      await tx.chamado.deleteMany({ where: { requesterId: id } });
+      await tx.chamado.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } });
+
+      // Ponto
+      await tx.pontoRecord.deleteMany({ where: { userId: id } });
+
+      // Chat
+      await tx.chatMessage.deleteMany({ where: { senderId: id } });
+      await tx.chatMessage.deleteMany({ where: { receiverId: id } });
+
+      // Face audit
+      await tx.faceAuditLog.deleteMany({ where: { actorId: id } });
+      await tx.faceAuditLog.updateMany({ where: { targetUserId: id }, data: { targetUserId: null } });
+
+      // Tasks (createdById não-nulável → reassinar)
+      await tx.taskHistory.deleteMany({ where: { createdById: id } });
+      await tx.task.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } });
+      await tx.task.updateMany({ where: { createdById: id }, data: { createdById: fallbackId } });
+
+      // Team goals
+      await tx.teamGoal.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } });
+
+      // Message templates (createdById não-nulável → reassinar)
+      await tx.messageTemplate.updateMany({ where: { createdById: id }, data: { createdById: fallbackId } });
+
+      // Clientes
+      await tx.clientHistory.deleteMany({ where: { createdById: id } });
+      await tx.clientChecklistProgress.updateMany({ where: { doneById: id }, data: { doneById: null } });
+      await tx.clientDocument.updateMany({ where: { uploadedById: id }, data: { uploadedById: fallbackId } });
+      await tx.client.updateMany({ where: { createdById: id }, data: { createdById: fallbackId } });
+      await tx.client.updateMany({ where: { finalizedById: id }, data: { finalizedById: null } });
+      await tx.client.updateMany({ where: { finalizationRequestedById: id }, data: { finalizationRequestedById: null } });
+
+      // Ações (createdById não-nulável → reassinar)
+      await tx.acao.updateMany({ where: { createdById: id }, data: { createdById: fallbackId } });
+      await tx.acao.updateMany({ where: { advConfirmadoById: id }, data: { advConfirmadoById: null } });
+      await tx.acao.updateMany({ where: { docsEnviadosById: id }, data: { docsEnviadosById: null } });
+      await tx.acao.updateMany({ where: { entradaById: id }, data: { entradaById: null } });
+      await tx.acao.updateMany({ where: { sentencaById: id }, data: { sentencaById: null } });
+
       await tx.user.delete({ where: { id } });
     });
     return NextResponse.json({ success: true });

@@ -160,6 +160,9 @@ export function Sidebar({
                   ...(user.role === "ADMIN"
                     ? [{ href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }]
                     : []),
+                  ...(user.role === "ADMIN"
+                    ? [{ href: "/ti/chamados", label: "Chamados TI", icon: "messageSquare" as const, color: "text-amber-500" }]
+                    : []),
                 ],
               },
             ]

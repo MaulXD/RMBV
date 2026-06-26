@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     await prisma.$transaction(async (tx) => {
       await tx.supportRequest.update({
         where: { id },
-        data: { status },
+        data: { status: status as "ABERTO" | "EM_ANDAMENTO" | "RESOLVIDO" | "FECHADO" },
       });
 
       if (message?.trim()) {

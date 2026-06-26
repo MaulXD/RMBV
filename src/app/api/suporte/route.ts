@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       });
     }
 
-    void forwardToSheet({
+    const payload = {
       name: data.name,
       sala: data.sala,
       necessidade: data.necessidade,
@@ -77,7 +77,19 @@ export async function POST(request: Request) {
       obs: data.obs,
       requesterId: user?.id ?? null,
       email: user?.email ?? null,
-    });
+    };
+
+    void forwardToSheet(payload);
+
+    // WhatsApp lead forwarding
+    const whatsappUrl = process.env.SUPORTE_WHATSAPP_WEBHOOK_URL;
+    if (whatsappUrl) {
+      void fetch(whatsappUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, type: "lead", source: "suporte-ti" }),
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, id: request_.id });
   } catch (err) {
