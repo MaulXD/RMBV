@@ -33,8 +33,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [fixingCategories, setFixingCategories] = useState(false);
-  const [fixingSwap, setFixingSwap] = useState(false);
   const [kioskUrl, setKioskUrl] = useState("");
 
   useEffect(() => {
@@ -226,26 +224,6 @@ export default function AdminPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">
-                  Categoria <span className="text-muted/60">(obrigatório — define quem pode ver os clientes)</span>
-                </label>
-                {categories.length === 0 ? (
-                  <p className="text-xs text-amber-500">Nenhuma categoria encontrada. Verifique as permissões.</p>
-                ) : (
-                  <select
-                    className="industrial-input"
-                    value={importCategoryId}
-                    onChange={(e) => setImportCategoryId(e.target.value)}
-                    required
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted">
                   Tese <span className="text-muted/60">(obrigatório)</span>
                 </label>
                 {importTeses.length === 0 ? (
@@ -298,7 +276,7 @@ export default function AdminPage() {
                   required
                 />
               </div>
-              <button type="submit" className="btn-primary" disabled={loading || !file || !importCategoryId || importTeses.length === 0 || (!importTeseId && !importTeseName.trim())}>
+              <button type="submit" className="btn-primary" disabled={loading || !file || importTeses.length === 0 || (!importTeseId && !importTeseName.trim())}>
                 <Icon name="upload" className="h-4 w-4" />
                 {loading ? "Importando..." : "Subir CSV"}
               </button>
@@ -307,68 +285,6 @@ export default function AdminPage() {
           {result && <p className="alert alert-success">{result}</p>}
           {error && <p className="alert alert-error">{error}</p>}
 
-          {teamId && importCategoryId && (
-            <div className="mt-4 space-y-3 rounded-lg border border-border bg-surface p-4">
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted">
-                  Clientes sem categoria ficam invisíveis no sistema. Clique abaixo para corrigir todos os clientes da equipe selecionada que ainda não têm categoria.
-                </p>
-                <button
-                  type="button"
-                  disabled={fixingCategories || !importCategoryId}
-                  onClick={async () => {
-                    setFixingCategories(true);
-                    setResult(null);
-                    setError(null);
-                    try {
-                      const res = await fetch("/api/admin/fix-categories", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ teamId, categoryId: importCategoryId }),
-                      });
-                      const data = await res.json() as { fixed?: number; message?: string; error?: string };
-                      if (res.ok) setResult(data.message ?? `${data.fixed} clientes corrigidos`);
-                      else setError(data.error ?? "Erro ao corrigir categorias");
-                    } finally {
-                      setFixingCategories(false);
-                    }
-                  }}
-                  className="btn-ghost border border-primary/30 px-4 py-2 text-sm text-primary hover:bg-primary/10 disabled:opacity-50"
-                >
-                  {fixingCategories ? "Corrigindo..." : "Corrigir clientes sem categoria"}
-                </button>
-              </div>
-              <div className="border-t border-border pt-3">
-                <p className="mb-2 text-xs font-medium text-muted">
-                  Se o CSV foi importado com CPF e Nome trocados (quando a coluna NOME estava antes da CPF no arquivo), clique abaixo para trocar os dados de volta.
-                </p>
-                <button
-                  type="button"
-                  disabled={fixingSwap}
-                  onClick={async () => {
-                    setFixingSwap(true);
-                    setResult(null);
-                    setError(null);
-                    try {
-                      const res = await fetch("/api/admin/fix-swap-cpf-name", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ teamId }),
-                      });
-                      const data = await res.json() as { fixed?: number; message?: string; error?: string };
-                      if (res.ok) setResult(data.message ?? `${data.fixed} clientes corrigidos`);
-                      else setError(data.error ?? "Erro ao corrigir CPF/Nome");
-                    } finally {
-                      setFixingSwap(false);
-                    }
-                  }}
-                  className="btn-ghost border border-amber-500/30 px-4 py-2 text-sm text-amber-700 hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-400"
-                >
-                  {fixingSwap ? "Corrigindo..." : "Corrigir CPF e Nome trocados"}
-                </button>
-              </div>
-            </div>
-          )}
         </section>
       )}
 
