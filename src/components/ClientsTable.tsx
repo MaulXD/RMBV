@@ -298,10 +298,10 @@ export function ClientsTable({
                 )}
                 <td className="px-4 py-2 text-sm text-muted">{client.cod ?? "—"}</td>
                 <td className="px-4 py-2 text-sm text-muted">{client.tese ?? "—"}</td>
-                <td className="px-4 py-2 text-sm font-semibold text-foreground">
+                <td className="px-4 py-2 text-sm whitespace-nowrap">
                   <Link
                     href={`/clients/${client.id}`}
-                    className="text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
+                    className="font-bold text-foreground underline underline-offset-2 transition-colors hover:text-primary"
                   >
                     {client.name}
                   </Link>
