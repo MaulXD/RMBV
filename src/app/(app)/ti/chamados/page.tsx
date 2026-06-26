@@ -48,6 +48,7 @@ export default function TiChamadosPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [chartOpen, setChartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolveObs, setResolveObs] = useState("");
@@ -134,55 +135,72 @@ export default function TiChamadosPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "Abertos", value: stats.abertos, icon: "circleDot", color: "amber" },
-          { label: "Em andamento", value: stats.emAndamento, icon: "play", color: "blue" },
-          { label: "Resolvidos", value: stats.resolvidos, icon: "check", color: "green" },
-          { label: "Fechados", value: stats.fechados, icon: "x", color: "neutral" },
+          { label: "Abertos", value: stats.abertos, icon: "circleDot", color: "amber", bg: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/30", text: "text-amber-600" },
+          { label: "Em andamento", value: stats.emAndamento, icon: "play", color: "blue", bg: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/30", text: "text-blue-600" },
+          { label: "Resolvidos", value: stats.resolvidos, icon: "check", color: "green", bg: "from-green-500/20 to-green-500/5", border: "border-green-500/30", text: "text-green-600" },
+          { label: "Fechados", value: stats.fechados, icon: "x", color: "neutral", bg: "from-neutral-500/15 to-neutral-500/5", border: "border-neutral-500/30", text: "text-neutral-600" },
         ].map((card) => (
-          <div key={card.label} className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-              card.color === "amber" ? "bg-amber-500/15 text-amber-600" :
-              card.color === "blue" ? "bg-blue-500/15 text-blue-600" :
-              card.color === "green" ? "bg-green-500/15 text-green-600" :
-              "bg-neutral-500/15 text-neutral-600"
-            }`}>
+          <div
+            key={card.label}
+            className={`flex items-center gap-3 rounded-2xl border bg-gradient-to-br ${card.bg} ${card.border} p-4 shadow-sm transition-all hover:shadow-md`}
+          >
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/80 shadow-sm dark:bg-white/5 ${card.text}`}>
               <Icon name={card.icon as "circleDot" | "play" | "check" | "x"} className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold tabular-nums text-foreground">{card.value}</p>
-              <p className="text-[11px] text-muted">{card.label}</p>
+              <p className={`text-2xl font-bold tabular-nums ${card.text}`}>{card.value}</p>
+              <p className="text-[11px] font-medium text-muted">{card.label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Chart */}
+      {/* Chart toggle */}
       {dailyStats.length > 0 && (
-        <div className="mb-6 rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted">Chamados por dia (últimos 14 dias)</h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyStats} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: "var(--color-muted)" }}
-                  tickFormatter={(d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "var(--color-muted)" }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-surface-elevated)", fontSize: 12 }}
-                  labelFormatter={(d) => typeof d === "string" ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" }) : d}
-                  formatter={(value) => [value, "Chamados"]}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="var(--color-primary)" maxBarSize={32} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="mb-6 rounded-2xl border border-border bg-surface-elevated shadow-sm">
+          <button
+            type="button"
+            onClick={() => setChartOpen(!chartOpen)}
+            className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-surface/50"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Icon name="reports" className="h-3.5 w-3.5" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-widest text-muted">Chamados por dia (últimos 14 dias)</span>
+            </div>
+            <Icon
+              name="chevronDown"
+              className={`h-4 w-4 text-muted transition-transform duration-200 ${chartOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {chartOpen && (
+            <div className="border-t border-border px-5 pb-5 pt-4">
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyStats} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10, fill: "var(--color-muted)" }}
+                      tickFormatter={(d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "var(--color-muted)" }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-surface-elevated)", fontSize: 12 }}
+                      labelFormatter={(d) => typeof d === "string" ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" }) : d}
+                      formatter={(value) => [value, "Chamados"]}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="var(--color-primary)" maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -225,80 +243,74 @@ export default function TiChamadosPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tickets.map((t) => (
-              <div
-                key={t.id}
-                className={`group relative rounded-2xl border bg-surface-elevated p-5 shadow-sm transition-all hover:shadow-md ${
-                  t.status === "ABERTO"
-                    ? "border-l-4 border-l-amber-500"
-                    : t.status === "EM_ANDAMENTO"
-                      ? "border-l-4 border-l-blue-500"
-                      : t.status === "RESOLVIDO"
-                        ? "border-l-4 border-l-green-500"
-                        : "border-l-4 border-l-neutral-400"
-                }`}
-              >
-                {/* Top row: status + date */}
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors[t.status] || ""}`}>
-                    <Icon
-                      name={t.status === "RESOLVIDO" ? "check" : t.status === "FECHADO" ? "x" : "circleDot"}
-                      className="h-3 w-3"
-                    />
-                    {statusLabels[t.status] || t.status}
-                  </span>
-                  <span className="whitespace-nowrap text-[11px] tabular-nums text-muted">
-                    {new Date(t.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-
-                {/* Solicitante */}
-                <div className="mb-1.5 flex items-center gap-2">
-                  <Icon name="user" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
-                  <span className="truncate text-sm font-medium text-foreground">{t.name}</span>
-                </div>
-
-                {/* Sala */}
-                <div className="mb-1.5 flex items-center gap-2">
-                  <Icon name="building" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
-                  <span className="truncate text-xs text-muted">Sala {t.sala}</span>
-                </div>
-
-                {/* Necessidade */}
-                <div className="mb-1.5 flex items-center gap-2">
-                  <Icon name="wrench" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
-                  <span className="truncate text-xs text-muted" title={t.necessidade}>{t.necessidade}</span>
-                </div>
-
-                {/* Responsável */}
-                <div className="mb-4 flex items-center gap-2">
-                  <Icon name="briefcase" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
-                  <span className="truncate text-xs text-muted">{t.assignedTo?.name ?? "Não atribuído"}</span>
-                </div>
-
-                {/* Actions row */}
-                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                  <Link
-                    href={`/ti/chamados/${t.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
-                  >
-                    Ver detalhes
-                    <Icon name="chevronRight" className="h-3.5 w-3.5" />
-                  </Link>
-                  {t.status !== "RESOLVIDO" && t.status !== "FECHADO" ? (
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-lg bg-green-500/15 px-3 py-1.5 text-[11px] font-medium text-green-600 transition-colors hover:bg-green-500/25"
-                      onClick={() => { setResolvingId(t.id); setResolveObs(""); }}
-                    >
-                      <Icon name="check" className="h-3 w-3" />
-                      Resolver
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-2xl border border-border bg-surface-elevated shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-widest text-muted">
+                  <th className="px-4 py-3">Solicitante</th>
+                  <th className="px-4 py-3">Sala</th>
+                  <th className="px-4 py-3">Necessidade</th>
+                  <th className="px-4 py-3">Responsável</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Data</th>
+                  <th className="px-4 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {tickets.map((t) => (
+                  <tr key={t.id} className="group transition-colors hover:bg-surface/50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Icon name="user" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                        <span className="font-medium text-foreground">{t.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Icon name="building" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                        <span className="text-muted">{t.sala}</span>
+                      </div>
+                    </td>
+                    <td className="max-w-[200px] truncate px-4 py-3 text-muted" title={t.necessidade}>{t.necessidade}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Icon name="briefcase" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
+                        <span className="text-muted">{t.assignedTo?.name ?? "Não atribuído"}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors[t.status] || ""}`}>
+                        <Icon name={t.status === "RESOLVIDO" ? "check" : t.status === "FECHADO" ? "x" : "circleDot"} className="h-3 w-3" />
+                        {statusLabels[t.status] || t.status}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted">
+                      {new Date(t.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/ti/chamados/${t.id}`}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                        >
+                          Detalhes
+                        </Link>
+                        {t.status !== "RESOLVIDO" && t.status !== "FECHADO" ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg bg-green-500/15 px-2.5 py-1.5 text-[11px] font-medium text-green-600 transition-colors hover:bg-green-500/25"
+                            onClick={() => { setResolvingId(t.id); setResolveObs(""); }}
+                          >
+                            <Icon name="check" className="h-3 w-3" />
+                            Resolver
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {totalPages > 1 && (
