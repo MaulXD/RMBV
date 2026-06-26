@@ -61,7 +61,11 @@ export default function AdminPage() {
     setImportTeseName("");
     fetch(`/api/teses?teamId=${teamId}`)
       .then((r) => r.json())
-      .then((d) => setImportTeses(d.teses ?? []));
+      .then((d) => {
+        const teses = d.teses ?? [];
+        setImportTeses(teses);
+        if (teses.length > 0) setImportTeseId(teses[0].id);
+      });
   }, [teamId]);
 
   useEffect(() => {
@@ -213,10 +217,10 @@ export default function AdminPage() {
                   value={importTeseId}
                   onChange={(e) => { setImportTeseId(e.target.value); setImportTeseName(""); }}
                 >
-                  <option value="">Nova tese (digitar nome abaixo)</option>
                   {importTeses.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
+                  <option value="">+ Nova tese (digitar nome abaixo)</option>
                 </select>
                 {!importTeseId && (
                   <input
