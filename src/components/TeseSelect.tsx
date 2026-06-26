@@ -16,8 +16,8 @@ export function TeseSelect({
 }) {
   const { teses, loading } = useTeseFilter();
   const options = teamIdFilter
-    ? teses.filter((t) => !t.teamId || t.teamId === teamIdFilter)
-    : teses;
+    ? teses.filter((t) => t.teamId === teamIdFilter)
+    : teses.filter((t) => t.teamId);
 
   return (
     <SelectField
