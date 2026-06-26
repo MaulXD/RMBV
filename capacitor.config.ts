@@ -5,8 +5,13 @@ const config: CapacitorConfig = {
   appName: 'RMBV',
   webDir: '.next',
   server: {
-    url: 'http://localhost:3000',
-    cleartext: true,
+    url: 'https://rmbv.vercel.app',
+  },
+  plugins: {
+    StatusBar: {
+      overlaysWebView: false,
+      style: 'DARK',
+    },
   },
 };
 
