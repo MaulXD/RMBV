@@ -124,7 +124,21 @@ export async function DELETE(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    await prisma.user.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.notification.deleteMany({ where: { userId: id } });
+      await tx.supportTicketResponse.deleteMany({ where: { userId: id } });
+      await tx.supportRequest.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } });
+      await tx.supportRequest.updateMany({ where: { requesterId: id }, data: { requesterId: null } });
+      await tx.auditLog.deleteMany({ where: { userId: id } });
+      await tx.userSession.deleteMany({ where: { userId: id } });
+      await tx.chamadoComment.deleteMany({ where: { authorId: id } });
+      await tx.chamadoAttachment.deleteMany({ where: { uploadedById: id } });
+      await tx.chamado.deleteMany({ where: { requesterId: id } });
+      await tx.chamado.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } });
+      await tx.userOnboarding.deleteMany({ where: { userId: id } });
+      await tx.userAccessRule.deleteMany({ where: { userId: id } });
+      await tx.user.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   });
 }
