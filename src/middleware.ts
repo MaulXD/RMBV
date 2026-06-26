@@ -8,6 +8,8 @@ const PUBLIC_PREFIX_PATHS = [
   "/kiosk",
   "/api/auth/login",
   "/api/health",
+  "/suporte",
+  "/api/suporte",
 ];
 
 function isPublicApiPonto(pathname: string, method: string) {
