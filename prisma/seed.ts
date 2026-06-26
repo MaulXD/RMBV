@@ -136,6 +136,23 @@ async function main() {
         canDelete: false,
       },
     });
+
+    await prisma.permission.upsert({
+      where: {
+        role_categoryId: { role: Role.TI, categoryId: category.id },
+      },
+      update: {
+        canRead: true,
+      },
+      create: {
+        role: Role.TI,
+        categoryId: category.id,
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        canDelete: false,
+      },
+    });
   }
 
   const clients = await prisma.client.findMany({
@@ -201,11 +218,31 @@ async function main() {
     },
   });
 
+  const tiPassword = await bcrypt.hash("Ti@123", 12);
+  const tiUser = await prisma.user.upsert({
+    where: { email: "ti@sistema.local" },
+    update: {
+      role: Role.TI,
+      teamId: defaultTeam.id,
+      mustChangePassword: false,
+    },
+    create: {
+      name: "Suporte TI",
+      email: "ti@sistema.local",
+      passwordHash: tiPassword,
+      role: Role.TI,
+      teamId: defaultTeam.id,
+      isActive: true,
+      mustChangePassword: false,
+    },
+  });
+
   console.log(`Seed concluído.
   Admin: ${admin.email}
   Equipe padrão: ${defaultTeam.name}
   ADV: ${adv.email}
-  Gerente: ${gerente.email}`);
+  Gerente: ${gerente.email}
+  TI: ${tiUser.email}`);
 }
 
 main()

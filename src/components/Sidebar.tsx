@@ -88,6 +88,7 @@ export function Sidebar({
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
 
   const isPesquisador = user?.role === "PESQUISADOR";
+  const isTi = user?.role === "TI";
 
   const pontoItem: NavItem = {
     href: "/ponto",
@@ -96,51 +97,74 @@ export function Sidebar({
     color: "text-emerald-500",
   };
 
-  const navGroups: NavGroup[] = [
-    {
-      label: "Trabalho",
-      items: [
-        { href: "/dashboard", label: "Clientes", icon: "users", color: "text-blue-500" },
-        { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
-        { href: "/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
-        ...(onChatToggle
-          ? [{ href: "#chat", label: "Chat", icon: "messageCircle" as const, color: "text-indigo-500" }]
-          : []),
-        ...(user ? [pontoItem] : []),
-        ...(!isPesquisador
+  const navGroups: NavGroup[] = isTi
+    ? [
+        {
+          label: "TI",
+          items: [
+            { href: "/ti/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
+            { href: "/ti/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
+            { href: "/suporte", label: "Suporte", icon: "ticket", color: "text-indigo-500" },
+            { href: "/reports/suporte", label: "Relatórios", icon: "reports", color: "text-emerald-500" },
+          ],
+        },
+        ...(user && !isPesquisador
           ? [
-              { href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" },
-              { href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" },
+              {
+                label: "Sistema",
+                items: [
+                  { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
+                  { href: "/perfil", label: "Perfil", icon: "user" as const, color: "text-cyan-500" },
+                ],
+              },
             ]
           : []),
-        ...(!isPesquisador
+      ]
+    : [
+        {
+          label: "Trabalho",
+          items: [
+            { href: "/dashboard", label: "Clientes", icon: "users", color: "text-blue-500" },
+            { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
+            { href: "/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
+            ...(onChatToggle
+              ? [{ href: "#chat", label: "Chat", icon: "messageCircle" as const, color: "text-indigo-500" }]
+              : []),
+            ...(user ? [pontoItem] : []),
+            ...(!isPesquisador
+              ? [
+                  { href: "/reports", label: "Relatórios", icon: "reports" as const, color: "text-emerald-500" },
+                  { href: "/ferramentas", label: "Ferramentas", icon: "wrench" as const, color: "text-orange-500" },
+                ]
+              : []),
+            ...(!isPesquisador
+              ? [
+                  { href: "/acoes", label: "Ações", icon: "scale" as const, color: "text-violet-500" },
+                  { href: "/cartas", label: "Cartas", icon: "mail" as const, color: "text-pink-500" },
+                ]
+              : []),
+            { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
+            { href: "/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
+          ],
+        },
+        ...(user && user.role !== "COLABORADOR" && !isPesquisador && !isTi
           ? [
-              { href: "/acoes", label: "Ações", icon: "scale" as const, color: "text-violet-500" },
-              { href: "/cartas", label: "Cartas", icon: "mail" as const, color: "text-pink-500" },
+              {
+                label: "Sistema",
+                items: [
+                  { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
+                  { href: "/reports/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
+                  ...(user.role === "ADV"
+                    ? [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" }]
+                    : []),
+                  ...(user.role === "ADMIN"
+                    ? [{ href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }]
+                    : []),
+                ],
+              },
             ]
           : []),
-        { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
-        { href: "/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
-      ],
-    },
-    ...(user && user.role !== "COLABORADOR" && !isPesquisador
-      ? [
-          {
-            label: "Sistema",
-            items: [
-              { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
-              { href: "/reports/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
-              ...(user.role === "ADV"
-                ? [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" }]
-                : []),
-              ...(user.role === "ADMIN"
-                ? [{ href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }]
-                : []),
-            ],
-          },
-        ]
-      : []),
-  ];
+      ];
 
   const perfilActive = pathname.startsWith("/perfil");
   const isCollapsed = forceExpanded ? false : collapsed;

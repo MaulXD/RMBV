@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useSession } from "@/components/SessionProvider";
@@ -18,11 +17,7 @@ const necessidades = [
   "Outro",
 ];
 
-const contactMethods = [
-  { icon: "mail" as const, label: "E-mail", value: "suporte@rmbv.adv.br", href: "mailto:suporte@rmbv.adv.br" },
-  { icon: "phone" as const, label: "Telefone", value: "(11) 99999-8888", href: "tel:+5511999998888" },
-  { icon: "messageSquare" as const, label: "Chamados", value: "Abra um chamado interno", href: "/chamados" },
-];
+
 
 export default function SuportePage() {
   const { user } = useSession();
@@ -57,31 +52,9 @@ export default function SuportePage() {
     }
   }
 
-  if (!user) return null;
-
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader icon="ticket" title="Suporte" subtitle="Central de ajuda e suporte técnico" />
-
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        {contactMethods.map((m) => (
-          <Link
-            key={m.label}
-            href={m.href}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm transition-colors hover:bg-surface-hover"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border bg-surface-elevated text-primary"
-              style={{ borderColor: "color-mix(in srgb, var(--color-primary) 25%, transparent)" }}
-            >
-              <Icon name={m.icon} className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-xs text-muted">{m.label}</p>
-              <p className="text-sm font-medium text-foreground">{m.value}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
 
       <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Solicitar Suporte</h2>

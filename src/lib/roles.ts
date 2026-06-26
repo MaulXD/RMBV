@@ -4,14 +4,16 @@ import type { SessionUser } from "./auth";
 const ROLE_RANK: Record<Role, number> = {
   PESQUISADOR: 1,
   COLABORADOR: 2,
-  GERENTE: 3,
-  ADV: 4,
-  ADMIN: 5,
+  TI: 3,
+  GERENTE: 4,
+  ADV: 5,
+  ADMIN: 6,
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
   PESQUISADOR: "Pesquisador",
   COLABORADOR: "Colaborador",
+  TI: "TI",
   GERENTE: "Gerente",
   ADV: "ADV",
   ADMIN: "Administrador",
