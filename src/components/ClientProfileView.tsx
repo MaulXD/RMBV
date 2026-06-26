@@ -19,7 +19,7 @@ export function ClientProfileView({
 }: {
   client: ClientProfileData;
   latestPhoneChecks?: Partial<Record<string, PhoneCheckResult>>;
-  onPhoneCheckRecorded?: () void;
+  onPhoneCheckRecorded?: () => void;
   phoneActionsDisabled?: boolean;
 }) {
   const [buscaCpfAberta, setBuscaCpfAberta] = useState(false);
@@ -32,6 +32,29 @@ export function ClientProfileView({
     label: `Telefone ${index + 1}`,
     value: String(client[key] ?? "").trim(),
   })).filter((p) => p.value);
+
+  const cpf = String(client.cpf ?? "").trim();
+
+  const handleBuscarCPF = async () => {
+    setBuscaCpfAberta(true);
+    setBuscando(true);
+    setErroCpf("");
+    setResultadosCpf(null);
+    try {
+      const res = await fetch("/api/processos/consulta-cpf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cpf }),
+      });
+      if (!res.ok) { setErroCpf("Erro ao consultar CPF"); return; }
+      const data = await res.json() as { results: typeof resultadosCpf; total: number };
+      setResultadosCpf(data.results);
+    } catch {
+      setErroCpf("Erro de conexão");
+    } finally {
+      setBuscando(false);
+    }
+  };
 
   const nonPhoneGroups = CLIENT_FIELD_GROUPS.filter((g) => g.title !== "Telefones");
   const completeness = clientCompleteness(client);
@@ -114,6 +137,16 @@ export function ClientProfileView({
                     </dt>
                     <dd className="text-sm font-semibold text-foreground break-words">
                       {text}
+                      {field.key === "cpf" && cpf && (
+                        <button
+                          type="button"
+                          onClick={handleBuscarCPF}
+                          className="btn-ghost ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] align-middle"
+                        >
+                          <Icon name="search" className="h-3 w-3" />
+                          Buscar processos
+                        </button>
+                      )}
                     </dd>
                   </div>
                 );
@@ -156,6 +189,65 @@ export function ClientProfileView({
             ))}
           </div>
         </section>
+      )}
+
+      {/* Modal busca por CPF */}
+      {buscaCpfAberta && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface-elevated shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold">Busca de processos por CPF</h2>
+                <p className="text-xs text-muted">CPF: {cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")}</p>
+              </div>
+              <button type="button" onClick={() => setBuscaCpfAberta(false)} className="rounded-lg p-1 text-muted hover:bg-surface">
+                <Icon name="x" className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5">
+              {buscando ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span className="text-sm text-muted">Consultando tribunais...</span>
+                </div>
+              ) : erroCpf ? (
+                <div className="rounded-lg border border-dashed border-red-500/30 py-8 text-center">
+                  <p className="text-sm text-red-500">{erroCpf}</p>
+                </div>
+              ) : resultadosCpf && resultadosCpf.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border py-8 text-center">
+                  <p className="text-sm text-muted">Nenhum processo encontrado para este CPF.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {resultadosCpf?.map((result) => (
+                    <div key={result.tribunal} className="rounded-lg border border-border bg-surface p-3">
+                      <h3 className="mb-2 text-xs font-semibold text-foreground">{result.tribunal}</h3>
+                      {result.processos.length === 0 ? (
+                        <p className="text-xs text-muted/60">Nenhum processo encontrado</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {result.processos.map((p, idx) => (
+                            <div key={idx} className="flex items-start justify-between gap-2 rounded-md bg-surface-elevated px-3 py-2">
+                              <div className="min-w-0">
+                                <p className="font-mono text-xs font-medium text-primary">{p.numero}</p>
+                                {p.classe && <p className="text-[10px] text-muted">{p.classe}</p>}
+                              </div>
+                              {p.ultimaMovimentacao && (
+                                <span className="shrink-0 text-[10px] text-muted/60">{p.ultimaMovimentacao}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
