@@ -80,12 +80,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // The real value from localStorage is applied synchronously before first paint
   // via useLayoutEffect, so there is no visible flash for authenticated users.
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Register as subscriber so primeSessionCache() can push state updates
   // immediately into React (e.g. right after login + router.push without F5).
   useEffect(() => {
-    sessionSubscriber = setUser;
+    sessionSubscriber = (u) => { setUser(u); setLoading(false); };
     return () => {
       if (sessionSubscriber === setUser) sessionSubscriber = null;
     };
@@ -98,7 +98,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // On the server this is a no-op (typeof window === "undefined").
   useLayoutEffect(() => {
     const cached = getLocalUser();
-    if (cached !== null) setUser(cached);
+    if (cached !== null) {
+      setUser(cached);
+      setLoading(false);
+    }
   }, []);
 
   const refresh = useCallback(async () => {

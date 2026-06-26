@@ -45,6 +45,9 @@ export default function TiChamadosPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolveObs, setResolveObs] = useState("");
+  const [resolveSaving, setResolveSaving] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
@@ -73,6 +76,25 @@ export default function TiChamadosPage() {
   useEffect(() => { void fetchData(); }, [fetchData]);
 
   if (!user || (user.role !== "TI" && user.role !== "ADMIN")) return null;
+
+  async function handleResolve(ticketId: string) {
+    setResolveSaving(true);
+    try {
+      const res = await fetch(`/api/ti/tickets/${ticketId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "RESOLVIDO", message: resolveObs.trim() || null }),
+      });
+      if (!res.ok) throw new Error("Erro ao resolver chamado");
+      setResolvingId(null);
+      setResolveObs("");
+      await fetchData();
+    } catch {
+      alert("Erro ao resolver chamado");
+    } finally {
+      setResolveSaving(false);
+    }
+  }
 
   const statusTabs = [
     { value: "", label: "Todos", count: total },
@@ -137,20 +159,21 @@ export default function TiChamadosPage() {
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Necessidade</th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">Responsável</th>
                 <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-widest text-muted">Resp.</th>
+                <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-widest text-muted">Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 w-full animate-pulse rounded bg-border/50" /></td>
                     ))}
                   </tr>
                 ))
               ) : tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted">
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted">
                     Nenhum chamado encontrado
                   </td>
                 </tr>
@@ -174,6 +197,19 @@ export default function TiChamadosPage() {
                         <Icon name="chevronRight" className="h-4 w-4" />
                       </Link>
                     </td>
+                    <td className="px-4 py-2.5 text-center">
+                      {t.status !== "RESOLVIDO" && t.status !== "FECHADO" ? (
+                        <button
+                          type="button"
+                          className="rounded bg-green-500/15 px-2 py-1 text-[11px] font-medium text-green-600 hover:bg-green-500/25"
+                          onClick={() => { setResolvingId(t.id); setResolveObs(""); }}
+                        >
+                          Resolver
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-muted">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -196,6 +232,29 @@ export default function TiChamadosPage() {
           </div>
         )}
       </div>
+      {resolvingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setResolvingId(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface-elevated p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-1 text-base font-semibold">Resolver chamado</h3>
+            <p className="mb-4 text-sm text-muted">Adicione uma observação sobre a resolução (opcional).</p>
+            <textarea
+              className="industrial-input min-h-[100px] w-full"
+              placeholder="Observação sobre a resolução..."
+              value={resolveObs}
+              onChange={(e) => setResolveObs(e.target.value)}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" className="btn-ghost" onClick={() => setResolvingId(null)} disabled={resolveSaving}>
+                Cancelar
+              </button>
+              <button type="button" className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 disabled:opacity-50" onClick={() => handleResolve(resolvingId)} disabled={resolveSaving}>
+                {resolveSaving ? "Salvando..." : "Confirmar resolução"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
