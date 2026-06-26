@@ -196,6 +196,7 @@ model User {
   acoesDocsEnviados           Acao[]             @relation("AcaoDocsEnviados")
   acoesEntrada                Acao[]             @relation("AcaoEntrada")
   acoesSentenca               Acao[]             @relation("AcaoSentenca")
+  supportRequests             SupportRequest[]
 
   @@index([teamId])
 }
@@ -822,4 +823,20 @@ model Movimentacao {
 
   @@index([acaoId])
   @@index([data])
+}
+
+model SupportRequest {
+  id          String   @id @default(uuid())
+  name        String
+  sala        String
+  necessidade String
+  outroTexto  String?
+  obs         String?
+  email       String?
+  requesterId String?
+  requester   User?    @relation(fields: [requesterId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([requesterId])
+  @@index([createdAt])
 }

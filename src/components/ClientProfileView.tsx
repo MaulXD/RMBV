@@ -98,6 +98,16 @@ export function ClientProfileView({
                 {completeness.score}% preenchido
               </span>
             )}
+            {cpf && (
+              <button
+                type="button"
+                onClick={handleBuscarCPF}
+                className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-xs"
+              >
+                <Icon name="search" className="h-3.5 w-3.5" />
+                Buscar processos
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -137,16 +147,6 @@ export function ClientProfileView({
                     </dt>
                     <dd className="text-sm font-semibold text-foreground break-words">
                       {text}
-                      {field.key === "cpf" && cpf && (
-                        <button
-                          type="button"
-                          onClick={handleBuscarCPF}
-                          className="btn-ghost ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] align-middle"
-                        >
-                          <Icon name="search" className="h-3 w-3" />
-                          Buscar processos
-                        </button>
-                      )}
                     </dd>
                   </div>
                 );

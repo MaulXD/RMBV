@@ -120,6 +120,7 @@ export function Sidebar({
             ]
           : []),
         { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
+        { href: "/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
       ],
     },
     ...(user && user.role !== "COLABORADOR" && !isPesquisador
@@ -128,6 +129,7 @@ export function Sidebar({
             label: "Sistema",
             items: [
               { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
+              { href: "/reports/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
               ...(user.role === "ADV"
                 ? [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" }]
                 : []),
