@@ -28,6 +28,7 @@ export function TeseManager({
   const [teamId, setTeamId] = useState(teams?.[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const teamMap = teams ? new Map(teams.map((t) => [t.id, t.name])) : new Map();
 
   // Merge state
   const [mergeMode, setMergeMode] = useState(false);
@@ -184,6 +185,9 @@ export function TeseManager({
               />
               {t.name}
               <span className="text-xs text-muted">({t._count?.clients ?? 0})</span>
+              {isAdmin && t.teamId && teamMap.has(t.teamId) && (
+                <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted">{teamMap.get(t.teamId)}</span>
+              )}
             </span>
             <button type="button" className="btn-ghost text-xs" onClick={() => handleDelete(t.id)}>
               Excluir
