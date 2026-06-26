@@ -466,7 +466,9 @@ export function ChatFloating({
     }
   }
 
-  if (!user?.teamId) return null;
+  if (!user) return null;
+  const semEquipe = !user.teamId;
+  if (semEquipe && !open) return null;
 
   const activeRoom = room === "team" ? null : members.find((m) => m.id === room);
   const roomLabel = room === "team" ? "Equipe" : activeRoom?.name ?? "...";
@@ -500,6 +502,60 @@ export function ChatFloating({
     onSend: () => void sendMessage(),
   };
 
+  const floatBtn = (
+    <button
+      type="button"
+      onClick={() => onOpenChange(!open)}
+      className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+      title={open ? "Fechar chat" : "Abrir chat"}
+    >
+      <Icon name={open ? "x" : "messageCircle"} className="h-5 w-5" />
+      {!open && unreadTotal > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+          {unreadTotal > 99 ? "99+" : unreadTotal}
+        </span>
+      )}
+    </button>
+  );
+
+  if (semEquipe) {
+    return (
+      <>
+        {/* Mobile: full-screen bottom sheet (sem equipe) */}
+        <div
+          className={`lg:hidden fixed inset-0 z-[60] flex flex-col bg-surface-elevated transition-transform duration-300 ease-out ${
+            open ? "translate-y-0" : "translate-y-full"
+          }`}
+          style={{ willChange: "transform" }}
+        >
+          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+            <Icon name="messageCircle" className="mb-4 h-12 w-12 text-muted/30" />
+            <p className="text-sm font-medium text-foreground">Chat indisponível</p>
+            <p className="mt-1 text-xs text-muted">Você precisa estar vinculado a uma equipe para usar o chat.</p>
+            <button type="button" onClick={() => onOpenChange(false)} className="btn-primary mt-6 px-4 py-2 text-sm">
+              Fechar
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop: button + panel (sem equipe) */}
+        <div className="hidden lg:flex fixed bottom-4 right-4 z-50 flex-col items-end gap-2">
+          {open && (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface-elevated p-8 text-center shadow-2xl" style={{ width: 380, height: 520 }}>
+              <Icon name="messageCircle" className="mb-4 h-12 w-12 text-muted/30" />
+              <p className="text-sm font-medium text-foreground">Chat indisponível</p>
+              <p className="mt-1 text-xs text-muted">Você precisa estar vinculado a uma equipe para usar o chat.</p>
+              <button type="button" onClick={() => onOpenChange(false)} className="btn-primary mt-6 px-4 py-2 text-sm">
+                Fechar
+              </button>
+            </div>
+          )}
+          {floatBtn}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {/* Mobile: full-screen bottom sheet */}
@@ -522,20 +578,7 @@ export function ChatFloating({
             <ChatPanel {...panelProps} />
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={() => onOpenChange(!open)}
-          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
-          title={open ? "Fechar chat" : "Abrir chat"}
-        >
-          <Icon name={open ? "x" : "messageCircle"} className="h-5 w-5" />
-          {!open && unreadTotal > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-              {unreadTotal > 99 ? "99+" : unreadTotal}
-            </span>
-          )}
-        </button>
+        {floatBtn}
       </div>
     </>
   );
