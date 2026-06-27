@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
 import { useDebounce } from "@/hooks/useDebounce";
+import { DatajudBuscaCPF, type DatajudProcesso } from "@/components/DatajudBuscaCPF";
 
 type Acao = {
   id: string;
@@ -38,18 +39,7 @@ type Acao = {
   };
 };
 
-type ClientResult = { id: string; label: string; sub?: string }
-
-type ProcessoResumo = {
-  numeroProcesso: string;
-  tribunal: string;
-  classe: string | null;
-  assunto: string | null;
-  vara: string | null;
-  dataAjuizamento: string | null;
-  valorAcao: number | null;
-  jaImportado: boolean;
-};
+type ClientResult = { id: string; label: string; sub?: string };
 
 function fmtDate(iso: string | null) {
   if (!iso) return null;
@@ -109,9 +99,7 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   const [valorCausa, setValorCausa] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [buscandoCPF, setBuscandoCPF] = useState(false);
-  const [progressCPF, setProgressCPF] = useState("");
-  const [processosEncontrados, setProcessosEncontrados] = useState<ProcessoResumo[] | null>(null);
+  const [showBusca, setShowBusca] = useState(false);
   const debouncedQuery = useDebounce(query, 250);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -127,61 +115,10 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
       .finally(() => setSearching(false));
   }, [debouncedQuery, selected]);
 
-  const buscarPorCPF = async () => {
-    if (!selected) return;
-    setBuscandoCPF(true);
-    setProcessosEncontrados([]);
-    setProgressCPF("");
-    setError("");
-    try {
-      const res = await fetch("/api/acoes/buscar-cpf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: selected.id }),
-      });
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        setError(data.error ?? "Erro ao buscar processos");
-        setBuscandoCPF(false);
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const ev = JSON.parse(line) as { type: string; tribunal?: string; processos?: ProcessoResumo[] };
-            if (ev.type === "checking" && ev.tribunal) {
-              setProgressCPF(`Verificando ${ev.tribunal.toUpperCase().replace(/^TRF(\d)/, "TRF $1").replace(/^TRT(\d+)/, "TRT $1")}...`);
-            } else if (ev.type === "result" && ev.processos) {
-              setProcessosEncontrados((prev) => [...(prev ?? []), ...ev.processos!]);
-            } else if (ev.type === "done") {
-              setProgressCPF("");
-            }
-          } catch { /* malformed line */ }
-        }
-      }
-    } catch {
-      setError("Erro de conexão");
-    } finally {
-      setBuscandoCPF(false);
-      setProgressCPF("");
-    }
-  };
-
-  const selecionarProcesso = (p: ProcessoResumo) => {
+  const selecionarProcesso = (p: DatajudProcesso) => {
     setNumCNJ(p.numeroProcesso);
     setNumProcesso(p.numeroProcesso);
-    setProcessosEncontrados(null);
+    setShowBusca(false);
   };
 
   const handleSave = async () => {
@@ -209,154 +146,156 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-surface-elevated shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className={`flex w-full flex-col rounded-2xl border border-border bg-surface-elevated shadow-2xl transition-all ${showBusca ? "max-h-[85vh] max-w-2xl" : "max-w-md"}`}>
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-sm font-semibold">Nova Ação</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-surface">
-            <Icon name="x" className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {showBusca && (
+              <button
+                type="button"
+                onClick={() => setShowBusca(false)}
+                className="btn-ghost flex items-center gap-1 px-2 py-1 text-xs"
+              >
+                <Icon name="chevronLeft" className="h-3.5 w-3.5" />
+                Voltar ao formulário
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-surface">
+              <Icon name="x" className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-4 p-5">
-          {/* Client search */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Cliente</label>
-            {selected ? (
-              <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">{selected.label}</p>
-                  {selected.sub && <p className="text-xs text-muted">{selected.sub}</p>}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setSelected(null); setQuery(""); setTimeout(() => inputRef.current?.focus(), 50); }}
-                  className="text-muted hover:text-foreground"
-                >
-                  <Icon name="x" className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <Icon name="search" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-                <input
-                  ref={inputRef}
-                  className="input w-full pl-8 pr-3 py-2 text-sm"
-                  placeholder="Buscar cliente por nome ou código..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                {(results.length > 0 || searching) && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-52 overflow-y-auto rounded-lg border border-border bg-surface-elevated shadow-lg">
-                    {searching && <p className="px-3 py-2 text-xs text-muted">Buscando...</p>}
-                    {results.map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-surface"
-                        onClick={() => { setSelected(r); setQuery(""); setResults([]); }}
-                      >
-                        <span className="font-medium">{r.label}</span>
-                        {r.sub && <span className="text-xs text-muted">{r.sub}</span>}
-                      </button>
-                    ))}
+        {showBusca && selected ? (
+          <div className="overflow-y-auto p-5">
+            <DatajudBuscaCPF
+              endpoint="/api/acoes/buscar-cpf"
+              requestBody={{ clientId: selected.id }}
+              onSelect={selecionarProcesso}
+              showJaImportado
+            />
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4 p-5">
+              {/* Client search */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Cliente</label>
+                {selected ? (
+                  <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">{selected.label}</p>
+                      {selected.sub && <p className="text-xs text-muted">{selected.sub}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setSelected(null); setQuery(""); setTimeout(() => inputRef.current?.focus(), 50); }}
+                      className="text-muted hover:text-foreground"
+                    >
+                      <Icon name="x" className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Icon name="search" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+                    <input
+                      ref={inputRef}
+                      className="input w-full pl-8 pr-3 py-2 text-sm"
+                      placeholder="Buscar cliente por nome ou código..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                    {(results.length > 0 || searching) && (
+                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-52 overflow-y-auto rounded-lg border border-border bg-surface-elevated shadow-lg">
+                        {searching && <p className="px-3 py-2 text-xs text-muted">Buscando...</p>}
+                        {results.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-surface"
+                            onClick={() => { setSelected(r); setQuery(""); setResults([]); }}
+                          >
+                            <span className="font-medium">{r.label}</span>
+                            {r.sub && <span className="text-xs text-muted">{r.sub}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {selected && (
-            <div>
-              <button
-                type="button"
-                onClick={buscarPorCPF}
-                disabled={buscandoCPF}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-              >
-                {buscandoCPF ? (
-                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                ) : (
+              {selected && (
+                <button
+                  type="button"
+                  onClick={() => setShowBusca(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                >
                   <Icon name="search" className="h-3.5 w-3.5" />
-                )}
-                {buscandoCPF ? (progressCPF || "Consultando tribunais...") : "Buscar processos pelo CPF no Datajud"}
-              </button>
+                  Buscar processos no Datajud
+                </button>
+              )}
 
-              {processosEncontrados !== null && (
-                <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-border">
-                  {processosEncontrados.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-muted text-center">Nenhum processo encontrado para este CPF</p>
-                  ) : (
-                    <>
-                      <p className="border-b border-border px-3 py-1.5 text-[10px] font-semibold text-muted uppercase tracking-wide">
-                        {processosEncontrados.length} processo{processosEncontrados.length !== 1 ? "s" : ""} encontrado{processosEncontrados.length !== 1 ? "s" : ""}
-                      </p>
-                      {processosEncontrados.map((p) => (
-                        <button
-                          key={p.numeroProcesso}
-                          type="button"
-                          disabled={p.jaImportado}
-                          onClick={() => selecionarProcesso(p)}
-                          className="flex w-full flex-col gap-0.5 px-3 py-2 text-left text-xs hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed border-b border-border/40 last:border-0"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-primary">{p.numeroProcesso}</span>
-                            {p.jaImportado && <span className="text-[10px] text-muted">já importado</span>}
-                          </div>
-                          <span className="text-muted">{[p.tribunal, p.vara].filter(Boolean).join(" · ")}</span>
-                          {p.classe && <span className="text-muted/70">{p.classe}</span>}
-                        </button>
-                      ))}
-                    </>
-                  )}
+              {(numCNJ || numProcesso) && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                  <p className="text-muted">Processo selecionado:</p>
+                  <p className="font-mono text-primary">{numCNJ || numProcesso}</p>
+                  <button
+                    type="button"
+                    className="mt-1 text-muted/60 underline underline-offset-2 hover:text-muted"
+                    onClick={() => { setNumCNJ(""); setNumProcesso(""); }}
+                  >
+                    Remover
+                  </button>
                 </div>
               )}
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Número CNJ (opcional)</label>
+                <input
+                  className="input w-full py-2 text-sm font-mono"
+                  placeholder="0000000-00.0000.0.00.0000"
+                  value={numCNJ}
+                  onChange={(e) => setNumCNJ(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Número do Processo (opcional)</label>
+                <input
+                  className="input w-full py-2 text-sm"
+                  placeholder="0000000-00.0000.0.00.0000"
+                  value={numProcesso}
+                  onChange={(e) => setNumProcesso(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Valor da causa (opcional)</label>
+                <input
+                  className="input w-full py-2 text-sm"
+                  placeholder="0,00"
+                  value={valorCausa}
+                  onChange={(e) => setValorCausa(e.target.value.replace(/[^\d,.]/, ""))}
+                />
+              </div>
+
+              {error && <p className="text-xs text-red-500">{error}</p>}
             </div>
-          )}
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Número CNJ (opcional)</label>
-            <input
-              className="input w-full py-2 text-sm font-mono"
-              placeholder="0000000-00.0000.0.00.0000"
-              value={numCNJ}
-              onChange={(e) => setNumCNJ(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Número do Processo (opcional)</label>
-            <input
-              className="input w-full py-2 text-sm"
-              placeholder="0000000-00.0000.0.00.0000"
-              value={numProcesso}
-              onChange={(e) => setNumProcesso(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Valor da causa (opcional)</label>
-            <input
-              className="input w-full py-2 text-sm"
-              placeholder="0,00"
-              value={valorCausa}
-              onChange={(e) => setValorCausa(e.target.value.replace(/[^\d,.]/, ""))}
-            />
-          </div>
-
-          {error && <p className="text-xs text-red-500">{error}</p>}
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-          <button type="button" onClick={onClose} className="btn-ghost px-4 py-2 text-sm">Cancelar</button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !selected}
-            className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Criar Ação"}
-          </button>
-        </div>
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-3">
+              <button type="button" onClick={onClose} className="btn-ghost px-4 py-2 text-sm">Cancelar</button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !selected}
+                className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Criar Ação"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

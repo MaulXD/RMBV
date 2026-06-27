@@ -7,7 +7,7 @@ import { buscarPorCPFnumTribunal, COMMON_TRIBUNAIS } from "@/lib/datajud";
 
 export const runtime = "nodejs";
 
-const schema = z.object({ clientId: z.string().uuid() });
+const schema = z.object({ clientId: z.string().uuid(), tribunais: z.array(z.string()).optional() });
 
 const BATCH = 6;
 
@@ -42,6 +42,10 @@ export async function POST(request: Request) {
     ...acaoExistentes.map((a) => a.numCNJ?.replace(/\D/g, "") ?? ""),
   ]);
 
+  const tribunais = Array.isArray(parsed.data.tribunais) && parsed.data.tribunais.length > 0
+    ? COMMON_TRIBUNAIS.filter((t) => parsed.data.tribunais!.includes(t))
+    : COMMON_TRIBUNAIS;
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -49,8 +53,8 @@ export async function POST(request: Request) {
         try { controller.enqueue(encoder.encode(JSON.stringify(data) + "\n")); } catch { /* closed */ }
       };
 
-      for (let i = 0; i < COMMON_TRIBUNAIS.length; i += BATCH) {
-        const batch = COMMON_TRIBUNAIS.slice(i, i + BATCH);
+      for (let i = 0; i < tribunais.length; i += BATCH) {
+        const batch = tribunais.slice(i, i + BATCH);
         batch.forEach((t) => send({ type: "checking", tribunal: t }));
 
         const settled = await Promise.allSettled(batch.map((t) => buscarPorCPFnumTribunal(cpf, t)));
@@ -61,6 +65,8 @@ export async function POST(request: Request) {
               jaImportado: numerosExistentes.has(p.numeroProcesso.replace(/\D/g, "")),
             }));
             send({ type: "result", tribunal: batch[idx], processos });
+          } else {
+            send({ type: "checked", tribunal: batch[idx] });
           }
         });
       }
