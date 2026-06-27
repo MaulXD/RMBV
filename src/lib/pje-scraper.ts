@@ -319,6 +319,12 @@ export async function searchCPFOnPJeDebug(
     firstDetailHtml = (await dr.text()).slice(0, 3000);
   }
 
+  // Extract tbody content and result count for diagnostics
+  const tbodyMatch = rawResponse.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
+  const resultCountMatch = rawResponse.match(/(\d+)\s*resultados?\s*encontrados?/i);
+  // Broader popup pattern search
+  const popupMatches = [...rawResponse.matchAll(/openPopUp[^)]+/g)].map((m) => m[0].slice(0, 200));
+
   return {
     cpfFieldName,
     ajaxComponentId,
@@ -326,10 +332,11 @@ export async function searchCPFOnPJeDebug(
     postStatus: postRes.status,
     postContentType: postRes.headers.get("content-type"),
     rawResponseLength: rawResponse.length,
-    rawResponseStart: rawResponse.slice(0, 3000),
+    fullRawResponse: rawResponse,
+    resultCount: resultCountMatch?.[1] ?? "not found in response",
+    tbodyContent: tbodyMatch?.[1]?.trim() ?? "no tbody found",
+    popupMatches,
     caHashesFound: caHashes.length,
-    caHashes: caHashes.slice(0, 5),
     firstDetailNumber,
-    firstDetailHtmlStart: firstDetailHtml,
   };
 }
