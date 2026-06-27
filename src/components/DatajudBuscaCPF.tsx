@@ -69,11 +69,13 @@ export function DatajudBuscaCPF({
   requestBody,
   onSelect,
   showJaImportado = false,
+  hideChecklist = false,
 }: {
   endpoint: string;
   requestBody: Record<string, string>;
   onSelect?: (p: DatajudProcesso) => void;
   showJaImportado?: boolean;
+  hideChecklist?: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(GRUPOS.flatMap((g) => g.tribunais))
@@ -174,7 +176,7 @@ export function DatajudBuscaCPF({
   return (
     <div className="space-y-3">
       {/* Tribunal checklist */}
-      <div className="rounded-lg border border-border bg-surface p-3 space-y-3">
+      {!hideChecklist && <div className="rounded-lg border border-border bg-surface p-3 space-y-3">
         {GRUPOS.map((grupo) => {
           const allSelected = grupo.tribunais.every((t) => selected.has(t));
           return (
@@ -223,7 +225,7 @@ export function DatajudBuscaCPF({
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {/* Found summary */}
       {foundTribunais.length > 0 && (
