@@ -48,21 +48,18 @@ function tribunalLabel(t: string) {
   return u;
 }
 
-function StatusDot({ status }: { status?: Status }) {
+function StatusBadge({ status }: { status?: Status }) {
   if (status === "checking") {
     return (
-      <span className="inline-block h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-primary border-t-transparent" />
+      <span className="h-1.5 w-1.5 shrink-0 animate-spin rounded-full border border-amber-400 border-t-transparent" />
     );
   }
   if (status === "found") {
     return (
-      <svg viewBox="0 0 10 10" className="inline-block h-2.5 w-2.5 shrink-0 text-emerald-500" fill="currentColor">
-        <circle cx="5" cy="5" r="5" />
+      <svg viewBox="0 0 6 6" className="h-1.5 w-1.5 shrink-0 fill-emerald-400">
+        <circle cx="3" cy="3" r="3" />
       </svg>
     );
-  }
-  if (status === "empty") {
-    return <span className="inline-block h-px w-2.5 shrink-0 translate-y-[1px] rounded-full bg-muted/40" />;
   }
   return null;
 }
@@ -170,6 +167,10 @@ export function DatajudBuscaCPF({
     }
   }
 
+  const foundTribunais = Object.entries(statusMap)
+    .filter(([, s]) => s === "found")
+    .map(([t]) => tribunalLabel(t));
+
   return (
     <div className="space-y-3">
       {/* Tribunal checklist */}
@@ -195,21 +196,26 @@ export function DatajudBuscaCPF({
                 {grupo.tribunais.map((t) => {
                   const status = statusMap[t] as Status | undefined;
                   const isSelected = selected.has(t);
+                  const chipClass = !isSelected
+                    ? "border-border/20 text-muted/25"
+                    : status === "found"
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                    : status === "checking"
+                    ? "border-amber-400/40 bg-amber-500/5 text-amber-300"
+                    : status === "empty"
+                    ? "border-border/30 bg-surface text-muted/35"
+                    : "border-primary/30 bg-primary/5 text-primary";
                   return (
                     <button
                       key={t}
                       type="button"
                       onClick={() => toggleTribunal(t)}
                       disabled={buscando}
-                      title={tribunalLabel(t)}
-                      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed ${
-                        isSelected
-                          ? "border-primary/30 bg-primary/5 text-primary"
-                          : "border-border text-muted/40"
-                      }`}
+                      title={isSelected ? `Desmarcar ${tribunalLabel(t)}` : `Marcar ${tribunalLabel(t)}`}
+                      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium transition-all disabled:cursor-not-allowed ${chipClass}`}
                     >
-                      <StatusDot status={isSelected ? status : undefined} />
                       {tribunalLabel(t)}
+                      {isSelected && <StatusBadge status={status} />}
                     </button>
                   );
                 })}
@@ -218,6 +224,16 @@ export function DatajudBuscaCPF({
           );
         })}
       </div>
+
+      {/* Found summary */}
+      {foundTribunais.length > 0 && (
+        <div className="flex flex-wrap gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+          <span className="text-[10px] font-semibold text-emerald-500 mr-1">Encontrado em:</span>
+          {foundTribunais.map((t) => (
+            <span key={t} className="text-[10px] font-medium text-emerald-400">{t}</span>
+          ))}
+        </div>
+      )}
 
       {/* Search button */}
       <button
@@ -231,6 +247,8 @@ export function DatajudBuscaCPF({
         )}
         {buscando
           ? "Consultando..."
+          : results !== null
+          ? "Buscar novamente"
           : `Buscar em ${selected.size} tribunal${selected.size !== 1 ? "is" : ""}`}
       </button>
 

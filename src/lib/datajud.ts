@@ -153,58 +153,74 @@ export type DatajudProcessoResumo = {
   valorAcao: number | null;
 };
 
+function parseDatajudHit(s: Record<string, unknown>, fallbackTribunal: string): DatajudProcessoResumo {
+  return {
+    numeroProcesso: String(s.numeroProcesso || ""),
+    tribunal: String(s.tribunal || fallbackTribunal),
+    classe: s.classe ? String((s.classe as Record<string, unknown>).nome || "") : null,
+    assunto: s.assunto ? String((s.assunto as Record<string, unknown>).nome || "") : null,
+    vara: s.orgaoJulgador ? String((s.orgaoJulgador as Record<string, unknown>).nome || "") : null,
+    dataAjuizamento: s.dataAjuizamento ? String(s.dataAjuizamento) : null,
+    valorAcao: s.valorAcao ? Number(s.valorAcao) : null,
+  };
+}
+
 export async function buscarPorCPFnumTribunal(cpf: string, tribunal: string): Promise<DatajudProcessoResumo[]> {
   const key = apiKey();
-  // Some tribunals store CPF as digits-only, others store formatted (xxx.xxx.xxx-xx)
+  // Some tribunals store CPF as digits-only, others as formatted (xxx.xxx.xxx-xx)
   const formatted = cpf.length === 11
     ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9, 11)}`
     : cpf;
-  const body = JSON.stringify({
+
+  const cpfShoulds = [
+    { term: { "partes.documento": cpf } },
+    { term: { "partes.documento": formatted } },
+    { match: { "partes.documento": cpf } },
+    { match: { "partes.documento": formatted } },
+  ];
+
+  const source = ["numeroProcesso", "classe", "assunto", "orgaoJulgador", "dataAjuizamento", "valorAcao", "tribunal"];
+
+  // Run nested and flat queries in parallel — some tribunal indices map `partes` as nested,
+  // others as plain object; a nested query on a non-nested mapping returns 0 or 400 silently.
+  const nestedBody = JSON.stringify({
     query: {
-      nested: {
-        path: "partes",
-        query: {
-          bool: {
-            should: [
-              { term: { "partes.documento": cpf } },
-              { term: { "partes.documento": formatted } },
-              { match: { "partes.documento": cpf } },
-              { match: { "partes.documento": formatted } },
-            ],
-            minimum_should_match: 1,
-          },
-        },
-      },
+      nested: { path: "partes", query: { bool: { should: cpfShoulds, minimum_should_match: 1 } } },
     },
-    _source: ["numeroProcesso", "classe", "assunto", "orgaoJulgador", "dataAjuizamento", "valorAcao", "tribunal"],
+    _source: source,
+    size: 20,
+  });
+  const flatBody = JSON.stringify({
+    query: { bool: { should: cpfShoulds, minimum_should_match: 1 } },
+    _source: source,
     size: 20,
   });
 
-  const res = await fetch(`${API_BASE}/api_publica_${tribunal}/_search`, {
-    method: "POST",
-    headers: {
-      Authorization: `${AUTH_HEADER} ${key}`,
-      "Content-Type": "application/json",
-    },
-    body,
-  });
+  const url = `${API_BASE}/api_publica_${tribunal}/_search`;
+  const headers = { Authorization: `${AUTH_HEADER} ${key}`, "Content-Type": "application/json" };
 
-  if (!res.ok) return [];
+  const [nestedRes, flatRes] = await Promise.allSettled([
+    fetch(url, { method: "POST", headers, body: nestedBody }),
+    fetch(url, { method: "POST", headers, body: flatBody }),
+  ]);
 
-  const data = await res.json();
-  const hits = (data?.hits?.hits as Array<Record<string, unknown>>) ?? [];
-  return hits.map((h) => {
-    const s = h._source as Record<string, unknown>;
-    return {
-      numeroProcesso: String(s.numeroProcesso || ""),
-      tribunal: String(s.tribunal || tribunal),
-      classe: s.classe ? String((s.classe as Record<string, unknown>).nome || "") : null,
-      assunto: s.assunto ? String((s.assunto as Record<string, unknown>).nome || "") : null,
-      vara: s.orgaoJulgador ? String((s.orgaoJulgador as Record<string, unknown>).nome || "") : null,
-      dataAjuizamento: s.dataAjuizamento ? String(s.dataAjuizamento) : null,
-      valorAcao: s.valorAcao ? Number(s.valorAcao) : null,
-    };
-  });
+  const seen = new Set<string>();
+  const combined: DatajudProcessoResumo[] = [];
+
+  for (const r of [nestedRes, flatRes]) {
+    if (r.status !== "fulfilled" || !r.value.ok) continue;
+    const data = await r.value.json().catch(() => null);
+    const hits = (data?.hits?.hits as Array<Record<string, unknown>>) ?? [];
+    for (const h of hits) {
+      const s = h._source as Record<string, unknown>;
+      const num = String(s.numeroProcesso || "");
+      if (!num || seen.has(num)) continue;
+      seen.add(num);
+      combined.push(parseDatajudHit(s, tribunal));
+    }
+  }
+
+  return combined;
 }
 
 export async function buscarProcessosPorCPF(cpf: string): Promise<DatajudProcessoResumo[]> {
