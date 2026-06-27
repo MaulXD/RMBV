@@ -24,6 +24,7 @@ export function ClientProfileView({
   phoneActionsDisabled?: boolean;
 }) {
   const [buscaCpfAberta, setBuscaCpfAberta] = useState(false);
+  const [buscaFonte, setBuscaFonte] = useState<"datajud" | "eproc">("datajud");
 
   const filledPhones = PHONE_FIELD_KEYS.map((key, index) => ({
     key,
@@ -187,11 +188,40 @@ export function ClientProfileView({
                 <Icon name="x" className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Source tabs */}
+            <div className="flex shrink-0 border-b border-border">
+              {(["datajud", "eproc"] as const).map((fonte) => (
+                <button
+                  key={fonte}
+                  type="button"
+                  onClick={() => setBuscaFonte(fonte)}
+                  className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                    buscaFonte === fonte
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {fonte === "datajud" ? "Datajud CNJ (57 tribunais)" : "eproc / PJe (TRFs direto)"}
+                </button>
+              ))}
+            </div>
+
             <div className="overflow-y-auto p-5">
-              <DatajudBuscaCPF
-                endpoint="/api/processos/consulta-cpf"
-                requestBody={{ cpf }}
-              />
+              {buscaFonte === "datajud" ? (
+                <DatajudBuscaCPF
+                  key="datajud"
+                  endpoint="/api/processos/consulta-cpf"
+                  requestBody={{ cpf }}
+                />
+              ) : (
+                <DatajudBuscaCPF
+                  key="eproc"
+                  endpoint="/api/processos/buscar-eproc"
+                  requestBody={{ cpf }}
+                  hideChecklist
+                />
+              )}
             </div>
           </div>
         </div>
