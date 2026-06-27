@@ -21,11 +21,18 @@ export type DatajudMovimento = {
 const API_BASE = "https://api-publica.datajud.cnj.jus.br";
 const AUTH_HEADER = "APIKey";
 
-const COMMON_TRIBUNAIS = [
-  "tjdft", "tjsp", "tjmg", "tjrj", "tjrs", "tjpr", "tjba",
-  "tjgo", "tjpe", "tjsc", "tjrn", "tjce",
+// Ordered: TRFs first (federal — most relevant for previdência), then major TJs, then other TJs, then TRTs
+export const COMMON_TRIBUNAIS = [
+  // Tribunais Regionais Federais
   "trf1", "trf2", "trf3", "trf4", "trf5", "trf6",
-  "trt2", "trt3", "trt4", "trt5",
+  // Tribunais de Justiça (maior movimento primeiro)
+  "tjsp", "tjmg", "tjrj", "tjrs", "tjpr", "tjba", "tjce", "tjpe", "tjgo", "tjsc",
+  "tjdft", "tjms", "tjmt", "tjma", "tjes", "tjpb", "tjpa", "tjpi", "tjam", "tjal",
+  "tjse", "tjto", "tjrn", "tjac", "tjro", "tjap", "tjrr",
+  // Tribunais Regionais do Trabalho
+  "trt1", "trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8", "trt9", "trt10",
+  "trt11", "trt12", "trt13", "trt14", "trt15", "trt16", "trt17", "trt18", "trt19",
+  "trt20", "trt21", "trt22", "trt23", "trt24",
 ];
 
 function apiKey(): string {
@@ -146,13 +153,22 @@ export type DatajudProcessoResumo = {
   valorAcao: number | null;
 };
 
-async function buscarPorCPFnumTribunal(cpf: string, tribunal: string): Promise<DatajudProcessoResumo[]> {
+export async function buscarPorCPFnumTribunal(cpf: string, tribunal: string): Promise<DatajudProcessoResumo[]> {
   const key = apiKey();
+  // Use bool.should with both term (keyword fields) and match (text fields) to cover all tribunal index mappings
   const body = JSON.stringify({
     query: {
       nested: {
         path: "partes",
-        query: { match: { "partes.documento": cpf } },
+        query: {
+          bool: {
+            should: [
+              { term: { "partes.documento": cpf } },
+              { match: { "partes.documento": cpf } },
+            ],
+            minimum_should_match: 1,
+          },
+        },
       },
     },
     _source: ["numeroProcesso", "classe", "assunto", "orgaoJulgador", "dataAjuizamento", "valorAcao", "tribunal"],
