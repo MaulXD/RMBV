@@ -110,6 +110,7 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [buscandoCPF, setBuscandoCPF] = useState(false);
+  const [progressCPF, setProgressCPF] = useState("");
   const [processosEncontrados, setProcessosEncontrados] = useState<ProcessoResumo[] | null>(null);
   const debouncedQuery = useDebounce(query, 250);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -129,7 +130,8 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   const buscarPorCPF = async () => {
     if (!selected) return;
     setBuscandoCPF(true);
-    setProcessosEncontrados(null);
+    setProcessosEncontrados([]);
+    setProgressCPF("");
     setError("");
     try {
       const res = await fetch("/api/acoes/buscar-cpf", {
@@ -137,11 +139,42 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientId: selected.id }),
       });
-      const data = await res.json() as { processos?: ProcessoResumo[]; error?: string };
-      if (!res.ok) { setError(data.error ?? "Erro ao buscar processos"); return; }
-      setProcessosEncontrados(data.processos ?? []);
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setError(data.error ?? "Erro ao buscar processos");
+        setBuscandoCPF(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const ev = JSON.parse(line) as { type: string; tribunal?: string; processos?: ProcessoResumo[] };
+            if (ev.type === "checking" && ev.tribunal) {
+              setProgressCPF(`Verificando ${ev.tribunal.toUpperCase().replace(/^TRF(\d)/, "TRF $1").replace(/^TRT(\d+)/, "TRT $1")}...`);
+            } else if (ev.type === "result" && ev.processos) {
+              setProcessosEncontrados((prev) => [...(prev ?? []), ...ev.processos!]);
+            } else if (ev.type === "done") {
+              setProgressCPF("");
+            }
+          } catch { /* malformed line */ }
+        }
+      }
+    } catch {
+      setError("Erro de conexão");
     } finally {
       setBuscandoCPF(false);
+      setProgressCPF("");
     }
   };
 
@@ -245,7 +278,7 @@ function NovaAcaoModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
                 ) : (
                   <Icon name="search" className="h-3.5 w-3.5" />
                 )}
-                {buscandoCPF ? "Buscando no Datajud..." : "Buscar processos pelo CPF no Datajud"}
+                {buscandoCPF ? (progressCPF || "Consultando tribunais...") : "Buscar processos pelo CPF no Datajud"}
               </button>
 
               {processosEncontrados !== null && (

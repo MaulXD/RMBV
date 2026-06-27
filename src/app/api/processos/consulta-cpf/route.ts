@@ -1,45 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/api";
-import { buscarProcessosPorCPF } from "@/lib/datajud";
+import { getSessionUser } from "@/lib/auth";
+import { buscarPorCPFnumTribunal, COMMON_TRIBUNAIS } from "@/lib/datajud";
 
 export const runtime = "nodejs";
 
+const BATCH = 6;
+
 export async function POST(request: NextRequest) {
-  return withAuth(async (user) => {
-    if (!["ADMIN", "ADV", "GERENTE"].includes(user.role)) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-    }
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!["ADMIN", "ADV", "GERENTE"].includes(user.role)) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
 
-    const body = await request.json().catch(() => ({}));
-    const cpf = (body.cpf || "").replace(/\D/g, "");
+  const body = await request.json().catch(() => ({}));
+  const cpf = ((body.cpf as string) || "").replace(/\D/g, "");
 
-    if (cpf.length !== 11) {
-      return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
-    }
+  if (cpf.length !== 11) {
+    return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
+  }
 
-    if (!process.env.DATAJUD_API_KEY) {
-      return NextResponse.json({ error: "DATAJUD_API_KEY não configurada no servidor" }, { status: 503 });
-    }
+  if (!process.env.DATAJUD_API_KEY) {
+    return NextResponse.json({ error: "DATAJUD_API_KEY não configurada no servidor" }, { status: 503 });
+  }
 
-    const processos = await buscarProcessosPorCPF(cpf);
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (data: object) => {
+        try { controller.enqueue(encoder.encode(JSON.stringify(data) + "\n")); } catch { /* closed */ }
+      };
 
-    // Group by tribunal to match the UI expected format
-    const byTribunal = new Map<string, Array<{ numero: string; classe?: string; ultimaMovimentacao?: string }>>();
-    for (const p of processos) {
-      const trib = p.tribunal || "Desconhecido";
-      if (!byTribunal.has(trib)) byTribunal.set(trib, []);
-      byTribunal.get(trib)!.push({
-        numero: p.numeroProcesso,
-        classe: p.classe ?? undefined,
-        ultimaMovimentacao: p.dataAjuizamento ?? undefined,
-      });
-    }
+      for (let i = 0; i < COMMON_TRIBUNAIS.length; i += BATCH) {
+        const batch = COMMON_TRIBUNAIS.slice(i, i + BATCH);
+        batch.forEach((t) => send({ type: "checking", tribunal: t }));
 
-    const results = Array.from(byTribunal.entries()).map(([tribunal, ps]) => ({
-      tribunal,
-      processos: ps,
-    }));
+        const settled = await Promise.allSettled(batch.map((t) => buscarPorCPFnumTribunal(cpf, t)));
+        settled.forEach((r, idx) => {
+          if (r.status === "fulfilled" && r.value.length > 0) {
+            send({ type: "result", tribunal: batch[idx], processos: r.value });
+          }
+        });
+      }
 
-    return NextResponse.json({ results, total: processos.length });
+      send({ type: "done" });
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
+    },
   });
 }

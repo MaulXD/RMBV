@@ -24,6 +24,7 @@ export function ClientProfileView({
 }) {
   const [buscaCpfAberta, setBuscaCpfAberta] = useState(false);
   const [buscando, setBuscando] = useState(false);
+  const [progressLabel, setProgressLabel] = useState("");
   const [resultadosCpf, setResultadosCpf] = useState<Array<{ tribunal: string; processos: Array<{ numero: string; classe?: string; ultimaMovimentacao?: string }> }> | null>(null);
   const [erroCpf, setErroCpf] = useState("");
 
@@ -39,20 +40,45 @@ export function ClientProfileView({
     setBuscaCpfAberta(true);
     setBuscando(true);
     setErroCpf("");
-    setResultadosCpf(null);
+    setResultadosCpf([]);
+    setProgressLabel("");
     try {
       const res = await fetch("/api/processos/consulta-cpf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cpf }),
       });
-      if (!res.ok) { setErroCpf("Erro ao consultar CPF"); return; }
-      const data = await res.json() as { results: typeof resultadosCpf; total: number };
-      setResultadosCpf(data.results);
+      if (!res.ok || !res.body) { setErroCpf("Erro ao consultar CPF"); setBuscando(false); return; }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const ev = JSON.parse(line) as { type: string; tribunal?: string; processos?: Array<{ numero: string; classe?: string; ultimaMovimentacao?: string }> };
+            if (ev.type === "checking" && ev.tribunal) {
+              setProgressLabel(`Verificando ${ev.tribunal.toUpperCase().replace(/^TRF(\d)/, "TRF $1").replace(/^TRT(\d+)/, "TRT $1")}...`);
+            } else if (ev.type === "result" && ev.tribunal && ev.processos) {
+              setResultadosCpf((prev) => [...(prev ?? []), { tribunal: ev.tribunal!.toUpperCase(), processos: ev.processos! }]);
+            } else if (ev.type === "done") {
+              setProgressLabel("");
+            }
+          } catch { /* malformed line */ }
+        }
+      }
     } catch {
       setErroCpf("Erro de conexão");
     } finally {
       setBuscando(false);
+      setProgressLabel("");
     }
   };
 
@@ -206,41 +232,39 @@ export function ClientProfileView({
             </div>
 
             <div className="overflow-y-auto p-5">
-              {buscando ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  <span className="text-sm text-muted">Consultando tribunais...</span>
-                </div>
-              ) : erroCpf ? (
+              {erroCpf ? (
                 <div className="rounded-lg border border-dashed border-red-500/30 py-8 text-center">
                   <p className="text-sm text-red-500">{erroCpf}</p>
                 </div>
-              ) : resultadosCpf && resultadosCpf.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border py-8 text-center">
-                  <p className="text-sm text-muted">Nenhum processo encontrado para este CPF.</p>
-                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
+                  {buscando && (
+                    <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+                      <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <span className="text-xs text-muted">{progressLabel || "Consultando tribunais..."}</span>
+                    </div>
+                  )}
+                  {!buscando && resultadosCpf?.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-border py-8 text-center">
+                      <p className="text-sm text-muted">Nenhum processo encontrado para este CPF.</p>
+                    </div>
+                  )}
                   {resultadosCpf?.map((result) => (
                     <div key={result.tribunal} className="rounded-lg border border-border bg-surface p-3">
                       <h3 className="mb-2 text-xs font-semibold text-foreground">{result.tribunal}</h3>
-                      {result.processos.length === 0 ? (
-                        <p className="text-xs text-muted/60">Nenhum processo encontrado</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {result.processos.map((p, idx) => (
-                            <div key={idx} className="flex items-start justify-between gap-2 rounded-md bg-surface-elevated px-3 py-2">
-                              <div className="min-w-0">
-                                <p className="font-mono text-xs font-medium text-primary">{p.numero}</p>
-                                {p.classe && <p className="text-[10px] text-muted">{p.classe}</p>}
-                              </div>
-                              {p.ultimaMovimentacao && (
-                                <span className="shrink-0 text-[10px] text-muted/60">{p.ultimaMovimentacao}</span>
-                              )}
+                      <div className="space-y-1.5">
+                        {result.processos.map((p, idx) => (
+                          <div key={idx} className="flex items-start justify-between gap-2 rounded-md bg-surface-elevated px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="font-mono text-xs font-medium text-primary">{p.numero}</p>
+                              {p.classe && <p className="text-[10px] text-muted">{p.classe}</p>}
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {p.ultimaMovimentacao && (
+                              <span className="shrink-0 text-[10px] text-muted/60">{p.ultimaMovimentacao}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
