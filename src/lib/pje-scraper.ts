@@ -11,20 +11,17 @@ export type PjeProcesso = {
   dataAjuizamento?: string | null;
 };
 
-// Court configs — only those without CAPTCHA on public consultation
 export const PJE_COURTS: Record<string, { nome: string; url: string }> = {
   trf5: {
     nome: "TRF 5",
-    // pje1g = PJe v1 — no CAPTCHA on ConsultaPublica
     url: "https://pje1g.trf5.jus.br/pjeconsulta/ConsultaPublica/listView.seam",
   },
 };
 
-// CNJ process number pattern: 0000000-00.0000.0.00.0000
+// CNJ: NNNNNNN-DD.AAAA.J.TT.OOOO
 const CNJ_RE = /\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/;
 
 function isValidCnjNumber(num: string): boolean {
-  // Format: NNNNNNN-DD.AAAA.J.TT.OOOO — filter placeholder rows (year=9999 etc.)
   const match = num.match(/\d{7}-\d{2}\.(\d{4})\.\d\.\d{2}\.\d{4}/);
   if (!match) return false;
   const year = parseInt(match[1], 10);
@@ -85,6 +82,29 @@ export async function debugPjeForm(tribunal: keyof typeof PJE_COURTS): Promise<{
   };
 }
 
+async function fetchDetailProcessNumber(
+  caHash: string,
+  baseOrigin: string,
+  cookies: string
+): Promise<string | null> {
+  const url = `${baseOrigin}/pjeconsulta/ConsultaPublica/DetalheProcessoConsultaPublica/listView.seam?ca=${caHash}`;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Cookie: cookies, Accept: "text/html" },
+      redirect: "follow",
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    // Process number is in a prominent element on the detail page
+    const doc = parse(html);
+    const text = doc.text;
+    const matches = text.match(new RegExp(CNJ_RE.source, "g")) ?? [];
+    return matches.find((m) => isValidCnjNumber(m)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function searchCPFOnPJe(
   cpf: string,
   tribunal: keyof typeof PJE_COURTS
@@ -92,7 +112,7 @@ export async function searchCPFOnPJe(
   const court = PJE_COURTS[tribunal];
   if (!court) return [];
 
-  // ── Step 1: GET the page — collect cookies + ViewState ──────────────────
+  // ── Step 1: GET page ────────────────────────────────────────────────────
   let cookies = "";
   let html = "";
   let initialUrl = court.url;
@@ -103,7 +123,6 @@ export async function searchCPFOnPJe(
       redirect: "follow",
     });
     if (!getRes.ok) return [];
-    // Capture final URL after redirects (has jsessionid in path)
     initialUrl = getRes.url || court.url;
     cookies = extractCookies(getRes);
     html = await getRes.text();
@@ -112,285 +131,205 @@ export async function searchCPFOnPJe(
   }
 
   const doc = parse(html);
-
-  // ViewState (mandatory for JSF)
   const viewState = doc.querySelector('input[name="javax.faces.ViewState"]')?.getAttribute("value");
   if (!viewState) return [];
 
-  // Form action — must keep jsessionid path parameter
-  const formEl = doc.querySelector("form");
+  // Form action preserving jsessionid in path
+  const formEl = doc.querySelector("form#fPP") ?? doc.querySelector("form");
   const rawAction = formEl?.getAttribute("action") ?? "";
   const actionUrl = rawAction
-    ? rawAction.startsWith("http")
-      ? rawAction
-      : new URL(rawAction, initialUrl).href
+    ? rawAction.startsWith("http") ? rawAction : new URL(rawAction, initialUrl).href
     : initialUrl;
 
-  // ── Step 2: find CPF input dynamically ─────────────────────────────────
-  const allInputs = doc.querySelectorAll("input, select");
-  const cpfEl = allInputs.find((el) => {
+  // ── Step 2: Find CPF TEXT input — skip radio/checkbox/hidden ────────────
+  const cpfEl = doc.querySelectorAll("input").find((el) => {
+    const type = (el.getAttribute("type") ?? "text").toLowerCase();
+    if (type !== "text") return false;
     const id = (el.getAttribute("id") ?? "").toLowerCase();
     const name = (el.getAttribute("name") ?? "").toLowerCase();
     return (
-      id.includes("cpf") ||
-      id.includes("documento") ||
-      id.includes("numdoc") ||
-      name.includes("cpf") ||
-      name.includes("documento") ||
-      name.includes("numdoc")
+      id.includes("cpf") || id.includes("documento") || id.includes("numdoc") ||
+      name.includes("cpf") || name.includes("documento") || name.includes("numdoc")
     );
   });
   const cpfFieldName = cpfEl?.getAttribute("name") ?? cpfEl?.getAttribute("id");
 
-  // ── Find search button (JSF uses type="button" for AJAX actions) ────────
-  const allButtons = doc.querySelectorAll("input, button");
-  const submitBtn = allButtons.find((el) => {
-    const type = el.getAttribute("type") ?? "";
-    if (type === "submit") return true;
-    const id = (el.getAttribute("id") ?? "").toLowerCase();
-    const name = (el.getAttribute("name") ?? "").toLowerCase();
-    const value = (el.getAttribute("value") ?? "").toLowerCase();
-    return (
-      id.includes("buscar") || id.includes("pesquisar") || id.includes("search") ||
-      name.includes("buscar") || name.includes("pesquisar") || name.includes("search") ||
-      value.includes("buscar") || value.includes("pesquisar") || value.includes("search")
-    );
-  });
+  // ── Step 3: Extract A4J component ID from executarPesquisa JS ──────────
+  // RichFaces 3.x (A4J) uses AJAXREQUEST + component self-param, NOT javax.faces.partial.*
+  const execMatch = html.match(/executarPesquisa[\s\S]*?'similarityGroupingId'\s*:\s*'([^']+)'/);
+  const ajaxComponentId = execMatch?.[1]; // e.g. "fPP:j_id224"
 
-  const btnName = submitBtn?.getAttribute("name");
-  const btnValue = submitBtn?.getAttribute("value") ?? "Pesquisar";
-  // PJe uses type="button" for JSF AJAX partial requests
-  const isJsfAjax = (submitBtn?.getAttribute("type") ?? "") === "button";
-
-  // ── Step 3: Build POST body ──────────────────────────────────────────────
+  // ── Step 4: Build POST body (A4J 3.x protocol) ──────────────────────────
   const body = new URLSearchParams();
 
-  // JSF AJAX partial-request parameters (required when button is type="button")
-  if (isJsfAjax && btnName) {
-    body.set("javax.faces.partial.ajax", "true");
-    body.set("javax.faces.source", btnName);
-    body.set("javax.faces.partial.execute", "@form");
-    body.set("javax.faces.partial.render", "@form");
-    body.set(btnName, btnValue);
-  }
+  // A4J marker — tells the server this is a RichFaces AJAX request
+  body.set("AJAXREQUEST", "fPP");
+  if (ajaxComponentId) body.set(ajaxComponentId, ajaxComponentId);
 
-  // Carry all hidden fields (ViewState + JSF internals)
-  doc.querySelectorAll('input[type="hidden"]').forEach((el) => {
+  // Hidden fields from the fPP form
+  formEl?.querySelectorAll('input[type="hidden"]').forEach((el) => {
     const name = el.getAttribute("name");
     const value = el.getAttribute("value") ?? "";
     if (name) body.set(name, value);
   });
 
-  // Override ViewState explicitly (dedup from hidden fields)
   body.set("javax.faces.ViewState", viewState);
 
-  // For non-AJAX: include button in body the standard way
-  if (!isJsfAjax && btnName) {
-    body.set(btnName, btnValue);
-  }
+  // CPF field (formatted: 031.845.604-49)
+  if (cpfFieldName) body.set(cpfFieldName, cpf);
 
-  // CPF field
-  if (cpfFieldName) {
-    body.set(cpfFieldName, cpf);
-  }
-
-  // ── Step 4: POST ─────────────────────────────────────────────────────────
+  // ── Step 5: POST ─────────────────────────────────────────────────────────
   let resultHtml = "";
   try {
-    const postHeaders: Record<string, string> = {
-      "User-Agent": UA,
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: cookies,
-      Referer: initialUrl,
-    };
-
-    if (isJsfAjax) {
-      // JSF AJAX expects XML partial-response
-      postHeaders["Accept"] = "application/xml, text/xml, */*; q=0.01";
-      postHeaders["X-Requested-With"] = "XMLHttpRequest";
-      postHeaders["Faces-Request"] = "partial/ajax";
-    } else {
-      postHeaders["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
-    }
-
     const postRes = await fetch(actionUrl, {
       method: "POST",
-      headers: postHeaders,
+      headers: {
+        "User-Agent": UA,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: cookies,
+        Referer: initialUrl,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "X-Requested-With": "XMLHttpRequest",
+      },
       body: body.toString(),
       redirect: "follow",
     });
-
     if (!postRes.ok) return [];
     const freshCookies = extractCookies(postRes);
     cookies = mergeCookies(cookies, freshCookies);
-    const contentType = postRes.headers.get("content-type") ?? "";
-    const rawResult = await postRes.text();
-
-    // JSF partial-response XML: extract HTML from CDATA sections
-    if (contentType.includes("xml") || rawResult.trimStart().startsWith("<?xml")) {
-      const cdataMatches = rawResult.match(/<!\[CDATA\[([\s\S]*?)\]\]>/g) ?? [];
-      resultHtml = cdataMatches.map((m) => m.replace(/<!\[CDATA\[/, "").replace(/\]\]>/, "")).join("\n");
-    } else {
-      resultHtml = rawResult;
-    }
+    resultHtml = await postRes.text();
   } catch {
     return [];
   }
 
-  return parseHtmlForProcessos(resultHtml, tribunal);
-}
-
-function parseHtmlForProcessos(html: string, tribunal: string): PjeProcesso[] {
-  if (!html) return [];
-
-  const doc = parse(html);
-  const found = new Set<string>();
-  const results: PjeProcesso[] = [];
-
-  // Strategy 1: look for table rows containing CNJ process numbers
-  const tables = doc.querySelectorAll("table");
-  for (const table of tables) {
-    const rows = table.querySelectorAll("tr");
-    for (const row of rows) {
-      const cells = row.querySelectorAll("td");
-      if (cells.length < 2) continue;
-      const texts = cells.map((c) => c.text.trim());
-      const numero = texts.find((t) => CNJ_RE.test(t) && isValidCnjNumber(t));
-      if (numero && !found.has(numero)) {
-        found.add(numero);
-        results.push({
-          numeroProcesso: numero,
-          tribunal,
-          classe: texts[1] || null,
-          assunto: texts[2] || null,
-          vara: texts[3] || null,
-        });
-      }
-    }
+  // ── Step 6: Extract `ca` hashes from openPopUp links in result table ─────
+  // The list view does NOT show process numbers — they're only in the detail page.
+  // Each row has: onclick="openPopUp('...', '...?ca=<hash>')"
+  const caHashes: string[] = [];
+  const onclickPattern = /openPopUp\([^)]*\?ca=([a-f0-9]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = onclickPattern.exec(resultHtml)) !== null) {
+    if (!caHashes.includes(m[1])) caHashes.push(m[1]);
   }
 
-  // Strategy 2: scan all text for CNJ numbers (catches non-table layouts)
-  if (results.length === 0) {
-    const all = doc.text;
-    const matches = all.match(new RegExp(CNJ_RE.source, "g")) ?? [];
-    for (const m of matches) {
-      if (!found.has(m) && isValidCnjNumber(m)) {
-        found.add(m);
-        results.push({ numeroProcesso: m, tribunal });
-      }
+  if (caHashes.length === 0) return [];
+
+  // ── Step 7: Fetch detail pages to get actual CNJ process numbers ─────────
+  const baseOrigin = new URL(initialUrl).origin;
+  const results: PjeProcesso[] = [];
+  const seen = new Set<string>();
+
+  // Cap at 30 to avoid timeouts (a CPF typically has few processes)
+  for (const ca of caHashes.slice(0, 30)) {
+    const numero = await fetchDetailProcessNumber(ca, baseOrigin, cookies);
+    if (numero && !seen.has(numero)) {
+      seen.add(numero);
+      results.push({ numeroProcesso: numero, tribunal });
     }
   }
 
   return results;
 }
 
-// Debug version — returns raw response for inspection
+// Debug version — returns raw data for inspection
 export async function searchCPFOnPJeDebug(
   cpf: string,
   tribunal: keyof typeof PJE_COURTS
-): Promise<{ cpfFieldName: string | null; btnName: string | null; isJsfAjax: boolean; rawResponse: string; parsedProcessos: PjeProcesso[] }> {
+): Promise<Record<string, unknown>> {
   const court = PJE_COURTS[tribunal];
   if (!court) throw new Error("Tribunal not configured");
 
   let cookies = "";
-  let html = "";
   let initialUrl = court.url;
-
   const getRes = await fetch(court.url, {
     headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml" },
     redirect: "follow",
   });
   initialUrl = getRes.url || court.url;
   cookies = extractCookies(getRes);
-  html = await getRes.text();
+  const html = await getRes.text();
 
   const doc = parse(html);
   const viewState = doc.querySelector('input[name="javax.faces.ViewState"]')?.getAttribute("value") ?? "";
-  const formEl = doc.querySelector("form");
+  const formEl = doc.querySelector("form#fPP") ?? doc.querySelector("form");
   const rawAction = formEl?.getAttribute("action") ?? "";
   const actionUrl = rawAction
     ? rawAction.startsWith("http") ? rawAction : new URL(rawAction, initialUrl).href
     : initialUrl;
 
-  const allInputs = doc.querySelectorAll("input, select");
-  const cpfEl = allInputs.find((el) => {
+  const cpfEl = doc.querySelectorAll("input").find((el) => {
+    const type = (el.getAttribute("type") ?? "text").toLowerCase();
+    if (type !== "text") return false;
     const id = (el.getAttribute("id") ?? "").toLowerCase();
     const name = (el.getAttribute("name") ?? "").toLowerCase();
     return id.includes("cpf") || id.includes("documento") || id.includes("numdoc") ||
       name.includes("cpf") || name.includes("documento") || name.includes("numdoc");
   });
-  const cpfFieldName = cpfEl?.getAttribute("name") ?? cpfEl?.getAttribute("id") ?? null;
+  const cpfFieldName = cpfEl?.getAttribute("name") ?? null;
 
-  const allButtons = doc.querySelectorAll("input, button");
-  const submitBtn = allButtons.find((el) => {
-    const type = el.getAttribute("type") ?? "";
-    if (type === "submit") return true;
-    const id = (el.getAttribute("id") ?? "").toLowerCase();
-    const name = (el.getAttribute("name") ?? "").toLowerCase();
-    const value = (el.getAttribute("value") ?? "").toLowerCase();
-    return id.includes("buscar") || id.includes("pesquisar") || id.includes("search") ||
-      name.includes("buscar") || name.includes("pesquisar") || name.includes("search") ||
-      value.includes("buscar") || value.includes("pesquisar") || value.includes("search");
-  });
-  const btnName = submitBtn?.getAttribute("name") ?? null;
-  const btnValue = submitBtn?.getAttribute("value") ?? "Pesquisar";
-  const isJsfAjax = (submitBtn?.getAttribute("type") ?? "") === "button";
+  const execMatch = html.match(/executarPesquisa[\s\S]*?'similarityGroupingId'\s*:\s*'([^']+)'/);
+  const ajaxComponentId = execMatch?.[1] ?? null;
 
   const body = new URLSearchParams();
-  if (isJsfAjax && btnName) {
-    body.set("javax.faces.partial.ajax", "true");
-    body.set("javax.faces.source", btnName);
-    body.set("javax.faces.partial.execute", "@form");
-    body.set("javax.faces.partial.render", "@form");
-    body.set(btnName, btnValue);
-  }
-  doc.querySelectorAll('input[type="hidden"]').forEach((el) => {
+  body.set("AJAXREQUEST", "fPP");
+  if (ajaxComponentId) body.set(ajaxComponentId, ajaxComponentId);
+  formEl?.querySelectorAll('input[type="hidden"]').forEach((el) => {
     const name = el.getAttribute("name");
-    const value = el.getAttribute("value") ?? "";
-    if (name) body.set(name, value);
+    if (name) body.set(name, el.getAttribute("value") ?? "");
   });
   body.set("javax.faces.ViewState", viewState);
-  if (!isJsfAjax && btnName) body.set(btnName, btnValue);
   const formatted = cpf.length === 11
     ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9, 11)}`
     : cpf;
   if (cpfFieldName) body.set(cpfFieldName, formatted);
 
-  const postHeaders: Record<string, string> = {
-    "User-Agent": UA,
-    "Content-Type": "application/x-www-form-urlencoded",
-    Cookie: cookies,
-    Referer: initialUrl,
-  };
-  if (isJsfAjax) {
-    postHeaders["Accept"] = "application/xml, text/xml, */*; q=0.01";
-    postHeaders["X-Requested-With"] = "XMLHttpRequest";
-    postHeaders["Faces-Request"] = "partial/ajax";
-  }
-
   const postRes = await fetch(actionUrl, {
     method: "POST",
-    headers: postHeaders,
+    headers: {
+      "User-Agent": UA,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: cookies,
+      Referer: initialUrl,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "X-Requested-With": "XMLHttpRequest",
+    },
     body: body.toString(),
     redirect: "follow",
   });
 
+  const freshCookies = extractCookies(postRes);
+  cookies = mergeCookies(cookies, freshCookies);
   const rawResponse = await postRes.text();
-  const parsedProcessos = parseHtmlForProcessos(rawResponse, tribunal);
 
-  // All CNJ-like matches before year filter (for diagnostics)
-  const allCnjMatches = (rawResponse.match(new RegExp(CNJ_RE.source, "g")) ?? []);
+  const caHashes: string[] = [];
+  const onclickPattern = /openPopUp\([^)]*\?ca=([a-f0-9]+)/g;
+  let matchResult: RegExpExecArray | null;
+  while ((matchResult = onclickPattern.exec(rawResponse)) !== null) {
+    if (!caHashes.includes(matchResult[1])) caHashes.push(matchResult[1]);
+  }
+
+  // Fetch first detail page if any ca hashes found
+  let firstDetailHtml = "";
+  let firstDetailNumber = null;
+  if (caHashes.length > 0) {
+    const baseOrigin = new URL(initialUrl).origin;
+    firstDetailNumber = await fetchDetailProcessNumber(caHashes[0], baseOrigin, cookies);
+    const detailUrl = `${baseOrigin}/pjeconsulta/ConsultaPublica/DetalheProcessoConsultaPublica/listView.seam?ca=${caHashes[0]}`;
+    const dr = await fetch(detailUrl, { headers: { "User-Agent": UA, Cookie: cookies }, redirect: "follow" });
+    firstDetailHtml = (await dr.text()).slice(0, 3000);
+  }
 
   return {
     cpfFieldName,
-    btnName,
-    isJsfAjax,
+    ajaxComponentId,
     postUrl: actionUrl,
     postStatus: postRes.status,
     postContentType: postRes.headers.get("content-type"),
     rawResponseLength: rawResponse.length,
-    rawResponseStart: rawResponse.slice(0, 4000),
-    allCnjMatches,
-    parsedProcessos,
+    rawResponseStart: rawResponse.slice(0, 3000),
+    caHashesFound: caHashes.length,
+    caHashes: caHashes.slice(0, 5),
+    firstDetailNumber,
+    firstDetailHtmlStart: firstDetailHtml,
   };
 }
