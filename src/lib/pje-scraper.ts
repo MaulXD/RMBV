@@ -156,7 +156,7 @@ export async function searchCPFOnPJe(
 
   // ── Step 3: Extract A4J component ID from executarPesquisa JS ──────────
   // RichFaces 3.x (A4J) uses AJAXREQUEST + component self-param, NOT javax.faces.partial.*
-  const execMatch = html.match(/executarPesquisa[\s\S]*?'similarityGroupingId'\s*:\s*'([^']+)'/);
+  const execMatch = html.match(/executarPesquisa\s*=\s*function\s*\(\s*\)[\s\S]*?'similarityGroupingId'\s*:\s*'([^']+)'/);
   const ajaxComponentId = execMatch?.[1]; // e.g. "fPP:j_id224"
 
   // ── Step 4: Build POST body (A4J 3.x protocol) ──────────────────────────
@@ -267,7 +267,7 @@ export async function searchCPFOnPJeDebug(
   });
   const cpfFieldName = cpfEl?.getAttribute("name") ?? null;
 
-  const execMatch = html.match(/executarPesquisa[\s\S]*?'similarityGroupingId'\s*:\s*'([^']+)'/);
+  const execMatch = html.match(/executarPesquisa\s*=\s*function\s*\(\s*\)[\s\S]*?'similarityGroupingId'\s*:\s*'([^']+)'/);
   const ajaxComponentId = execMatch?.[1] ?? null;
 
   const body = new URLSearchParams();
