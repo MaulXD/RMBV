@@ -378,5 +378,19 @@ export async function searchCPFOnPJeDebug(
   const rawResponse = await postRes.text();
   const parsedProcessos = parseHtmlForProcessos(rawResponse, tribunal);
 
-  return { cpfFieldName, btnName, isJsfAjax, rawResponse, parsedProcessos };
+  // All CNJ-like matches before year filter (for diagnostics)
+  const allCnjMatches = (rawResponse.match(new RegExp(CNJ_RE.source, "g")) ?? []);
+
+  return {
+    cpfFieldName,
+    btnName,
+    isJsfAjax,
+    postUrl: actionUrl,
+    postStatus: postRes.status,
+    postContentType: postRes.headers.get("content-type"),
+    rawResponseLength: rawResponse.length,
+    rawResponseStart: rawResponse.slice(0, 4000),
+    allCnjMatches,
+    parsedProcessos,
+  };
 }
