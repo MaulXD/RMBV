@@ -25,7 +25,6 @@ const CNJ_RE = /\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/;
 
 function extractCookies(res: Response): string {
   const raw = res.headers.get("set-cookie") ?? "";
-  // keep only name=value pairs, strip attributes
   return raw
     .split(",")
     .map((c) => c.split(";")[0].trim())
@@ -88,6 +87,7 @@ export async function searchCPFOnPJe(
   // ── Step 1: GET the page — collect cookies + ViewState ──────────────────
   let cookies = "";
   let html = "";
+  let initialUrl = court.url;
 
   try {
     const getRes = await fetch(court.url, {
@@ -95,6 +95,8 @@ export async function searchCPFOnPJe(
       redirect: "follow",
     });
     if (!getRes.ok) return [];
+    // Capture final URL after redirects (has jsessionid in path)
+    initialUrl = getRes.url || court.url;
     cookies = extractCookies(getRes);
     html = await getRes.text();
   } catch {
@@ -107,14 +109,14 @@ export async function searchCPFOnPJe(
   const viewState = doc.querySelector('input[name="javax.faces.ViewState"]')?.getAttribute("value");
   if (!viewState) return [];
 
-  // Form action
+  // Form action — must keep jsessionid path parameter
   const formEl = doc.querySelector("form");
   const rawAction = formEl?.getAttribute("action") ?? "";
   const actionUrl = rawAction
     ? rawAction.startsWith("http")
       ? rawAction
-      : new URL(rawAction, court.url).href
-    : court.url;
+      : new URL(rawAction, initialUrl).href
+    : initialUrl;
 
   // ── Step 2: find CPF input dynamically ─────────────────────────────────
   const allInputs = doc.querySelectorAll("input, select");
@@ -130,49 +132,82 @@ export async function searchCPFOnPJe(
       name.includes("numdoc")
     );
   });
-
   const cpfFieldName = cpfEl?.getAttribute("name") ?? cpfEl?.getAttribute("id");
+
+  // ── Find search button (JSF uses type="button" for AJAX actions) ────────
+  const allButtons = doc.querySelectorAll("input, button");
+  const submitBtn = allButtons.find((el) => {
+    const type = el.getAttribute("type") ?? "";
+    if (type === "submit") return true;
+    const id = (el.getAttribute("id") ?? "").toLowerCase();
+    const name = (el.getAttribute("name") ?? "").toLowerCase();
+    const value = (el.getAttribute("value") ?? "").toLowerCase();
+    return (
+      id.includes("buscar") || id.includes("pesquisar") || id.includes("search") ||
+      name.includes("buscar") || name.includes("pesquisar") || name.includes("search") ||
+      value.includes("buscar") || value.includes("pesquisar") || value.includes("search")
+    );
+  });
+
+  const btnName = submitBtn?.getAttribute("name");
+  const btnValue = submitBtn?.getAttribute("value") ?? "Pesquisar";
+  // PJe uses type="button" for JSF AJAX partial requests
+  const isJsfAjax = (submitBtn?.getAttribute("type") ?? "") === "button";
 
   // ── Step 3: Build POST body ──────────────────────────────────────────────
   const body = new URLSearchParams();
+
+  // JSF AJAX partial-request parameters (required when button is type="button")
+  if (isJsfAjax && btnName) {
+    body.set("javax.faces.partial.ajax", "true");
+    body.set("javax.faces.source", btnName);
+    body.set("javax.faces.partial.execute", "@form");
+    body.set("javax.faces.partial.render", "@form");
+    body.set(btnName, btnValue);
+  }
 
   // Carry all hidden fields (ViewState + JSF internals)
   doc.querySelectorAll('input[type="hidden"]').forEach((el) => {
     const name = el.getAttribute("name");
     const value = el.getAttribute("value") ?? "";
-    if (name) body.append(name, value);
+    if (name) body.set(name, value);
   });
 
-  // Override ViewState explicitly
+  // Override ViewState explicitly (dedup from hidden fields)
   body.set("javax.faces.ViewState", viewState);
+
+  // For non-AJAX: include button in body the standard way
+  if (!isJsfAjax && btnName) {
+    body.set(btnName, btnValue);
+  }
 
   // CPF field
   if (cpfFieldName) {
     body.set(cpfFieldName, cpf);
   }
 
-  // Try to trigger the search button (JSF needs to know which component submitted)
-  const submitBtn =
-    doc.querySelector('input[type="submit"]') ||
-    doc.querySelector('button[type="submit"]') ||
-    doc.querySelector('input[id*="buscar" i]') ||
-    doc.querySelector('input[id*="pesquisar" i]') ||
-    doc.querySelector('button[id*="buscar" i]');
-  const btnName = submitBtn?.getAttribute("name");
-  if (btnName) body.set(btnName, submitBtn?.getAttribute("value") ?? "Pesquisar");
-
   // ── Step 4: POST ─────────────────────────────────────────────────────────
   let resultHtml = "";
   try {
+    const postHeaders: Record<string, string> = {
+      "User-Agent": UA,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: cookies,
+      Referer: initialUrl,
+    };
+
+    if (isJsfAjax) {
+      // JSF AJAX expects XML partial-response
+      postHeaders["Accept"] = "application/xml, text/xml, */*; q=0.01";
+      postHeaders["X-Requested-With"] = "XMLHttpRequest";
+      postHeaders["Faces-Request"] = "partial/ajax";
+    } else {
+      postHeaders["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+    }
+
     const postRes = await fetch(actionUrl, {
       method: "POST",
-      headers: {
-        "User-Agent": UA,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Cookie: cookies,
-        Referer: court.url,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
+      headers: postHeaders,
       body: body.toString(),
       redirect: "follow",
     });
@@ -183,9 +218,8 @@ export async function searchCPFOnPJe(
     const contentType = postRes.headers.get("content-type") ?? "";
     const rawResult = await postRes.text();
 
-    // JSF AJAX response (partial-response XML)
+    // JSF partial-response XML: extract HTML from CDATA sections
     if (contentType.includes("xml") || rawResult.trimStart().startsWith("<?xml")) {
-      // Extract HTML fragments from CDATA sections in partial-response
       const cdataMatches = rawResult.match(/<!\[CDATA\[([\s\S]*?)\]\]>/g) ?? [];
       resultHtml = cdataMatches.map((m) => m.replace(/<!\[CDATA\[/, "").replace(/\]\]>/, "")).join("\n");
     } else {
@@ -227,7 +261,7 @@ function parseHtmlForProcessos(html: string, tribunal: string): PjeProcesso[] {
     }
   }
 
-  // Strategy 2: scan all text nodes for CNJ numbers (catches non-table layouts)
+  // Strategy 2: scan all text for CNJ numbers (catches non-table layouts)
   if (results.length === 0) {
     const all = doc.text;
     const matches = all.match(new RegExp(CNJ_RE.source, "g")) ?? [];
