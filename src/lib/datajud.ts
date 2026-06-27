@@ -155,7 +155,10 @@ export type DatajudProcessoResumo = {
 
 export async function buscarPorCPFnumTribunal(cpf: string, tribunal: string): Promise<DatajudProcessoResumo[]> {
   const key = apiKey();
-  // Use bool.should with both term (keyword fields) and match (text fields) to cover all tribunal index mappings
+  // Some tribunals store CPF as digits-only, others store formatted (xxx.xxx.xxx-xx)
+  const formatted = cpf.length === 11
+    ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9, 11)}`
+    : cpf;
   const body = JSON.stringify({
     query: {
       nested: {
@@ -164,7 +167,9 @@ export async function buscarPorCPFnumTribunal(cpf: string, tribunal: string): Pr
           bool: {
             should: [
               { term: { "partes.documento": cpf } },
+              { term: { "partes.documento": formatted } },
               { match: { "partes.documento": cpf } },
+              { match: { "partes.documento": formatted } },
             ],
             minimum_should_match: 1,
           },
