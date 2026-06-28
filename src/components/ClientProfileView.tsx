@@ -215,17 +215,62 @@ export function ClientProfileView({
                   requestBody={{ cpf }}
                 />
               ) : (
-                <DatajudBuscaCPF
-                  key="eproc"
-                  endpoint="/api/processos/buscar-eproc"
-                  requestBody={{ cpf }}
-                  hideChecklist
-                />
+                <EprocLinks cpf={cpf} />
               )}
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function EprocLinks({ cpf }: { cpf: string }) {
+  const formatted = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+
+  const links = [
+    {
+      label: "PJe TRF5 (Juizado Especial Federal)",
+      url: "https://pje1g.trf5.jus.br/pjeconsulta/ConsultaPublica/listView.seam",
+      hint: "Campo: CPF · selecione 'CPF' e cole o número",
+    },
+    {
+      label: "eproc TRF5 (processos comuns)",
+      url: "https://eproc1g.trf5.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica",
+      hint: "Campo: Documento da parte",
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5">
+        <span className="text-xs text-muted">CPF para pesquisar:</span>
+        <span className="font-mono text-sm font-semibold text-foreground">{formatted}</span>
+        <CopyButton value={formatted} label="Copiar CPF" compact />
+      </div>
+
+      <p className="text-xs text-muted">
+        A consulta por CPF no servidor é bloqueada por segredo de justiça para processos JEF/INSS.
+        Abra o sistema diretamente e pesquise com o CPF acima.
+      </p>
+
+      <div className="space-y-2">
+        {links.map((link) => (
+          <a
+            key={link.url}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-start gap-3 rounded-lg border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-surface-elevated hover:border-primary/30"
+          >
+            <Icon name="externalLink" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground">{link.label}</p>
+              <p className="text-[10px] text-muted">{link.hint}</p>
+            </div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

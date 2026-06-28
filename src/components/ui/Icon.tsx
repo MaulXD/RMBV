@@ -68,6 +68,7 @@ import {
   Scale,
   Mail,
   Keyboard,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 
@@ -141,6 +142,7 @@ const icons = {
   scale: Scale,
   mail: Mail,
   keyboard: Keyboard,
+  externalLink: ExternalLink,
 } as const;
 
 export type IconName = keyof typeof icons;
