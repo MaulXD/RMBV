@@ -13,7 +13,7 @@ const createUserSchema = z.object({
   name: z.string().min(2),
   email: loginIdSchema,
   password: z.string().min(6),
-  role: z.enum(["ADV", "GERENTE", "COLABORADOR", "PESQUISADOR", "TI"]),
+  role: z.enum(["ADV", "GERENTE", "COLABORADOR", "PESQUISADOR", "TI", "SUPORTE"]),
   teamId: z.string().uuid(),
 });
 

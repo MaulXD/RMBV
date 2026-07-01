@@ -34,6 +34,7 @@ enum Role {
   TI
   COLABORADOR
   PESQUISADOR
+  SUPORTE
 }
 
 enum ClientWorkflowStatus {

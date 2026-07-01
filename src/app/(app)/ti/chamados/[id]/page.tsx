@@ -107,7 +107,7 @@ export default function TicketDetailPage() {
     await fetchTicket();
   }
 
-  if (!user || (user.role !== "TI" && user.role !== "ADMIN")) return null;
+  if (!user || (user.role !== "TI" && user.role !== "ADMIN" && user.role !== "SUPORTE")) return null;
   if (loading) return <div className="p-8 text-center text-sm text-muted">Carregando...</div>;
   if (!ticket) return <div className="p-8 text-center text-sm text-muted">Chamado não encontrado</div>;
 

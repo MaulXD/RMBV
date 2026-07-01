@@ -50,7 +50,7 @@ export default function TiKanbanPage() {
 
   useEffect(() => { void fetchTickets(); }, [fetchTickets]);
 
-  if (!user || (user.role !== "TI" && user.role !== "ADMIN")) return null;
+  if (!user || (user.role !== "TI" && user.role !== "ADMIN" && user.role !== "SUPORTE")) return null;
 
   const grouped = columns.map((col) => ({
     ...col,
