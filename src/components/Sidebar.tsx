@@ -107,6 +107,7 @@ export function Sidebar({
             { href: "/ti/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
             { href: "/ti/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
             { href: "/reports/suporte", label: "Relatórios", icon: "reports", color: "text-emerald-500" },
+            { href: "/ponto", label: "Ponto facial", icon: "scanFace" as const, color: "text-emerald-500" },
           ],
         },
         {

@@ -12,14 +12,24 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "";
+    const priority = searchParams.get("priority") || "";
     const search = searchParams.get("search")?.trim() || "";
+    const mine = searchParams.get("mine") === "true";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
-    const pageSize = 50;
+    const pageSize = Math.min(200, parseInt(searchParams.get("pageSize") || "50", 10) || 50);
 
     const where: Record<string, unknown> = {};
 
     if (status && ["ABERTO", "EM_ANDAMENTO", "RESOLVIDO", "FECHADO"].includes(status)) {
       where.status = status;
+    }
+
+    if (priority && ["URGENTE", "NORMAL", "BAIXA"].includes(priority)) {
+      where.priority = priority;
+    }
+
+    if (mine) {
+      where.assignedToId = user.id;
     }
 
     if (search) {
@@ -38,7 +48,7 @@ export async function GET(request: Request) {
       prisma.supportRequest.count({ where }),
       prisma.supportRequest.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {

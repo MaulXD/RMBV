@@ -20,6 +20,7 @@ type Stats = {
   total: number;
   totalPeriodo: number;
   porNecessidade: { necessidade: string; count: number }[];
+  productivity: { userId: string; name: string; count: number }[];
 };
 
 export default function ReportsSuportePage() {
@@ -93,6 +94,43 @@ export default function ReportsSuportePage() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {stats && stats.productivity.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-border bg-surface-elevated shadow-sm overflow-hidden">
+          <div className="border-b border-border px-5 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Produtividade da equipe — chamados resolvidos no periodo</p>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-widest text-muted">
+                <th className="px-5 py-2.5">Responsável</th>
+                <th className="px-5 py-2.5 text-right">Resolvidos</th>
+                <th className="px-5 py-2.5">Participação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.productivity.map((p) => {
+                const total = stats.productivity.reduce((s, x) => s + x.count, 0);
+                const pct = total > 0 ? Math.round((p.count / total) * 100) : 0;
+                return (
+                  <tr key={p.userId} className="border-b border-border last:border-0 hover:bg-primary/[0.03]">
+                    <td className="px-5 py-2.5 font-medium text-foreground">{p.name}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-foreground">{p.count}</td>
+                    <td className="px-5 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded-full bg-border">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="w-8 text-right text-[11px] tabular-nums text-muted">{pct}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

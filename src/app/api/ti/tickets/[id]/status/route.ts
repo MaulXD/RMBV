@@ -29,6 +29,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         data: { status: status as "ABERTO" | "EM_ANDAMENTO" | "RESOLVIDO" | "FECHADO" },
       });
 
+      await tx.supportTicketStatusHistory.create({
+        data: {
+          ticketId: id,
+          fromStatus: ticket.status,
+          toStatus: status as "ABERTO" | "EM_ANDAMENTO" | "RESOLVIDO" | "FECHADO",
+          changedById: user.id,
+          changedByName: user.name,
+        },
+      });
+
       if (message?.trim()) {
         await tx.supportTicketResponse.create({
           data: {

@@ -43,19 +43,35 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const necessidades = await prisma.supportRequest.groupBy({
-      by: ["necessidade"],
-      _count: true,
-      orderBy: { _count: { necessidade: "desc" } },
-    });
+    const periodWhere = startDate || endDate ? where : {};
 
-    const porMes = await prisma.$queryRawUnsafe<{ mes: string; total: number }[]>(
-      'SELECT to_char("createdAt", \'YYYY-MM\') as mes, COUNT(*)::int as total FROM "SupportRequest" GROUP BY mes ORDER BY mes',
-    );
+    const [necessidades, porMes, totalPeriodo, produtividadeRows] = await Promise.all([
+      prisma.supportRequest.groupBy({
+        by: ["necessidade"],
+        _count: true,
+        orderBy: { _count: { necessidade: "desc" } },
+      }),
+      prisma.$queryRawUnsafe<{ mes: string; total: number }[]>(
+        'SELECT to_char("createdAt", \'YYYY-MM\') as mes, COUNT(*)::int as total FROM "SupportRequest" GROUP BY mes ORDER BY mes',
+      ),
+      prisma.supportRequest.count({ where: periodWhere }),
+      prisma.supportRequest.findMany({
+        where: { ...periodWhere, status: "RESOLVIDO", assignedToId: { not: null } },
+        select: { assignedToId: true, assignedTo: { select: { name: true } } },
+      }),
+    ]);
 
-    const totalPeriodo = await prisma.supportRequest.count({
-      where: startDate || endDate ? where : undefined,
-    });
+    // Aggregate productivity by assignee
+    const productivityMap = new Map<string, { name: string; count: number }>();
+    for (const r of produtividadeRows) {
+      if (!r.assignedToId || !r.assignedTo) continue;
+      const entry = productivityMap.get(r.assignedToId);
+      if (entry) entry.count++;
+      else productivityMap.set(r.assignedToId, { name: r.assignedTo.name, count: 1 });
+    }
+    const productivity = [...productivityMap.entries()]
+      .map(([userId, v]) => ({ userId, name: v.name, count: v.count }))
+      .sort((a, b) => b.count - a.count);
 
     return NextResponse.json({
       requests,
@@ -71,6 +87,7 @@ export async function GET(request: Request) {
           count: n._count,
         })),
         porMes: porMes.map((r) => ({ mes: r.mes, total: r.total })),
+        productivity,
       },
     });
   });
