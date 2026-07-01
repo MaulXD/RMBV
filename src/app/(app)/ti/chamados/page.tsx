@@ -17,6 +17,7 @@ type Ticket = {
   obs: string | null;
   email: string | null;
   status: string;
+  priority: string;
   createdAt: string;
   requester: { name: string; email: string } | null;
   assignedTo: { name: string; email: string } | null;
@@ -37,6 +38,18 @@ const statusLabels: Record<string, string> = {
   FECHADO: "Fechado",
 };
 
+const priorityColors: Record<string, string> = {
+  URGENTE: "bg-red-500/15 text-red-600",
+  NORMAL: "bg-blue-500/15 text-blue-600",
+  BAIXA: "bg-neutral-500/10 text-neutral-500",
+};
+
+const priorityLabels: Record<string, string> = {
+  URGENTE: "Urgente",
+  NORMAL: "Normal",
+  BAIXA: "Baixa",
+};
+
 export default function TiChamadosPage() {
   const { user } = useSession();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -46,6 +59,8 @@ export default function TiChamadosPage() {
   const [dailyStats, setDailyStats] = useState<{ date: string; count: number }[]>([]);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [chartOpen, setChartOpen] = useState(false);
@@ -65,6 +80,8 @@ export default function TiChamadosPage() {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter) params.set("status", statusFilter);
+      if (priorityFilter) params.set("priority", priorityFilter);
+      if (mineOnly) params.set("mine", "true");
       params.set("page", String(page));
 
       const res = await fetch(`/api/ti/tickets?${params}`);
@@ -77,7 +94,7 @@ export default function TiChamadosPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, page]);
+  }, [debouncedSearch, statusFilter, priorityFilter, mineOnly, page]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
@@ -113,7 +130,6 @@ export default function TiChamadosPage() {
     setNotifPermission(p);
   }
 
-  // SSE — tempo real
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/ti/tickets/events", { signal: controller.signal })
@@ -139,7 +155,7 @@ export default function TiChamadosPage() {
                   playNotificationSound();
                   if (notifPermission === "granted") {
                     new Notification("Novo chamado de suporte!", {
-                      body: `${data.tickets?.[0]?.name ?? "Alguém"} abriu um chamado`,
+                      body: `${data.tickets?.[0]?.name ?? "Alguem"} abriu um chamado`,
                       icon: "/favicon.ico",
                     });
                   }
@@ -185,27 +201,48 @@ export default function TiChamadosPage() {
     { value: "FECHADO", label: "Fechados", count: stats.fechados },
   ];
 
+  const priorityTabs = [
+    { value: "", label: "Todas" },
+    { value: "URGENTE", label: "Urgente" },
+    { value: "NORMAL", label: "Normal" },
+    { value: "BAIXA", label: "Baixa" },
+  ];
+
   return (
     <div>
-      <PageHeader icon="messageSquare" title="Chamados TI" subtitle="Atendimento de solicitações de suporte" />
+      <PageHeader icon="messageSquare" title="Chamados TI" subtitle="Atendimento de solicitacoes de suporte" />
 
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           <span className="text-xs text-muted">Tempo real ativo</span>
         </div>
-        {notifPermission !== "granted" && notifPermission !== "unavailable" && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={requestNotifPermission}
-            className="rounded-lg border border-border px-3 py-1 text-xs text-muted hover:bg-surface-elevated hover:text-foreground"
+            onClick={() => { setMineOnly(!mineOnly); setPage(1); }}
+            className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+              mineOnly
+                ? "bg-primary text-primary-foreground"
+                : "border border-border bg-surface-elevated text-muted hover:border-primary/40 hover:text-foreground"
+            }`}
           >
-            Ativar notificações
+            <Icon name="user" className="mr-1.5 inline-block h-3 w-3" />
+            Meus chamados
           </button>
-        )}
+          {notifPermission !== "granted" && notifPermission !== "unavailable" && (
+            <button
+              type="button"
+              onClick={requestNotifPermission}
+              className="rounded-lg border border-border px-3 py-1 text-xs text-muted hover:bg-surface-elevated hover:text-foreground"
+            >
+              Ativar notificacoes
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         {statusTabs.map((tab) => (
           <button
             key={tab.value}
@@ -225,13 +262,34 @@ export default function TiChamadosPage() {
         ))}
       </div>
 
+      <div className="mb-6 flex flex-wrap gap-2">
+        {priorityTabs.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => { setPriorityFilter(tab.value); setPage(1); }}
+            className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+              priorityFilter === tab.value
+                ? tab.value === "URGENTE"
+                  ? "bg-red-500/15 text-red-600 ring-1 ring-red-500/30"
+                  : tab.value === "BAIXA"
+                  ? "bg-neutral-500/10 text-neutral-500 ring-1 ring-neutral-500/20"
+                  : "bg-primary text-primary-foreground"
+                : "border border-border bg-surface-elevated text-muted hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Stat cards */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "Abertos", value: stats.abertos, icon: "circleDot", color: "amber", bg: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/30", text: "text-amber-600" },
-          { label: "Em andamento", value: stats.emAndamento, icon: "play", color: "blue", bg: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/30", text: "text-blue-600" },
-          { label: "Resolvidos", value: stats.resolvidos, icon: "check", color: "green", bg: "from-green-500/20 to-green-500/5", border: "border-green-500/30", text: "text-green-600" },
-          { label: "Fechados", value: stats.fechados, icon: "x", color: "neutral", bg: "from-neutral-500/15 to-neutral-500/5", border: "border-neutral-500/30", text: "text-neutral-600" },
+          { label: "Abertos", value: stats.abertos, icon: "circleDot", bg: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/30", text: "text-amber-600" },
+          { label: "Em andamento", value: stats.emAndamento, icon: "play", bg: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/30", text: "text-blue-600" },
+          { label: "Resolvidos", value: stats.resolvidos, icon: "check", bg: "from-green-500/20 to-green-500/5", border: "border-green-500/30", text: "text-green-600" },
+          { label: "Fechados", value: stats.fechados, icon: "x", bg: "from-neutral-500/15 to-neutral-500/5", border: "border-neutral-500/30", text: "text-neutral-600" },
         ].map((card) => (
           <div
             key={card.label}
@@ -260,7 +318,7 @@ export default function TiChamadosPage() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Icon name="reports" className="h-3.5 w-3.5" />
               </div>
-              <span className="text-xs font-semibold uppercase tracking-widest text-muted">Chamados por dia (últimos 14 dias)</span>
+              <span className="text-xs font-semibold uppercase tracking-widest text-muted">Chamados por dia (ultimos 14 dias)</span>
             </div>
             <Icon
               name="chevronDown"
@@ -341,10 +399,11 @@ export default function TiChamadosPage() {
                   <th className="px-4 py-3">Solicitante</th>
                   <th className="px-4 py-3">Sala</th>
                   <th className="px-4 py-3">Necessidade</th>
-                  <th className="px-4 py-3">Responsável</th>
+                  <th className="px-4 py-3">Responsavel</th>
+                  <th className="px-4 py-3">Prioridade</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Data</th>
-                  <th className="px-4 py-3 text-right">Ações</th>
+                  <th className="px-4 py-3 text-right">Acoes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -366,8 +425,13 @@ export default function TiChamadosPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <Icon name="briefcase" className="h-3.5 w-3.5 shrink-0 text-muted/60" />
-                        <span className="text-muted">{t.assignedTo?.name ?? "Não atribuído"}</span>
+                        <span className="text-muted">{t.assignedTo?.name ?? "Nao atribuido"}</span>
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${priorityColors[t.priority] || priorityColors.NORMAL}`}>
+                        {priorityLabels[t.priority] || t.priority}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors[t.status] || ""}`}>
@@ -424,10 +488,10 @@ export default function TiChamadosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setResolvingId(null)}>
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface-elevated p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-1 text-base font-semibold">Resolver chamado</h3>
-            <p className="mb-4 text-sm text-muted">Adicione uma observação sobre a resolução (opcional).</p>
+            <p className="mb-4 text-sm text-muted">Adicione uma observacao sobre a resolucao (opcional).</p>
             <textarea
               className="industrial-input min-h-[100px] w-full"
-              placeholder="Observação sobre a resolução..."
+              placeholder="Observacao sobre a resolucao..."
               value={resolveObs}
               onChange={(e) => setResolveObs(e.target.value)}
               autoFocus
@@ -437,7 +501,7 @@ export default function TiChamadosPage() {
                 Cancelar
               </button>
               <button type="button" className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 disabled:opacity-50" onClick={() => handleResolve(resolvingId)} disabled={resolveSaving}>
-                {resolveSaving ? "Salvando..." : "Confirmar resolução"}
+                {resolveSaving ? "Salvando..." : "Confirmar resolucao"}
               </button>
             </div>
           </div>

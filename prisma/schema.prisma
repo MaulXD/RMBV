@@ -837,26 +837,35 @@ enum TicketStatus {
   FECHADO
 }
 
+enum TicketPriority {
+  URGENTE
+  NORMAL
+  BAIXA
+}
+
 model SupportRequest {
-  id           String             @id @default(uuid())
-  name         String
-  sala         String
-  necessidade  String
-  outroTexto   String?
-  obs          String?
-  email        String?
-  requesterId  String?
-  requester    User?              @relation(fields: [requesterId], references: [id])
-  status       TicketStatus       @default(ABERTO)
-  assignedToId String?
-  assignedTo   User?              @relation("AssignedTickets", fields: [assignedToId], references: [id])
-  responses    SupportTicketResponse[]
-  createdAt    DateTime           @default(now())
+  id            String                      @id @default(uuid())
+  name          String
+  sala          String
+  necessidade   String
+  outroTexto    String?
+  obs           String?
+  email         String?
+  requesterId   String?
+  requester     User?                       @relation(fields: [requesterId], references: [id])
+  status        TicketStatus                @default(ABERTO)
+  priority      TicketPriority              @default(NORMAL)
+  assignedToId  String?
+  assignedTo    User?                       @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  responses     SupportTicketResponse[]
+  statusHistory SupportTicketStatusHistory[]
+  createdAt     DateTime                    @default(now())
 
   @@index([requesterId])
   @@index([assignedToId])
   @@index([createdAt])
   @@index([status])
+  @@index([priority])
 }
 
 model SupportTicketResponse {
@@ -870,4 +879,17 @@ model SupportTicketResponse {
 
   @@index([ticketId])
   @@index([userId])
+}
+
+model SupportTicketStatusHistory {
+  id            String         @id @default(uuid())
+  ticketId      String
+  ticket        SupportRequest @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromStatus    TicketStatus?
+  toStatus      TicketStatus
+  changedById   String?
+  changedByName String?
+  createdAt     DateTime       @default(now())
+
+  @@index([ticketId])
 }

@@ -21,6 +21,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           orderBy: { createdAt: "asc" },
           include: { user: { select: { name: true, email: true } } },
         },
+        statusHistory: {
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
