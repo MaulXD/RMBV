@@ -15,7 +15,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "ADV" | "GERENTE" | "TI" | "COLABORADOR" | "PESQUISADOR";
+  role: "ADMIN" | "ADV" | "GERENTE" | "TI" | "SUPORTE" | "COLABORADOR" | "PESQUISADOR";
   teamId: string | null;
   teamName: string | null;
   avatarUrl: string | null;

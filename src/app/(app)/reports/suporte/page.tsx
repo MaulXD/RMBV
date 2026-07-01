@@ -62,7 +62,7 @@ export default function ReportsSuportePage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  if (!user || (user.role !== "ADMIN" && user.role !== "ADV")) return null;
+  if (!user || (user.role !== "ADMIN" && user.role !== "ADV" && user.role !== "TI" && user.role !== "SUPORTE")) return null;
 
   return (
     <div>

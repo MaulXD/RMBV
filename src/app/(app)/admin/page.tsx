@@ -37,7 +37,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (user === null || (user && user.role !== "ADMIN")) {
+    if (user === null || (user && user.role !== "ADMIN" && user.role !== "TI")) {
       router.replace("/dashboard");
     }
   }, [user, loading, router]);
@@ -126,7 +126,7 @@ export default function AdminPage() {
     }
   }
 
-  if (!user || user.role !== "ADMIN") {
+  if (!user || (user.role !== "ADMIN" && user.role !== "TI")) {
     return <p className="text-sm text-muted">Verificando permissões...</p>;
   }
 

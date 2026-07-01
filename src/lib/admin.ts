@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import type { SessionUser } from "./auth";
 
 export function isAdmin(user: SessionUser) {
-  return user.role === Role.ADMIN;
+  return user.role === Role.ADMIN || user.role === Role.TI;
 }
 
 export function requireAdmin(user: SessionUser) {

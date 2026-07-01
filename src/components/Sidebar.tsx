@@ -89,6 +89,8 @@ export function Sidebar({
 
   const isPesquisador = user?.role === "PESQUISADOR";
   const isTi = user?.role === "TI";
+  const isSuporte = user?.role === "SUPORTE";
+  const isAdminLike = user?.role === "ADMIN" || isTi;
 
   const pontoItem: NavItem = {
     href: "/ponto",
@@ -97,28 +99,22 @@ export function Sidebar({
     color: "text-emerald-500",
   };
 
-  const navGroups: NavGroup[] = isTi
+  const navGroups: NavGroup[] = isSuporte
     ? [
         {
           label: "TI",
           items: [
             { href: "/ti/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
             { href: "/ti/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
-            { href: "/suporte", label: "Suporte", icon: "ticket", color: "text-indigo-500" },
             { href: "/reports/suporte", label: "Relatórios", icon: "reports", color: "text-emerald-500" },
           ],
         },
-        ...(user && !isPesquisador
-          ? [
-              {
-                label: "Sistema",
-                items: [
-                  { href: "/acesso", label: "Acesso", icon: "clock" as const, color: "text-sky-500" },
-                  { href: "/perfil", label: "Perfil", icon: "user" as const, color: "text-cyan-500" },
-                ],
-              },
-            ]
-          : []),
+        {
+          label: "Sistema",
+          items: [
+            { href: "/perfil", label: "Perfil", icon: "user" as const, color: "text-cyan-500" },
+          ],
+        },
       ]
     : [
         {
@@ -147,7 +143,7 @@ export function Sidebar({
             { href: "/suporte", label: "Suporte", icon: "ticket" as const, color: "text-indigo-500" },
           ],
         },
-        ...(user && user.role !== "COLABORADOR" && !isPesquisador && !isTi
+        ...(user && user.role !== "COLABORADOR" && !isPesquisador
           ? [
               {
                 label: "Sistema",
@@ -157,10 +153,10 @@ export function Sidebar({
                   ...(user.role === "ADV"
                     ? [{ href: "/equipe", label: "Configurações", icon: "briefcase" as const, color: "text-cyan-500" }]
                     : []),
-                  ...(user.role === "ADMIN"
+                  ...(isAdminLike
                     ? [{ href: "/admin", label: "Administração", icon: "shield" as const, color: "text-rose-500" }]
                     : []),
-                  ...(user.role === "ADMIN"
+                  ...(isAdminLike
                     ? [{ href: "/ti/chamados", label: "Chamados TI", icon: "messageSquare" as const, color: "text-amber-500" }]
                     : []),
                 ],

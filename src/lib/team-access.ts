@@ -11,7 +11,7 @@ export class TeamAccessError extends Error {
 }
 
 export function isAdminUser(user: SessionUser) {
-  return user.role === Role.ADMIN;
+  return user.role === Role.ADMIN || user.role === Role.TI;
 }
 
 /** Filtro Prisma por equipe — admin não filtra */

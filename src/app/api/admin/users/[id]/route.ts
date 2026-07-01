@@ -13,7 +13,7 @@ const patchSchema = z.object({
   name: z.string().min(2).optional(),
   email: loginIdSchema.optional(),
   password: z.string().min(6).optional(),
-  role: z.enum(["ADV", "GERENTE", "COLABORADOR", "PESQUISADOR", "TI"]).optional(),
+  role: z.enum(["ADV", "GERENTE", "COLABORADOR", "PESQUISADOR", "TI", "SUPORTE"]).optional(),
   teamId: z.string().uuid().optional(),
   isActive: z.boolean().optional(),
   workType: z.enum(["ESTAGIARIO", "CLT"]).optional(),

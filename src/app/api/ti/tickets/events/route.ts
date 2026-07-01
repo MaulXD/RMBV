@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
-  if (!user || (user.role !== "TI" && user.role !== "ADMIN")) {
+  if (!user || (user.role !== "TI" && user.role !== "ADMIN" && user.role !== "SUPORTE")) {
     return NextResponse.json({ error: "Acesso restrito" }, { status: 403 });
   }
 

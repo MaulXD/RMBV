@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(async (user) => {
-    if (user.role !== "TI" && user.role !== "ADMIN") {
+    if (user.role !== "TI" && user.role !== "ADMIN" && user.role !== "SUPORTE") {
       return NextResponse.json({ error: "Acesso restrito à equipe TI" }, { status: 403 });
     }
 

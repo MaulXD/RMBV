@@ -156,7 +156,7 @@ export default function TiChamadosPage() {
     return () => controller.abort();
   }, [notifPermission, page, fetchData]);
 
-  if (!user || (user.role !== "TI" && user.role !== "ADMIN")) return null;
+  if (!user || (user.role !== "TI" && user.role !== "ADMIN" && user.role !== "SUPORTE")) return null;
 
   async function handleResolve(ticketId: string) {
     setResolveSaving(true);
