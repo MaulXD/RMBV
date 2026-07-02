@@ -1,0 +1,3 @@
+-- Add TI and SUPORTE values to the Role enum
+ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'TI';
+ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'SUPORTE';
