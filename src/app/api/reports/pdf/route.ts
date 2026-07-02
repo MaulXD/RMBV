@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const formatted = clients.map((c) => formatClientForApi(c));
 
     const pdf = await generateClientsPdfReport({
-      title: "Relatório de Clientes — RMBV System",
+      title: "Relatório de Clientes — SCS System",
       teseName: tese?.name ?? null,
       statusFilter: status
         ? STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status

@@ -66,7 +66,7 @@ export function CsvConverterTool() {
     if (errors.length > 0) {
       setMessage(`Atenção: ${errors.join(" · ")}`);
     } else {
-      setMessage(`Formato RMBV OK — ${rows.length} linha(s) de clientes.`);
+      setMessage(`Formato SCS OK — ${rows.length} linha(s) de clientes.`);
     }
   }
 

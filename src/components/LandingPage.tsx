@@ -160,7 +160,7 @@ export function LandingPage() {
                   <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </div>
-              <span className="text-[11px] font-black tracking-[0.25em] text-white/35 uppercase">RMBV Sistema</span>
+              <span className="text-[11px] font-black tracking-[0.25em] text-white/35 uppercase">SCS Sistema</span>
             </div>
             <Link
               href="/login"
@@ -462,7 +462,7 @@ export function LandingPage() {
                     style={{ background:"linear-gradient(135deg,#4f46e5 0%,#6d28d9 50%,#7c3aed 100%)", boxShadow:"0 0 40px rgba(99,102,241,0.4),0 4px 20px rgba(0,0,0,0.4)" }}
                   >
                     <div className="pointer-events-none absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-[100%]" />
-                    Entrar no RMBV
+                    Entrar no SCS
                     <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                     </svg>
@@ -474,7 +474,7 @@ export function LandingPage() {
         </main>
 
         <footer className="relative z-10 border-t border-white/[0.06] py-6 text-center text-xs text-white/20">
-          RMBV Sistema de Gestão &copy; 2026
+          SCS Sistema de Gestão &copy; 2026
         </footer>
       </div>
     </>

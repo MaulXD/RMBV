@@ -1,4 +1,4 @@
-# RMBV — Documento Vivo de Desenvolvimento
+# SCS — Documento Vivo de Desenvolvimento
 
 > Gerado e mantido automaticamente junto com o código. Toda vez que uma alteração for solicitada no chat com o assistente, este arquivo deve ser atualizado na mesma sessão.
 >
@@ -8,7 +8,7 @@
 
 ## 1. Visão geral
 
-**RMBV** é uma plataforma interna para escritórios de advocacia gerenciarem clientes jurídicos com múltiplas equipes e teses (categorias jurídicas). Controla o ciclo de vida do cliente desde a captação até a finalização, com Kanban, chamados, documentos, relatórios, chat interno e ponto eletrônico facial.
+**SCS** é uma plataforma interna para escritórios de advocacia gerenciarem clientes jurídicos com múltiplas equipes e teses (categorias jurídicas). Controla o ciclo de vida do cliente desde a captação até a finalização, com Kanban, chamados, documentos, relatórios, chat interno e ponto eletrônico facial.
 
 | Item | Valor |
 |---|---|

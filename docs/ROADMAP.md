@@ -1,4 +1,4 @@
-# RMBV — Roadmap de melhorias
+# SCS — Roadmap de melhorias
 
 O que já foi entregue (Sprints 1–3) e o que vale implementar em seguida, ordenado por impacto.
 

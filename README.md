@@ -1,4 +1,4 @@
-# RMBV — Sistema de Gestão de Clientes Jurídicos
+# SCS — Sistema de Gestão de Clientes Jurídicos
 
 Plataforma interna para escritórios de advocacia com múltiplas equipes e teses. Controla o ciclo de vida completo dos clientes desde a captação até a finalização, com Kanban, chamados, documentos e relatórios.
 
