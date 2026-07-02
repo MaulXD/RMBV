@@ -160,7 +160,7 @@ export function LandingPage() {
                   <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </div>
-              <span className="text-[11px] font-black tracking-[0.25em] text-white/35 uppercase">SCS Sistema</span>
+              <span className="text-[11px] font-black tracking-[0.25em] text-white/35 uppercase">SCS System</span>
             </div>
             <Link
               href="/login"
@@ -474,7 +474,7 @@ export function LandingPage() {
         </main>
 
         <footer className="relative z-10 border-t border-white/[0.06] py-6 text-center text-xs text-white/20">
-          SCS Sistema de Gestão &copy; 2026
+          SCS System de Gestão &copy; 2026
         </footer>
       </div>
     </>
