@@ -20,12 +20,12 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "RMBV System",
-  description: "RMBV System — gestão de clientes com equipes, teses, documentação e relatórios",
+  title: "SCS System",
+  description: "SCS System — gestão de clientes com equipes, teses, documentação e relatórios",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "RMBV",
+    title: "SCS",
     statusBarStyle: "default",
   },
 };

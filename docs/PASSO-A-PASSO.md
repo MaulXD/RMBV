@@ -1,4 +1,4 @@
-# Passo a passo — RMBV System
+# Passo a passo — SCS System
 
 Guia completo: ambiente local, deploy, uso do painel e identidade visual.
 
@@ -82,7 +82,7 @@ Abra [http://localhost:3000](http://localhost:3000).
 
 ## 6. Deploy na Vercel
 
-1. Importe o repositório **RMBV** na Vercel.
+1. Importe o repositório **SCS** na Vercel.
 2. Adicione as variáveis da tabela acima (Settings → Environment Variables).
 3. Instale **Neon** pelo Marketplace (preenche `DATABASE_URL`).
 4. *(Opcional)* Crie **Blob Store** e conecte ao projeto.

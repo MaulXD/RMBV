@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'br.com.rmbv.sistema',
-  appName: 'RMBV',
+  appId: 'br.com.scs.sistema',
+  appName: 'SCS',
   webDir: '.next',
   server: {
-    url: 'https://rmbv.vercel.app',
+    url: 'https://systemscs.vercel.app',
   },
   plugins: {
     StatusBar: {

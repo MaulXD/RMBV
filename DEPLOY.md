@@ -1,4 +1,4 @@
-# Deploy na Vercel (RMBV System)
+# Deploy na Vercel (SCS System)
 
 > Guia completo de produção: **[docs/PRODUCAO.md](./docs/PRODUCAO.md)**  
 > Melhorias sugeridas: **[docs/ROADMAP.md](./docs/ROADMAP.md)**

@@ -142,7 +142,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
             <Link href="/dashboard" className="flex items-center gap-2">
               <Icon name="fileText" className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-foreground">RMBV</span>
+              <span className="font-semibold text-foreground">SCS</span>
             </Link>
             <div className="ml-auto flex items-center gap-1">
               {user && (

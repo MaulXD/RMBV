@@ -53,7 +53,7 @@ const TOOLS: {
   {
     id: "csv-converter",
     label: "Conversor CSV",
-    description: "Formato RMBV, ponto-e-vírgula para Excel e validação de colunas.",
+    description: "Formato SCS, ponto-e-vírgula para Excel e validação de colunas.",
     icon: "table",
     accent: "sky",
   },

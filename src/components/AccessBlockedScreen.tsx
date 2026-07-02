@@ -93,7 +93,7 @@ export function AccessBlockedScreen({
             <polyline points="14 2 14 8 20 8" />
           </svg>
         </div>
-        <span className="text-sm font-bold tracking-widest text-white/40 uppercase">RMBV</span>
+        <span className="text-sm font-bold tracking-widest text-white/40 uppercase">SCS</span>
       </div>
 
       {/* Center — main content */}

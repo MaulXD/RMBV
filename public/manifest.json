@@ -1,6 +1,6 @@
 {
-  "name": "RMBV System",
-  "short_name": "RMBV",
+  "name": "SCS System",
+  "short_name": "SCS",
   "description": "Gestão de clientes, Kanban, chamados e ferramentas PDF",
   "start_url": "/dashboard",
   "scope": "/",

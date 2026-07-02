@@ -1,4 +1,4 @@
-# RMBV — Guia de Produção
+# SCS — Guia de Produção
 
 Documento operacional para manter **https://rmbv.vercel.app** em funcionamento.  
 Atualizado após as Sprints 1–3 (jun/2026).

@@ -121,7 +121,7 @@ export default function LoginPage() {
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
               </div>
-              <span className="text-[11px] font-black tracking-[0.25em] text-white/35 uppercase">RMBV Sistema</span>
+              <span className="text-[11px] font-black tracking-[0.25em] text-white/35 uppercase">SCS Sistema</span>
             </div>
 
             {/* Headline */}
@@ -270,7 +270,7 @@ export default function LoginPage() {
                 <polyline points="14 2 14 8 20 8" />
               </svg>
             </div>
-            <span className="text-sm font-bold text-white">RMBV Sistema</span>
+            <span className="text-sm font-bold text-white">SCS Sistema</span>
           </div>
 
           {/* Glass form card */}
@@ -408,7 +408,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-6 text-[11px] text-white/15">
-            RMBV Sistema de Gestão &copy; 2026
+            SCS Sistema de Gestão &copy; 2026
           </p>
         </div>
       </div>

@@ -83,7 +83,7 @@ export function LandingDemoChart() {
               Painel de produção da equipe
             </h2>
             <p className="mt-2 max-w-xl text-sm text-muted">
-              Exemplo de como relatórios e metas aparecem no RMBV — nomes, números e teses são
+              Exemplo de como relatórios e metas aparecem no SCS — nomes, números e teses são
               apenas ilustrativos.
             </p>
           </div>
