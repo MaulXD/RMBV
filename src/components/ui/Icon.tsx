@@ -71,6 +71,9 @@ import {
   ExternalLink,
   ArrowRight,
   History,
+  Bookmark,
+  AlignJustify,
+  Reply,
   type LucideIcon,
 } from "lucide-react";
 
@@ -147,6 +150,9 @@ const icons = {
   externalLink: ExternalLink,
   arrowRight: ArrowRight,
   history: History,
+  bookmark: Bookmark,
+  rows: AlignJustify,
+  reply: Reply,
 } as const;
 
 export type IconName = keyof typeof icons;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { COMMUNICATION_LABELS } from "@/lib/client-history";
 import { Icon } from "./ui/Icon";
 
@@ -9,6 +9,24 @@ type Template = {
   name: string;
   body: string;
 };
+
+type Member = {
+  id: string;
+  name: string;
+  role: string;
+};
+
+function parseMentionIds(text: string, members: Member[]): string[] {
+  const mentions = [...text.matchAll(/@([^\s@,\.!?;:'"()\[\]]+)/g)].map((m) =>
+    m[1].trim().toLowerCase()
+  );
+  const ids: string[] = [];
+  for (const mention of mentions) {
+    const found = members.find((m) => m.name.toLowerCase().startsWith(mention));
+    if (found && !ids.includes(found.id)) ids.push(found.id);
+  }
+  return ids;
+}
 
 export function ClientHistoryComposer({
   clientId,
@@ -30,6 +48,14 @@ export function ClientHistoryComposer({
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [members, setMembers] = useState<Member[]>([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionAtIndex, setMentionAtIndex] = useState(-1);
+  const [mentionHighlight, setMentionHighlight] = useState(0);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const loadTemplates = useCallback(async () => {
     if (!teamId) return;
     const params = new URLSearchParams({ teamId });
@@ -42,6 +68,75 @@ export function ClientHistoryComposer({
     void loadTemplates();
   }, [loadTemplates]);
 
+  useEffect(() => {
+    if (!teamId) return;
+    fetch("/api/teams/members")
+      .then((r) => r.json())
+      .then((d) => setMembers((d.members ?? []).filter((m: Member & { isActive?: boolean }) => m.isActive !== false)))
+      .catch(() => {});
+  }, [teamId]);
+
+  const filteredMembers = mentionQuery
+    ? members.filter((m) => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : members;
+
+  function handleNoteChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const text = e.target.value;
+    setNote(text);
+
+    const cursor = e.target.selectionStart ?? text.length;
+    const before = text.slice(0, cursor);
+    const atIdx = before.lastIndexOf("@");
+
+    if (atIdx !== -1) {
+      const query = before.slice(atIdx + 1);
+      if (!query.includes("\n") && query.length < 40) {
+        setMentionQuery(query);
+        setMentionAtIndex(atIdx);
+        setMentionHighlight(0);
+        setMentionOpen(true);
+        return;
+      }
+    }
+    setMentionOpen(false);
+  }
+
+  function insertMention(member: Member) {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const cursor = ta.selectionStart ?? note.length;
+    const before = note.slice(0, mentionAtIndex);
+    const after = note.slice(cursor);
+    const insertion = `@${member.name} `;
+    const newNote = before + insertion + after;
+    setNote(newNote);
+    setMentionOpen(false);
+    setTimeout(() => {
+      ta.focus();
+      const pos = before.length + insertion.length;
+      ta.setSelectionRange(pos, pos);
+    }, 0);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!mentionOpen || filteredMembers.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionHighlight((h) => Math.min(h + 1, filteredMembers.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      const member = filteredMembers[mentionHighlight];
+      if (member) {
+        e.preventDefault();
+        insertMention(member);
+      }
+    } else if (e.key === "Escape") {
+      setMentionOpen(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!note.trim()) return;
@@ -52,10 +147,12 @@ export function ClientHistoryComposer({
         ? new Date(`${followUpDate}T12:00:00`).toISOString()
         : null;
 
+      const mentionIds = parseMentionIds(note, members);
+
       const res = await fetch(`/api/clients/${clientId}/history/note`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, note: note.trim(), followUpAt }),
+        body: JSON.stringify({ type, note: note.trim(), followUpAt, mentionIds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha ao salvar");
@@ -112,13 +209,43 @@ export function ClientHistoryComposer({
           )}
         </div>
 
-        <textarea
-          className="industrial-input min-h-[100px] resize-y"
-          placeholder="Descreva a ligação, mensagem ou anotação..."
-          value={note}
-          disabled={disabled || posting}
-          onChange={(e) => setNote(e.target.value)}
-        />
+        {/* Textarea with mention dropdown */}
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            className="industrial-input min-h-[100px] resize-y"
+            placeholder="Descreva a ligação, mensagem ou anotação... Use @nome para mencionar alguém"
+            value={note}
+            disabled={disabled || posting}
+            onChange={handleNoteChange}
+            onKeyDown={handleKeyDown}
+            onBlur={() => setTimeout(() => setMentionOpen(false), 150)}
+          />
+
+          {mentionOpen && filteredMembers.length > 0 && (
+            <div className="absolute bottom-full left-0 z-50 mb-1 max-h-48 w-56 overflow-y-auto rounded-lg border border-border bg-surface shadow-lg">
+              <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted border-b border-border">
+                Mencionar
+              </div>
+              {filteredMembers.map((m, i) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                    i === mentionHighlight ? "bg-primary/10 text-primary" : "text-foreground hover:bg-surface-elevated"
+                  }`}
+                  onMouseDown={(e) => { e.preventDefault(); insertMention(m); }}
+                  onMouseEnter={() => setMentionHighlight(i)}
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                    {m.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="truncate">{m.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-ui)] border border-border bg-muted/5 px-3 py-2">
           <div className="flex items-center gap-1.5 text-xs text-muted">

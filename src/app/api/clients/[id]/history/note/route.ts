@@ -8,6 +8,7 @@ import {
   PermissionDeniedError,
 } from "@/lib/permissions";
 import { formatHistoryEntry } from "@/lib/client-history";
+import { createNotificationsForUsers } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ const noteSchema = z.object({
   type: z.enum(["CALL", "WHATSAPP", "NOTE"]),
   note: z.string().min(1).max(8000),
   followUpAt: z.string().datetime().nullable().optional(),
+  mentionIds: z.array(z.string()).optional(),
 });
 
 export async function POST(
@@ -49,6 +51,7 @@ export async function POST(
     }
 
     const followUpAt = parsed.data.followUpAt ? new Date(parsed.data.followUpAt) : null;
+    const mentionIds = (parsed.data.mentionIds ?? []).filter((uid) => uid !== user.id);
 
     const [row] = await prisma.$transaction([
       prisma.clientHistory.create({
@@ -68,6 +71,16 @@ export async function POST(
         select: { id: true },
       }),
     ]);
+
+    if (mentionIds.length > 0) {
+      const snippet = parsed.data.note.trim().slice(0, 120);
+      await createNotificationsForUsers(prisma, mentionIds, {
+        type: "GENERAL",
+        title: `Você foi mencionado em uma anotação sobre ${existing.name}`,
+        body: snippet.length < parsed.data.note.trim().length ? `${snippet}…` : snippet,
+        href: `/clients/${id}`,
+      });
+    }
 
     return NextResponse.json({ entry: formatHistoryEntry(row) }, { status: 201 });
   });

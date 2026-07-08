@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChamadoStatusPipeline } from "@/components/ChamadoStatusPipeline";
 import { CategoryBadge } from "@/components/CategoryBadge";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/enum-labels";
 import type { ChamadoStatus, TaskPriority } from "@prisma/client";
 import { Icon } from "@/components/ui/Icon";
+import { useRecentItems } from "@/hooks/useRecentItems";
 
 type Member = { id: string; name: string };
 type Comment = { id: string; body: string; createdAt: string; author: { id: string; name: string } };
@@ -34,6 +35,7 @@ export default function ChamadoDetailPage() {
 function ChamadoDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { add: addRecent } = useRecentItems();
   const [chamado, setChamado] = useState<ChamadoListItem | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -43,6 +45,7 @@ function ChamadoDetail() {
   const [saving, setSaving] = useState(false);
   const [commentBody, setCommentBody] = useState("");
   const [uploading, setUploading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -59,6 +62,15 @@ function ChamadoDetail() {
         return;
       }
       setChamado(detail.chamado);
+      if (detail.chamado) {
+        addRecent({
+          id,
+          type: "chamado",
+          name: detail.chamado.title,
+          href: `/chamados/${id}`,
+          subtitle: `#${detail.chamado.number} · ${detail.chamado.status}`,
+        });
+      }
       const commentsData = await commentsRes.json();
       if (commentsRes.ok) setComments(commentsData.comments ?? []);
       const attachData = await attachRes.json();
@@ -148,6 +160,44 @@ function ChamadoDetail() {
     }
   }
 
+  function quoteReply(author: string, body: string) {
+    const excerpt = body.slice(0, 100);
+    const trunc = body.length > 100 ? "..." : "";
+    setCommentBody(`> @${author}: ${excerpt}${trunc}\n\n`);
+    setTimeout(() => {
+      textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      textareaRef.current?.focus();
+    }, 0);
+  }
+
+  function renderCommentBody(body: string) {
+    const lines = body.split("\n");
+    return (
+      <div className="text-sm">
+        {lines.map((line, i) => {
+          if (line.startsWith("> ")) {
+            return (
+              <p
+                key={i}
+                className="my-0.5 border-l-2 border-muted/40 pl-2 italic text-muted"
+              >
+                {line.slice(2)}
+              </p>
+            );
+          }
+          if (line === "") {
+            return <div key={i} className="h-1.5" />;
+          }
+          return (
+            <p key={i} className="whitespace-pre-wrap">
+              {line}
+            </p>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (loading) {
     return <div className="panel-solid p-8 text-center text-sm text-muted">Carregando...</div>;
   }
@@ -180,6 +230,20 @@ function ChamadoDetail() {
             </div>
             <h1 className="font-display text-xl font-semibold leading-snug">{chamado.title}</h1>
             <p className="mt-1 text-xs text-muted">Solicitante: {chamado.requester.name}</p>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+              <span>Responsável:</span>
+              <select
+                className="industrial-input py-0 text-xs"
+                value={chamado.assigneeId ?? ""}
+                disabled={saving}
+                onChange={(e) => void patchChamado({ assigneeId: e.target.value || null })}
+              >
+                <option value="">Ninguém</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {!chamado.linkedTask && (
@@ -231,14 +295,26 @@ function ChamadoDetail() {
                 <li key={c.id} className="soft-card p-3">
                   <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted">
                     <span className="font-medium text-foreground">{c.author.name}</span>
-                    <time>{new Date(c.createdAt).toLocaleString("pt-BR")}</time>
+                    <div className="flex items-center gap-2">
+                      <time>{new Date(c.createdAt).toLocaleString("pt-BR")}</time>
+                      <button
+                        type="button"
+                        className="btn-ghost py-0.5 px-1.5 text-xs"
+                        onClick={() => quoteReply(c.author.name, c.body)}
+                        title="Responder com citacao"
+                      >
+                        <Icon name="reply" className="h-3 w-3" />
+                        Responder
+                      </button>
+                    </div>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm">{c.body}</p>
+                  {renderCommentBody(c.body)}
                 </li>
               ))}
             </ul>
             <form onSubmit={(e) => void postComment(e)} className="space-y-2">
               <textarea
+                ref={textareaRef}
                 className="industrial-input min-h-[80px] w-full"
                 placeholder="Escreva um comentário..."
                 value={commentBody}

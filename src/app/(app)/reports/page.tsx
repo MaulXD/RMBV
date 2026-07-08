@@ -10,6 +10,8 @@ import { CollaboratorsReportPanel } from "@/components/CollaboratorsReportPanel"
 import { useTeseFilter } from "@/components/TeseFilterProvider";
 import { TeseFilterBar } from "@/components/TeseFilterBar";
 import { STATUS_OPTIONS } from "@/lib/client-fields";
+import { ExportModal } from "@/components/ExportModal";
+import { Icon } from "@/components/ui/Icon";
 
 type Tab = "geral" | "mensal" | "pesquisa" | "colaboradores";
 
@@ -73,6 +75,7 @@ function ReportsContent() {
   const [teamId, setTeamId] = useState(() => user?.teamId ?? "");
   const [members, setMembers] = useState<Member[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const isAdmin = userRole === "ADMIN";
   const canManageGoals = userRole === "ADMIN" || userRole === "ADV" || userRole === "GERENTE";
@@ -335,16 +338,33 @@ function ReportsContent() {
 
         <div className="flex flex-wrap gap-2">
           <a href={exportUrl("clients", "csv")} className="btn-ghost">
-            Clientes (Excel/CSV)
+            Clientes (CSV)
           </a>
+          <button
+            type="button"
+            className="btn-ghost flex items-center gap-1.5"
+            onClick={() => setExportModalOpen(true)}
+          >
+            <Icon name="wrench" className="h-4 w-4" />
+            Exportação avançada
+          </button>
           <a href={exportUrl("tasks", "csv")} className="btn-ghost">
-            Tarefas (Excel/CSV)
+            Tarefas (CSV)
           </a>
           <a href={exportUrl("clients", "pdf")} className="btn-primary" target="_blank" rel="noreferrer">
             Relatório PDF
           </a>
         </div>
       </section>
+
+      <ExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        baseParams={{
+          ...(activeTeseId ? { teseId: activeTeseId } : {}),
+          ...(isAdmin && teamId ? { teamId } : {}),
+        }}
+      />
       </>
       )}
     </>

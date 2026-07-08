@@ -31,11 +31,16 @@ function useGroups() {
           { keys: ["G", "A"], desc: "Admin" },
           { keys: ["G", "K"], desc: "Kanban" },
           { keys: ["G", "P"], desc: "Ponto" },
+          { keys: ["G", "R"], desc: "Relatórios" },
+          { keys: ["G", "C"], desc: "Clientes" },
+          { keys: ["G", "E"], desc: "Equipe" },
+          { keys: ["G", "S"], desc: "Suporte" },
         ],
       },
       {
         label: "Geral",
         shortcuts: [
+          { keys: ["N"], desc: "Novo cliente" },
           { keys: ["Enter"], desc: "Confirmar / selecionar" },
           { keys: ["Tab"], desc: "Próximo campo" },
           { keys: [mod, "Enter"], desc: "Salvar formulário" },
@@ -78,6 +83,10 @@ export function useGotoShortcuts() {
       a: "/admin",
       k: "/kanban",
       p: "/ponto",
+      r: "/reports",
+      c: "/clients",
+      e: "/equipe",
+      s: "/suporte",
     };
 
     function onKey(e: KeyboardEvent) {
@@ -97,6 +106,11 @@ export function useGotoShortcuts() {
       if (key === "g") {
         pending = "g";
         timer = setTimeout(clear, 800);
+        return;
+      }
+
+      if (key === "n") {
+        router.push("/clients/new");
       }
     }
 

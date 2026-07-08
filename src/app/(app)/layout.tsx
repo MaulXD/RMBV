@@ -7,6 +7,7 @@ import { TeseFilterProvider } from "@/components/TeseFilterProvider";
 import { Sidebar } from "@/components/Sidebar";
 import { Icon } from "@/components/ui/Icon";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { AccessBlockedScreen } from "@/components/AccessBlockedScreen";
 import { GlobalSearchPalette, useGlobalSearchShortcut } from "@/components/GlobalSearchPalette";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -16,11 +17,15 @@ import { AccountSetupGuard } from "@/components/AccountSetupGuard";
 import { PontoExitReminder } from "@/components/PontoExitReminder";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { KeyboardShortcutsModal, useKeyboardShortcutsShortcut, useGotoShortcuts } from "@/components/KeyboardShortcutsModal";
+import { WebNotificationManager } from "@/components/WebNotificationManager";
+import { usePresence } from "@/hooks/usePresence";
+import { PresenceContext } from "@/components/PresenceContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
   const pathname = usePathname();
   const [kanbanOverdueCount, setKanbanOverdueCount] = useState(0);
+  const [kanbanDueTomorrow, setKanbanDueTomorrow] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -32,6 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   } | null>(null);
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const onlineIds = usePresence(!!user);
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   useGlobalSearchShortcut(openSearch);
@@ -44,8 +50,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const load = () => {
       fetch("/api/tasks/alerts")
         .then((r) => r.json())
-        .then((d) => { if (!cancelled) setKanbanOverdueCount(d.counts?.overdue ?? 0); })
-        .catch(() => { if (!cancelled) setKanbanOverdueCount(0); });
+        .then((d) => {
+            if (!cancelled) {
+              setKanbanOverdueCount(d.counts?.overdue ?? 0);
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+              const dueSoon: { dueAt: string | null }[] = d.dueSoon ?? [];
+              setKanbanDueTomorrow(
+                dueSoon.filter((t) => t.dueAt && t.dueAt.slice(0, 10) === tomorrowStr).length,
+              );
+            }
+          })
+        .catch(() => { if (!cancelled) { setKanbanOverdueCount(0); setKanbanDueTomorrow(0); } });
     };
     load();
     const id = setInterval(load, 60_000);
@@ -78,6 +95,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   return (
+    <PresenceContext.Provider value={onlineIds}>
     <TeseFilterProvider>
       <div className="relative flex min-h-screen">
         {/* Dark mode atmosphere */}
@@ -102,6 +120,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onSearch={openSearch}
             onChatToggle={() => setChatOpen((o) => !o)}
             kanbanOverdueCount={kanbanOverdueCount}
+            kanbanDueTomorrow={kanbanDueTomorrow}
             chatUnread={chatUnread}
             chatOpen={chatOpen}
           />
@@ -121,6 +140,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onSearch={openSearch}
                 onChatToggle={() => setChatOpen((o) => !o)}
                 kanbanOverdueCount={kanbanOverdueCount}
+                kanbanDueTomorrow={kanbanDueTomorrow}
                 chatUnread={chatUnread}
                 chatOpen={chatOpen}
               />
@@ -158,6 +178,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <AccountSetupGuard>
               {user && <PontoExitReminder />}
               {user && <OnboardingTour />}
+              {user && <OnboardingWizard />}
               {children}
             </AccountSetupGuard>
           </main>
@@ -181,6 +202,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onUnreadChange={setChatUnread}
         />
       )}
+      {user && <WebNotificationManager />}
       {scheduleBlock && (
         <AccessBlockedScreen
           startHour={scheduleBlock.startHour}
@@ -189,5 +211,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
     </TeseFilterProvider>
+    </PresenceContext.Provider>
   );
 }

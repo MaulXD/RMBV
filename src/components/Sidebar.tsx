@@ -8,6 +8,9 @@ import { Icon, type IconName } from "./ui/Icon";
 import { useSession, primeSessionCache } from "./SessionProvider";
 import { useTheme } from "./ThemeProvider";
 import { NotificationBell } from "./NotificationBell";
+import { RecentItemsDropdown } from "./RecentItemsDropdown";
+import { PresenceDot } from "./PresenceDot";
+import { useOnlineIds } from "./PresenceContext";
 
 type NavItem = {
   href: string;
@@ -70,6 +73,7 @@ export function Sidebar({
   onSearch,
   onChatToggle,
   kanbanOverdueCount,
+  kanbanDueTomorrow = 0,
   chatUnread = 0,
   chatOpen = false,
   forceExpanded = false,
@@ -78,6 +82,7 @@ export function Sidebar({
   onSearch: () => void;
   onChatToggle?: () => void;
   kanbanOverdueCount: number;
+  kanbanDueTomorrow?: number;
   chatUnread?: number;
   chatOpen?: boolean;
   forceExpanded?: boolean;
@@ -86,6 +91,8 @@ export function Sidebar({
   const { user } = useSession();
   const { theme, toggleTheme } = useTheme();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+
+  const onlineIds = useOnlineIds();
 
   const isPesquisador = user?.role === "PESQUISADOR";
   const isTi = user?.role === "TI";
@@ -308,6 +315,12 @@ export function Sidebar({
                   {!isCollapsed && (
                     <>
                       <span className="flex-1">{item.label}</span>
+                      {item.href === "/kanban" && kanbanDueTomorrow > 0 && (
+                        <span
+                          className="h-2 w-2 animate-pulse rounded-full bg-amber-500"
+                          title="Tarefas vencendo amanhã"
+                        />
+                      )}
                       {showBadge && item.href === "/kanban" && (
                         <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                           {kanbanOverdueCount > 99 ? "99+" : kanbanOverdueCount}
@@ -318,12 +331,23 @@ export function Sidebar({
                   {isCollapsed && showBadge && item.href === "/kanban" && (
                     <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-600" />
                   )}
+                  {isCollapsed && item.href === "/kanban" && kanbanDueTomorrow > 0 && !showBadge && (
+                    <span className="absolute right-1 top-1 h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                  )}
+                  {isCollapsed && item.href === "/kanban" && kanbanDueTomorrow > 0 && showBadge && (
+                    <span className="absolute left-1 bottom-1 h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                  )}
                 </Link>
               );
             })}
           </div>
         ))}
       </nav>
+
+      {/* Recent items */}
+      <div className="shrink-0 border-t border-border/40 px-2 py-1.5">
+        <RecentItemsDropdown collapsed={isCollapsed} />
+      </div>
 
       {/* Collapse toggle — desktop only */}
       <div className={`hidden border-t border-border/40 lg:flex ${collapsed ? "justify-center p-2" : "justify-end px-3 py-2"}`}>
@@ -345,14 +369,19 @@ export function Sidebar({
         {!isCollapsed ? (
           <div className="flex items-center gap-2">
             {user && (
-              <Link
-                href="/perfil"
-                onClick={onMobileClose}
-                className={`shrink-0 rounded-full ring-2 transition-all ${perfilActive ? "ring-primary" : "ring-transparent hover:ring-primary/40"}`}
-                title="Meu perfil"
-              >
-                <UserAvatar user={user} size={32} />
-              </Link>
+              <div className="relative shrink-0">
+                <Link
+                  href="/perfil"
+                  onClick={onMobileClose}
+                  className={`block rounded-full ring-2 transition-all ${perfilActive ? "ring-primary" : "ring-transparent hover:ring-primary/40"}`}
+                  title="Meu perfil"
+                >
+                  <UserAvatar user={user} size={32} />
+                </Link>
+                <span className="absolute bottom-0 right-0 translate-x-0.5 translate-y-0.5">
+                  <PresenceDot userId={user.id} onlineIds={onlineIds} size="sm" />
+                </span>
+              </div>
             )}
             {user && (
               <div className="min-w-0 flex-1">
@@ -388,14 +417,19 @@ export function Sidebar({
         ) : (
           <div className="flex flex-col items-center gap-1">
             {user && (
-              <Link
-                href="/perfil"
-                onClick={onMobileClose}
-                className={`rounded-full ring-2 transition-all ${perfilActive ? "ring-primary" : "ring-transparent hover:ring-primary/40"}`}
-                title="Meu perfil"
-              >
-                <UserAvatar user={user} size={32} />
-              </Link>
+              <div className="relative">
+                <Link
+                  href="/perfil"
+                  onClick={onMobileClose}
+                  className={`block rounded-full ring-2 transition-all ${perfilActive ? "ring-primary" : "ring-transparent hover:ring-primary/40"}`}
+                  title="Meu perfil"
+                >
+                  <UserAvatar user={user} size={32} />
+                </Link>
+                <span className="absolute bottom-0 right-0 translate-x-0.5 translate-y-0.5">
+                  <PresenceDot userId={user.id} onlineIds={onlineIds} size="sm" />
+                </span>
+              </div>
             )}
             {user && <NotificationBell />}
             <button

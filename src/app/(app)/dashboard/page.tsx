@@ -17,6 +17,8 @@ import type { ClientStatus, ClientWorkflowStatus } from "@prisma/client";
 import { WORKFLOW_OPTIONS } from "@/lib/client-fields";
 import { Icon } from "@/components/ui/Icon";
 import { TeamTodayPanel } from "@/components/TeamTodayPanel";
+import { MeuDiaPanel } from "@/components/MeuDiaPanel";
+import { PredictiveAlertBanner } from "@/components/PredictiveAlertBanner";
 
 type ClientRow = {
   id: string;
@@ -31,6 +33,17 @@ type ClientRow = {
   hasResearch: boolean;
   hasContacts: boolean;
   followUpAt?: string | null;
+};
+
+type DensityMode = "comfortable" | "cozy" | "compact";
+type SavedFilter = {
+  name: string;
+  status: string;
+  workflow: string;
+  followUpDue: boolean;
+  pesquisaFilter: string;
+  sortBy: string;
+  sortDir: "asc" | "desc";
 };
 
 function DashboardContent() {
@@ -53,6 +66,64 @@ function DashboardContent() {
       const current = readSavedFilters();
       localStorage.setItem("dashboard-filters", JSON.stringify({ ...current, ...patch }));
     } catch { /* ignore */ }
+  }
+
+  const [density, setDensity] = useState<DensityMode>(() => {
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("dashboard-density") : null;
+      return (saved as DensityMode) ?? "comfortable";
+    } catch { return "comfortable"; }
+  });
+
+  function cycleDensity() {
+    const next: DensityMode = density === "comfortable" ? "cozy" : density === "cozy" ? "compact" : "comfortable";
+    setDensity(next);
+    try { localStorage.setItem("dashboard-density", next); } catch { /* ignore */ }
+  }
+
+  const [savedFilterList, setSavedFilterList] = useState<SavedFilter[]>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("dashboard-saved-filters") : null;
+      return raw ? JSON.parse(raw) as SavedFilter[] : [];
+    } catch { return []; }
+  });
+  const [savingFilterOpen, setSavingFilterOpen] = useState(false);
+  const [newFilterName, setNewFilterName] = useState("");
+
+  function persistSavedFilterList(filters: SavedFilter[]) {
+    setSavedFilterList(filters);
+    try { localStorage.setItem("dashboard-saved-filters", JSON.stringify(filters)); } catch { /* ignore */ }
+  }
+
+  function handleSaveFilter() {
+    const trimmed = newFilterName.trim();
+    if (!trimmed) return;
+    const entry: SavedFilter = {
+      name: trimmed,
+      status: statusFilter,
+      workflow: workflowFilter,
+      followUpDue,
+      pesquisaFilter,
+      sortBy,
+      sortDir,
+    };
+    persistSavedFilterList([...savedFilterList, entry]);
+    setNewFilterName("");
+    setSavingFilterOpen(false);
+  }
+
+  function handleApplySavedFilter(f: SavedFilter) {
+    setStatusFilter(f.status);
+    setWorkflowFilter(f.workflow);
+    setFollowUpDue(f.followUpDue);
+    setPesquisaFilter(f.pesquisaFilter);
+    setSortBy(f.sortBy);
+    setSortDir(f.sortDir);
+    setPage(1);
+  }
+
+  function handleDeleteSavedFilter(name: string) {
+    persistSavedFilterList(savedFilterList.filter((f) => f.name !== name));
   }
 
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -197,6 +268,10 @@ function DashboardContent() {
         </div>
       </div>
 
+      <PredictiveAlertBanner />
+
+      <MeuDiaPanel />
+
       <TeamTodayPanel />
 
       <div className="filter-bar">
@@ -275,6 +350,78 @@ function DashboardContent() {
           <button type="button" className="btn-ghost shrink-0" onClick={loadClients}>
             Atualizar
           </button>
+          <button
+            type="button"
+            onClick={cycleDensity}
+            className="btn-ghost shrink-0 text-xs"
+            title="Alternar densidade da tabela"
+          >
+            <Icon name="rows" className="h-3.5 w-3.5" />
+            {density === "comfortable" ? "Confortável" : density === "cozy" ? "Intermediário" : "Compacto"}
+          </button>
+        </div>
+
+        {/* Saved filters row */}
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          {savedFilterList.map((f) => (
+            <span
+              key={f.name}
+              className="flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-0.5 text-xs"
+            >
+              <button
+                type="button"
+                onClick={() => handleApplySavedFilter(f)}
+                className="text-foreground hover:text-primary transition-colors"
+              >
+                {f.name}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteSavedFilter(f.name)}
+                className="text-muted hover:text-foreground transition-colors"
+                aria-label={`Remover filtro ${f.name}`}
+              >
+                <Icon name="x" className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          {savingFilterOpen ? (
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleSaveFilter(); }}
+              className="flex items-center gap-1"
+            >
+              <input
+                type="text"
+                autoFocus
+                className="industrial-input h-7 px-2 py-1 text-xs min-w-[140px]"
+                placeholder="Nome do filtro..."
+                value={newFilterName}
+                onChange={(e) => setNewFilterName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") { setSavingFilterOpen(false); setNewFilterName(""); }
+                }}
+              />
+              <button type="submit" className="btn-ghost h-7 px-2 text-xs">
+                Salvar
+              </button>
+              <button
+                type="button"
+                className="btn-ghost h-7 px-2 text-xs"
+                onClick={() => { setSavingFilterOpen(false); setNewFilterName(""); }}
+              >
+                <Icon name="x" className="h-3 w-3" />
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSavingFilterOpen(true)}
+              className="btn-ghost shrink-0 text-xs"
+            >
+              <Icon name="bookmark" className="h-3.5 w-3.5" />
+              Salvar filtro
+            </button>
+          )}
         </div>
       </div>
 
@@ -315,6 +462,7 @@ function DashboardContent() {
         onToggleSelectAll={toggleSelectAll}
         sortBy={sortBy}
         sortDir={sortDir}
+        density={density}
         onSort={(col) => {
           if (col === sortBy) {
             setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));

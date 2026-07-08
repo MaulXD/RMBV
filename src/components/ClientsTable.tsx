@@ -152,6 +152,7 @@ export function ClientsTable({
   sortBy,
   sortDir = "desc",
   onSort,
+  density = "comfortable",
 }: {
   clients: ClientRow[];
   loading?: boolean;
@@ -163,7 +164,10 @@ export function ClientsTable({
   sortBy?: string;
   sortDir?: "asc" | "desc";
   onSort?: (col: string) => void;
+  density?: "comfortable" | "cozy" | "compact";
 }) {
+  const rowPy = density === "compact" ? "py-1" : density === "cozy" ? "py-2" : "py-3";
+  const isCompact = density === "compact";
   if (loading) {
     return (
       <div className="industrial-panel">
@@ -234,6 +238,8 @@ export function ClientsTable({
     clients.length > 0 &&
     clients.every((c) => selectedIds.has(c.id));
 
+  const mobilePy = density === "compact" ? "py-2" : density === "cozy" ? "py-3" : "py-3.5";
+
   return (
     <div className="industrial-panel">
       {/* Mobile: card list */}
@@ -244,7 +250,7 @@ export function ClientsTable({
             <Link
               key={client.id}
               href={`/clients/${client.id}`}
-              className={`flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.03] ${selected ? "bg-primary/10" : ""}`}
+              className={`flex items-center gap-3 px-4 ${mobilePy} transition-colors active:bg-primary/[0.06] hover:bg-primary/[0.03] ${selected ? "bg-primary/10" : ""}`}
             >
               {selectable && (
                 <input
@@ -291,7 +297,7 @@ export function ClientsTable({
         <thead>
           <tr className="border-b border-border bg-surface-elevated/50">
             {selectable && (
-              <th className="w-10 px-3 py-2">
+              <th className={`w-10 px-3 ${rowPy}`}>
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-border accent-primary"
@@ -304,10 +310,10 @@ export function ClientsTable({
             <SortableHeader col="cod" label="COD" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">Tese</th>
             <SortableHeader col="name" label="Nome" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
-            <SortableHeader col="cpf" label="CPF" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            {!isCompact && <SortableHeader col="cpf" label="CPF" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />}
             <SortableHeader col="status" label="Status" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             <SortableHeader col="workflowStatus" label="Finalização" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
-            <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">Telefone</th>
+            {!isCompact && <th className="px-4 py-2 text-left text-[11px] font-semibold tracking-widest text-muted uppercase">Telefone</th>}
             <SortableHeader col="followUpAt" label="Retorno" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             <th className="px-4 py-2 text-center text-[11px] font-semibold tracking-widest text-muted uppercase">Pesquisa</th>
             <th className="w-10" />
@@ -324,7 +330,7 @@ export function ClientsTable({
                 }`}
               >
                 {selectable && (
-                  <td className="px-3 py-2">
+                  <td className={`px-3 ${rowPy}`}>
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-border accent-primary"
@@ -334,9 +340,9 @@ export function ClientsTable({
                     />
                   </td>
                 )}
-                <td className="px-4 py-2 text-sm text-muted">{client.cod ?? "—"}</td>
-                <td className="px-4 py-2 text-sm text-muted">{client.tese ?? "—"}</td>
-                <td className="px-4 py-2 text-sm whitespace-nowrap">
+                <td className={`px-4 ${rowPy} ${isCompact ? "text-xs" : "text-sm"} text-muted`}>{client.cod ?? "—"}</td>
+                <td className={`px-4 ${rowPy} ${isCompact ? "text-xs" : "text-sm"} text-muted`}>{client.tese ?? "—"}</td>
+                <td className={`px-4 ${rowPy} ${isCompact ? "text-xs" : "text-sm"} whitespace-nowrap`}>
                   <Link
                     href={`/clients/${client.id}`}
                     className="font-bold text-foreground underline underline-offset-2 transition-colors hover:text-primary"
@@ -344,21 +350,25 @@ export function ClientsTable({
                     {client.name}
                   </Link>
                 </td>
-                <td className="px-4 py-2 text-sm text-muted whitespace-nowrap">{client.cpf ?? "—"}</td>
-                <td className="px-4 py-2">
+                {!isCompact && (
+                  <td className={`px-4 ${rowPy} text-sm text-muted whitespace-nowrap`}>{client.cpf ?? "—"}</td>
+                )}
+                <td className={`px-4 ${rowPy}`}>
                   <StatusBadge status={client.status} />
                 </td>
-                <td className="px-4 py-2">
+                <td className={`px-4 ${rowPy}`}>
                   <WorkflowBadge status={client.workflowStatus} />
                 </td>
-                <td className="px-4 py-2 text-sm text-muted">{client.primaryPhone ?? "—"}</td>
-                <td className="px-4 py-2">
+                {!isCompact && (
+                  <td className={`px-4 ${rowPy} text-sm text-muted`}>{client.primaryPhone ?? "—"}</td>
+                )}
+                <td className={`px-4 ${rowPy}`}>
                   <FollowUpBadge followUpAt={client.followUpAt} />
                 </td>
-                <td className="px-4 py-2 text-center">
+                <td className={`px-4 ${rowPy} text-center`}>
                   <ResearchBadge hasResearch={client.hasResearch} hasContacts={client.hasContacts} />
                 </td>
-                <td className="px-2 py-2 text-right opacity-0 transition-opacity group-hover:opacity-100">
+                <td className={`px-2 ${rowPy} text-right opacity-0 transition-opacity group-hover:opacity-100`}>
                   <Link
                     href={`/clients/${client.id}`}
                     className="btn-icon"

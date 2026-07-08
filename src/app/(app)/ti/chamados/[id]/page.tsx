@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useSession } from "@/components/SessionProvider";
 import { Icon } from "@/components/ui/Icon";
+import { useRecentItems } from "@/hooks/useRecentItems";
 
 type StatusHistory = {
   id: string;
@@ -80,6 +81,7 @@ const quickReplies = [
 
 export default function TicketDetailPage() {
   const { user } = useSession();
+  const { add: addRecent } = useRecentItems();
   const params = useParams<{ id: string }>();
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,10 +96,19 @@ export default function TicketDetailPage() {
       if (!res.ok) { setTicket(null); return; }
       const data = await res.json();
       setTicket(data.ticket);
+      if (data.ticket) {
+        addRecent({
+          id: params.id,
+          type: "ti-chamado",
+          name: data.ticket.necessidade,
+          href: `/ti/chamados/${params.id}`,
+          subtitle: `${data.ticket.name} · ${data.ticket.sala}`,
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [params.id, addRecent]);
 
   useEffect(() => { void fetchTicket(); }, [fetchTicket]);
 

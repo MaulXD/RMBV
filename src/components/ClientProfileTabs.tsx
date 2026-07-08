@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
-export type ClientProfileTab = "perfil" | "pesquisa" | "revisao" | "historico" | "tarefas" | "parentes" | "acoes";
+export type ClientProfileTab = "perfil" | "pesquisa" | "revisao" | "historico" | "timeline" | "tarefas" | "parentes" | "acoes";
 
 export function ClientProfileTabs({
   perfil,
   pesquisa,
   revisao,
   historico,
+  timeline,
   tarefas,
   parentes,
   acoes,
@@ -20,6 +21,7 @@ export function ClientProfileTabs({
   pesquisa: React.ReactNode;
   revisao: React.ReactNode;
   historico: React.ReactNode;
+  timeline: React.ReactNode;
   tarefas: React.ReactNode;
   parentes: React.ReactNode;
   acoes?: React.ReactNode;
@@ -41,6 +43,7 @@ export function ClientProfileTabs({
     { id: "revisao", label: "Revisão" },
     { id: "parentes", label: "Parentes" },
     { id: "historico", label: "Histórico" },
+    { id: "timeline", label: "Timeline de status" },
     { id: "tarefas", label: "Tarefas" },
     ...(acoes !== undefined ? [{ id: "acoes" as const, label: "Ações" }] : []),
   ];
@@ -56,9 +59,11 @@ export function ClientProfileTabs({
             ? parentes
             : tab === "tarefas"
               ? tarefas
-              : tab === "acoes"
-                ? acoes
-                : historico;
+              : tab === "timeline"
+                ? timeline
+                : tab === "acoes"
+                  ? acoes
+                  : historico;
 
   return (
     <div className="space-y-0">

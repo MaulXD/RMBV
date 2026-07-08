@@ -17,6 +17,7 @@ import { ClientPesquisaSectionConnected } from "@/components/ClientPesquisaSecti
 import { ClientExtractionReview } from "@/components/ClientExtractionReview";
 import { ClientTasksSection } from "@/components/ClientTasksSection";
 import { ClientUnifiedTimeline } from "@/components/ClientUnifiedTimeline";
+import { ClientStatusTimeline } from "@/components/ClientStatusTimeline";
 import { ClientMobileQuickActions } from "@/components/ClientMobileQuickActions";
 import { ClientChecklistSection } from "@/components/ChecklistTools";
 import { ClientRelativesPanel } from "@/components/ClientRelativesPanel";
@@ -25,6 +26,7 @@ import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
 import { latestPhoneChecksFromHistory, type ClientHistoryEntry } from "@/lib/client-history";
+import { useRecentItems } from "@/hooks/useRecentItems";
 
 type Category = { id: string; name: string };
 
@@ -35,6 +37,7 @@ export default function ClientDetailPage() {
   const isAdmin = user?.role === "ADMIN";
   const canSeeAcoes = user?.role === "ADMIN" || user?.role === "ADV" || user?.role === "GERENTE";
   const userRole = (user?.role ?? null) as Role | null;
+  const { add: addRecent } = useRecentItems();
   const [client, setClient] = useState<ClientProfileData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +58,17 @@ export default function ClientDetailPage() {
   const loadClient = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}`);
     const data = await res.json();
-    if (res.ok) setClient(data.client);
-  }, [id]);
+    if (res.ok) {
+      setClient(data.client);
+      addRecent({
+        id,
+        type: "client",
+        name: data.client.name,
+        href: `/clients/${id}`,
+        subtitle: data.client.cpf ?? data.client.tese ?? undefined,
+      });
+    }
+  }, [id, addRecent]);
 
   const loadHistoryMeta = useCallback(async () => {
     const res = await fetch(`/api/clients/${id}/history`);
@@ -233,6 +245,14 @@ export default function ClientDetailPage() {
                 <ClientHistoryTimeline clientId={client.id} refreshKey={historyRefreshKey} />
               </section>
             </div>
+          }
+          timeline={
+            <section className="panel-solid p-4">
+              <h2 className="mb-5 text-xs font-semibold tracking-widest text-muted uppercase">
+                Evolucao de status do cliente
+              </h2>
+              <ClientStatusTimeline clientId={client.id} />
+            </section>
           }
           tarefas={<ClientTasksSection client={client} />}
           parentes={
