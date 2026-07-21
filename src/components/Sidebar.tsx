@@ -130,6 +130,7 @@ export function Sidebar({
           items: [
             { href: "/dashboard", label: "Clientes", icon: "users", color: "text-blue-500" },
             { href: "/kanban", label: "Kanban", icon: "kanban", color: "text-violet-500" },
+            { href: "/agenda", label: "Agenda", icon: "calendar" as const, color: "text-violet-500" },
             { href: "/chamados", label: "Chamados", icon: "messageSquare", color: "text-amber-500" },
             ...(onChatToggle
               ? [{ href: "#chat", label: "Chat", icon: "messageCircle" as const, color: "text-indigo-500" }]

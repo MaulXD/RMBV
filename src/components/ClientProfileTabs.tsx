@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export type ClientProfileTab = "perfil" | "pesquisa" | "revisao" | "historico" | "timeline" | "tarefas" | "parentes" | "acoes";
+export type ClientProfileTab = "perfil" | "pesquisa" | "revisao" | "historico" | "timeline" | "tarefas" | "parentes" | "acoes" | "whatsapp";
 
 export function ClientProfileTabs({
   perfil,
@@ -13,6 +13,7 @@ export function ClientProfileTabs({
   tarefas,
   parentes,
   acoes,
+  whatsapp,
   activeTab: controlledTab,
   onTabChange,
   defaultTab = "perfil",
@@ -25,6 +26,7 @@ export function ClientProfileTabs({
   tarefas: React.ReactNode;
   parentes: React.ReactNode;
   acoes?: React.ReactNode;
+  whatsapp?: React.ReactNode;
   activeTab?: ClientProfileTab;
   onTabChange?: (tab: ClientProfileTab) => void;
   defaultTab?: ClientProfileTab;
@@ -46,6 +48,7 @@ export function ClientProfileTabs({
     { id: "timeline", label: "Timeline de status" },
     { id: "tarefas", label: "Tarefas" },
     ...(acoes !== undefined ? [{ id: "acoes" as const, label: "Ações" }] : []),
+    ...(whatsapp !== undefined ? [{ id: "whatsapp" as const, label: "WhatsApp" }] : []),
   ];
 
   const panel =
@@ -63,7 +66,9 @@ export function ClientProfileTabs({
                 ? timeline
                 : tab === "acoes"
                   ? acoes
-                  : historico;
+                  : tab === "whatsapp"
+                    ? whatsapp
+                    : historico;
 
   return (
     <div className="space-y-0">

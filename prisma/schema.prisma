@@ -55,6 +55,7 @@ enum ClientHistoryType {
   PHONE_CHECK
   CALL
   WHATSAPP
+  EMAIL
   NOTE
   PESQUISA_UPDATED
 }
@@ -124,6 +125,9 @@ model Team {
   pontoRecords      PontoRecord[]
   chatMessages      ChatMessage[]
   acoes             Acao[]
+  whatsAppConfig    WhatsAppConfig?
+  emailConfig       EmailConfig?
+  calendarEvents    CalendarEvent[]
   scheduleEnabled   Boolean  @default(true)
   scheduleDays      String   @default("[1,2,3,4,5]")
   scheduleStart     Int      @default(8)
@@ -202,6 +206,7 @@ model User {
   supportRequests             SupportRequest[]
   assignedTickets             SupportRequest[]    @relation("AssignedTickets")
   ticketResponses             SupportTicketResponse[]
+  calendarEventsCreated       CalendarEvent[]     @relation("CalendarEventCreator")
 
   @@index([teamId])
 }
@@ -331,6 +336,7 @@ model Client {
   chamados          Chamado[]
   relatives         ClientRelative[]
   acoes             Acao[]
+  calendarEvents    CalendarEvent[]
 
   // Endereço estruturado (para cartas)
   cep          String?
@@ -879,6 +885,55 @@ model SupportTicketResponse {
 
   @@index([ticketId])
   @@index([userId])
+}
+
+model WhatsAppConfig {
+  id         String   @id @default(uuid())
+  teamId     String   @unique
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  instanceId String
+  token      String
+  phone      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model EmailConfig {
+  id        String   @id @default(uuid())
+  teamId    String   @unique
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  host      String
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  user      String
+  pass      String
+  fromName  String?
+  fromEmail String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CalendarEvent {
+  id          String    @id @default(uuid())
+  teamId      String
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdById String
+  createdBy   User      @relation("CalendarEventCreator", fields: [createdById], references: [id])
+  title       String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  allDay      Boolean   @default(false)
+  color       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([teamId, startsAt])
+  @@index([clientId])
 }
 
 model SupportTicketStatusHistory {

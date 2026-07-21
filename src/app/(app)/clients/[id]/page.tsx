@@ -22,11 +22,14 @@ import { ClientMobileQuickActions } from "@/components/ClientMobileQuickActions"
 import { ClientChecklistSection } from "@/components/ChecklistTools";
 import { ClientRelativesPanel } from "@/components/ClientRelativesPanel";
 import { ClientAcoesTab } from "@/components/acoes/ClientAcoesTab";
+import { EmailComposer } from "@/components/EmailComposer";
+import { WhatsAppPanel } from "@/components/WhatsAppPanel";
 import type { ClientProfileTab } from "@/components/ClientProfileTabs";
 import type { ClientProfileData } from "@/lib/client-fields";
 import { canFinalizeClients } from "@/lib/roles";
 import { latestPhoneChecksFromHistory, type ClientHistoryEntry } from "@/lib/client-history";
 import { useRecentItems } from "@/hooks/useRecentItems";
+import { AISummaryPanel } from "@/components/AISummaryPanel";
 
 type Category = { id: string; name: string };
 
@@ -213,6 +216,8 @@ export default function ClientDetailPage() {
           onUpdated={setClient}
         />
 
+        <AISummaryPanel clientId={client.id} />
+
         <ClientProfileTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -232,6 +237,9 @@ export default function ClientDetailPage() {
                 disabled={isFinalized}
                 onSaved={refreshHistory}
               />
+              {!isFinalized && (
+                <EmailComposer clientId={client.id} />
+              )}
               <section className="panel-solid p-4">
                 <h2 className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
                   Timeline unificada
@@ -261,6 +269,23 @@ export default function ClientDetailPage() {
             </section>
           }
           acoes={canSeeAcoes ? <ClientAcoesTab clientId={client.id} /> : undefined}
+          whatsapp={
+            <WhatsAppPanel
+              clientId={client.id}
+              phones={[
+                client.phone1,
+                client.phone2,
+                client.phone3,
+                client.phone4,
+                client.phone5,
+                client.phone6,
+                client.phone7,
+                client.phone8,
+                client.phone9,
+                client.phone10,
+              ].filter((p): p is string => Boolean(p))}
+            />
+          }
         />
       </div>
     </>

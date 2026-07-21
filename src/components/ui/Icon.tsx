@@ -74,6 +74,8 @@ import {
   Bookmark,
   AlignJustify,
   Reply,
+  Sparkles,
+  Calendar,
   type LucideIcon,
 } from "lucide-react";
 
@@ -153,6 +155,8 @@ const icons = {
   bookmark: Bookmark,
   rows: AlignJustify,
   reply: Reply,
+  sparkles: Sparkles,
+  calendar: Calendar,
 } as const;
 
 export type IconName = keyof typeof icons;
