@@ -73,7 +73,7 @@ export function AISummaryPanel({ clientId }: { clientId: string }) {
     <section className="panel-solid p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xs font-semibold tracking-widest text-muted uppercase">
-          Resumo por IA
+          Resumo do cliente
         </h2>
 
         {summary && !loading && (
@@ -96,8 +96,8 @@ export function AISummaryPanel({ clientId }: { clientId: string }) {
             className="btn-primary flex items-center gap-2 text-sm"
             onClick={() => generate(false)}
           >
-            <Icon name="sparkles" className="h-4 w-4 shrink-0" />
-            Gerar resumo com IA
+            <Icon name="fileText" className="h-4 w-4 shrink-0" />
+            Gerar resumo
           </button>
         </div>
       )}

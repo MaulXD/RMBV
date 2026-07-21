@@ -5,6 +5,31 @@ import { getClientIfAllowed } from "@/lib/client-access";
 
 export const runtime = "nodejs";
 
+const STATUS_LABEL: Record<string, string> = {
+  AGUARDANDO: "aguardando contato",
+  LOCALIZADO: "localizado",
+  SEM_SUCESSO: "sem sucesso nos contatos",
+  TENTE_NOVAMENTE: "para tentar novamente",
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  CALL: "ligação",
+  WHATSAPP: "mensagem via WhatsApp",
+  EMAIL: "e-mail",
+  NOTE: "anotação",
+  STATUS_CHANGE: "mudança de status",
+  PHONE_CHECK: "verificação de telefone",
+  PESQUISA_UPDATED: "atualização de pesquisa",
+};
+
+function ptDate(d: Date) {
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function daysDiff(a: Date, b: Date) {
+  return Math.round(Math.abs(a.getTime() - b.getTime()) / 86_400_000);
+}
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -20,72 +45,120 @@ export async function POST(
     const history = await prisma.clientHistory.findMany({
       where: { clientId: id },
       orderBy: { createdAt: "desc" },
-      take: 40,
-      include: {
-        createdBy: { select: { name: true } },
-      },
+      take: 50,
+      include: { createdBy: { select: { name: true } } },
     });
 
-    const historyText = history
-      .map((h) => {
-        const date = new Date(h.createdAt).toLocaleDateString("pt-BR");
-        const author = h.createdBy?.name ?? "Sistema";
-        return `- [${date}] ${author}: ${h.note ?? ""}`;
-      })
-      .join("\n");
+    const now = new Date();
 
-    const followUp = client.followUpAt
-      ? new Date(client.followUpAt).toLocaleDateString("pt-BR")
-      : "não definido";
-
-    const prompt = `Você é um assistente jurídico especializado em análise de clientes. Analise as informações abaixo e gere um resumo conciso em português do perfil do cliente e do histórico de interações recentes.
-
-Nome: ${client.name}
-Status: ${client.status ?? "não informado"}
-Retorno agendado: ${followUp}
-
-Histórico recente (do mais recente ao mais antigo):
-${historyText || "Nenhuma interação registrada."}
-
-Gere um parágrafo ou dois com:
-1. Situação atual do cliente
-2. Pontos de atenção ou próximos passos relevantes
-
-Seja objetivo e use linguagem profissional.`;
-
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Chave da API de IA não configurada" },
-        { status: 500 }
-      );
+    // ── Contagens por tipo ──────────────────────────────────────────────────
+    const counts: Record<string, number> = {};
+    for (const h of history) {
+      counts[h.type] = (counts[h.type] ?? 0) + 1;
     }
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    const totalInteractions = history.length;
+    const lastEntry = history[0];
+    const firstEntry = history[history.length - 1];
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("Anthropic API error:", err);
-      return NextResponse.json(
-        { error: "Erro ao chamar a API de IA" },
-        { status: 502 }
-      );
+    // ── Última interação relevante (não mudança de status) ──────────────────
+    const lastContact = history.find(
+      (h) => h.type === "CALL" || h.type === "WHATSAPP" || h.type === "EMAIL"
+    );
+
+    // ── Última nota ────────────────────────────────────────────────────────
+    const lastNote = history.find((h) => h.type === "NOTE" && h.note?.trim());
+
+    // ── Status atual ───────────────────────────────────────────────────────
+    const statusLabel = STATUS_LABEL[client.status] ?? client.status;
+
+    // ── Retorno agendado ───────────────────────────────────────────────────
+    const followUp = client.followUpAt ? new Date(client.followUpAt) : null;
+    const followUpStr = followUp ? ptDate(followUp) : null;
+    const followUpOverdue = followUp && followUp < now;
+    const followUpDays = followUp ? daysDiff(now, followUp) : null;
+
+    // ── Monta o resumo ────────────────────────────────────────────────────
+    const lines: string[] = [];
+
+    // Parágrafo 1 — situação atual
+    {
+      const p: string[] = [];
+      p.push(`${client.name} está atualmente com status ${statusLabel}.`);
+
+      if (totalInteractions === 0) {
+        p.push("Nenhuma interação foi registrada até o momento.");
+      } else {
+        const since = firstEntry
+          ? ` desde ${ptDate(new Date(firstEntry.createdAt))}`
+          : "";
+        p.push(
+          `Foram registradas ${totalInteractions} interação${totalInteractions > 1 ? "ões" : ""}${since}.`
+        );
+      }
+
+      if (lastContact) {
+        const typeStr = TYPE_LABEL[lastContact.type] ?? lastContact.type;
+        const daysAgo = daysDiff(now, new Date(lastContact.createdAt));
+        const who = lastContact.createdBy?.name;
+        p.push(
+          `O último contato foi uma ${typeStr}${who ? ` por ${who}` : ""}, há ${daysAgo === 0 ? "menos de 1 dia" : `${daysAgo} dia${daysAgo > 1 ? "s" : ""}`}.`
+        );
+      } else if (totalInteractions > 0 && lastEntry) {
+        const daysAgo = daysDiff(now, new Date(lastEntry.createdAt));
+        p.push(
+          `A última movimentação foi há ${daysAgo === 0 ? "menos de 1 dia" : `${daysAgo} dia${daysAgo > 1 ? "s" : ""}`}.`
+        );
+      }
+
+      lines.push(p.join(" "));
     }
 
-    const data = await response.json();
-    const summary: string = data.content?.[0]?.text ?? "";
+    // Parágrafo 2 — pontos de atenção
+    {
+      const p: string[] = [];
+
+      if (followUpStr) {
+        if (followUpOverdue) {
+          p.push(
+            `Atenção: o retorno agendado para ${followUpStr} está em atraso — o cliente aguarda contato.`
+          );
+        } else {
+          p.push(
+            `Retorno programado para ${followUpStr} (em ${followUpDays} dia${followUpDays !== 1 ? "s" : ""}).`
+          );
+        }
+      }
+
+      const breakdown: string[] = [];
+      if (counts["CALL"]) breakdown.push(`${counts["CALL"]} ligação${counts["CALL"] > 1 ? "ões" : ""}`);
+      if (counts["WHATSAPP"]) breakdown.push(`${counts["WHATSAPP"]} mensagem${counts["WHATSAPP"] > 1 ? "ns" : ""} de WhatsApp`);
+      if (counts["EMAIL"]) breakdown.push(`${counts["EMAIL"]} e-mail${counts["EMAIL"] > 1 ? "s" : ""}`);
+      if (counts["NOTE"]) breakdown.push(`${counts["NOTE"]} anotação${counts["NOTE"] > 1 ? "ões" : ""}`);
+
+      if (breakdown.length > 0) {
+        p.push(`Histórico inclui: ${breakdown.join(", ")}.`);
+      }
+
+      if (lastNote?.note) {
+        const snippet = lastNote.note.length > 120
+          ? lastNote.note.slice(0, 120).trimEnd() + "…"
+          : lastNote.note;
+        p.push(`Última anotação: "${snippet}"`);
+      }
+
+      if (client.status === "SEM_SUCESSO") {
+        p.push("Recomenda-se revisar os dados de contato antes de novas tentativas.");
+      } else if (client.status === "AGUARDANDO" && !lastContact) {
+        p.push("Nenhum contato direto foi realizado ainda — indicado iniciar abordagem.");
+      } else if (client.status === "LOCALIZADO") {
+        p.push("Cliente localizado — verificar andamento do processo junto à equipe responsável.");
+      }
+
+      if (p.length > 0) lines.push(p.join(" "));
+    }
+
+    const summary = lines.join("\n\n");
 
     return NextResponse.json({ summary });
   });
