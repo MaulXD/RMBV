@@ -146,6 +146,7 @@ export function Sidebar({
               ? [
                   { href: "/acoes", label: "Ações", icon: "scale" as const, color: "text-violet-500" },
                   { href: "/cartas", label: "Cartas", icon: "mail" as const, color: "text-pink-500" },
+                  { href: "/materias", label: "Dúvidas", icon: "fileText" as const, color: "text-sky-500" },
                 ]
               : []),
             { href: "/apa", label: "APA", icon: "clipboardList" as const, color: "text-teal-500", comingSoon: true },
