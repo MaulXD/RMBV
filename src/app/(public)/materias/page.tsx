@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BuscaAcoes } from "./BuscaAcoes";
 
 type Nivel = "simples" | "detalhado" | "elaborado";
 
@@ -162,12 +163,9 @@ export default function MateriasPage() {
             </button>
           </div>
           <p className="rounded-lg bg-white p-3 leading-relaxed">{ABERTURA}</p>
-          <h2 className="mt-4 mb-1 font-semibold">2. Descobrir a ação</h2>
-          <p className="text-sm leading-relaxed text-slate-700">
-            Com o nome confirmado, procure o cliente em Clientes no SCS e veja a tese do cadastro (por exemplo 28,86%, 47,94% ou
-            Ações Médicos Gerais). Depois escolha abaixo a matéria da ação e o tamanho do resumo.
-          </p>
         </section>
+
+        <BuscaAcoes />
 
         <section className="mb-4">
           <h2 className="mb-1 font-semibold">3. Responder</h2>
