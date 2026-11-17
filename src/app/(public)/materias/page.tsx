@@ -18,6 +18,9 @@ const NIVEIS: { id: Nivel; nome: string; dica: string }[] = [
   { id: "elaborado", nome: "Bem elaborado", dica: "Para quem quer entender tudo" },
 ];
 
+const ABERTURA =
+  "Olá! O advogado responsável separou uma mensagem para te passar a atualização do seu processo. Pode me confirmar seu nome completo?";
+
 const MATERIAS: Materia[] = [
   {
     id: "precatorios",
@@ -113,6 +116,17 @@ export default function MateriasPage() {
   const [materiaId, setMateriaId] = useState(MATERIAS[0].id);
   const [nivel, setNivel] = useState<Nivel>("simples");
   const [copiado, setCopiado] = useState(false);
+  const [aberturaCopiada, setAberturaCopiada] = useState(false);
+
+  async function copiarAbertura() {
+    try {
+      await navigator.clipboard.writeText(ABERTURA);
+      setAberturaCopiada(true);
+      setTimeout(() => setAberturaCopiada(false), 2000);
+    } catch {
+      setAberturaCopiada(false);
+    }
+  }
   const materia = MATERIAS.find((m) => m.id === materiaId) ?? MATERIAS[0];
   const texto = materia.resumos[nivel];
 
@@ -137,7 +151,26 @@ export default function MateriasPage() {
           </p>
         </header>
 
+        <section className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
+          <div className="mb-2 flex items-start justify-between gap-3">
+            <h2 className="font-semibold">1. Primeira mensagem ao cliente</h2>
+            <button
+              onClick={() => copiarAbertura()}
+              className="shrink-0 rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
+            >
+              {aberturaCopiada ? "Copiado" : "Copiar"}
+            </button>
+          </div>
+          <p className="rounded-lg bg-white p-3 leading-relaxed">{ABERTURA}</p>
+          <h2 className="mt-4 mb-1 font-semibold">2. Descobrir a ação</h2>
+          <p className="text-sm leading-relaxed text-slate-700">
+            Com o nome confirmado, procure o cliente em Clientes no SCS e veja a tese do cadastro (por exemplo 28,86%, 47,94% ou
+            Ações Médicos Gerais). Depois escolha abaixo a matéria da ação e o tamanho do resumo.
+          </p>
+        </section>
+
         <section className="mb-4">
+          <h2 className="mb-1 font-semibold">3. Responder</h2>
           <label htmlFor="materia" className="mb-1 block text-sm font-medium">Trocar matéria</label>
           <div className="flex flex-wrap gap-2">
             {MATERIAS.map((m) => (
