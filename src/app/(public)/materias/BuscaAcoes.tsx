@@ -128,7 +128,8 @@ export function BuscaAcoes() {
 
   function atualizacoesDa(tid: string | null, nome?: string | null): Atualizacao[] {
     const equipe: Atualizacao[] = tid ? (daEquipe[tid] ?? []).map((a) => ({ ...a })) : [];
-    const publicas = materiaDaTese(nome ?? (tid ? teseNomes[tid] : null))?.atualizacoes ?? [];
+    const materia = materiaDaTese(nome ?? (tid ? teseNomes[tid] : null));
+    const publicas = materia?.linhaDoProcesso ? materia.atualizacoes : [];
     return juntarAtualizacoes(equipe, publicas);
   }
 
