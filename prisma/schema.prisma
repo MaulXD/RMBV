@@ -262,6 +262,7 @@ model Tese {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   clients   Client[]
+  atualizacoes TeseAtualizacao[]
   checklistItems TeseChecklistItem[]
 
   @@unique([teamId, name])
@@ -947,4 +948,20 @@ model SupportTicketStatusHistory {
   createdAt     DateTime       @default(now())
 
   @@index([ticketId])
+}
+
+/// Atualizações de uma ação coletiva (tese): decisões, julgamentos, pagamentos.
+/// Aparecem para todos os clientes da tese na página /materias.
+model TeseAtualizacao {
+  id          String   @id @default(uuid())
+  teseId      String
+  tese        Tese     @relation(fields: [teseId], references: [id], onDelete: Cascade)
+  data        DateTime
+  titulo      String
+  texto       String   @db.Text
+  fonteUrl    String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([teseId, data])
 }

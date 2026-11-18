@@ -1,9 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api";
-import { teamScopeWhere } from "@/lib/team-access";
+import { teamScopeWhere, isAdminUser } from "@/lib/team-access";
+import { podeEditarAtualizacoes } from "@/lib/materias-access";
 
 export const runtime = "nodejs";
+
+type AtualizacaoOut = { id: string; data: string; titulo: string; texto: string; fonteUrl: string | null };
+
+async function atualizacoesPorTese(ids: string[]) {
+  const out: Record<string, AtualizacaoOut[]> = {};
+  if (!ids.length) return out;
+  try {
+    const rows = await prisma.teseAtualizacao.findMany({
+      where: { teseId: { in: ids } },
+      orderBy: { data: "desc" },
+      select: { id: true, teseId: true, data: true, titulo: true, texto: true, fonteUrl: true },
+    });
+    for (const r of rows) {
+      const lista = (out[r.teseId] ??= []);
+      if (lista.length < 20) lista.push({ id: r.id, data: r.data.toISOString(), titulo: r.titulo, texto: r.texto, fonteUrl: r.fonteUrl });
+    }
+  } catch (err) {
+    // Tabela ainda não criada no banco: a busca continua funcionando sem as atualizações da equipe.
+    console.error("teseAtualizacao indisponível", err);
+  }
+  return out;
+}
 
 // Busca de clientes por ação (tese) para a página /materias.
 // A página é pública, mas esta rota exige login: dados de cliente nunca saem sem sessão.
@@ -15,13 +38,18 @@ export async function GET(request: NextRequest) {
     const teamWhere = teamScopeWhere(user);
 
     const teses = await prisma.tese.findMany({
-      where: { isActive: true, clients: { some: { ...teamWhere } } },
+      where: {
+        isActive: true,
+        ...(isAdminUser(user) ? {} : { teamId: user.teamId ?? "__no_team__" }),
+      },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { id: true, name: true, _count: { select: { clients: true } } },
     });
 
+    const usuario = { podeEditar: podeEditarAtualizacoes(user), nome: user.name };
+
     if (!teseId && q.length < 3) {
-      return NextResponse.json({ teses, clientes: [] });
+      return NextResponse.json({ teses, clientes: [], atualizacoes: {}, usuario });
     }
 
     const digits = q.replace(/\D/g, "");
@@ -47,6 +75,7 @@ export async function GET(request: NextRequest) {
         name: true,
         cpf: true,
         status: true,
+        teseId: true,
         teseRef: { select: { name: true } },
         acoes: {
           orderBy: { updatedAt: "desc" },
@@ -75,6 +104,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ teses, clientes });
+    const ids = new Set<string>();
+    if (teseId) ids.add(teseId);
+    for (const c of clientes) if (c.teseId) ids.add(c.teseId);
+    const atualizacoes = await atualizacoesPorTese([...ids]);
+
+    return NextResponse.json({ teses, clientes, atualizacoes, usuario });
   });
 }

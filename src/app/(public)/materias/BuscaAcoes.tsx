@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Copy, ExternalLink, Plus, Search, UserPlus } from "lucide-react";
+import { juntarAtualizacoes, materiaDaTese, quandoTexto, type Atualizacao } from "./dados";
+import { ListaAtualizacoes } from "./Atualizacoes";
+import { CadastroCliente } from "./CadastroCliente";
 
 type Mov = { id: string; data: string; texto: string; tipo: string | null };
 type Acao = {
@@ -25,37 +29,55 @@ type Cliente = {
   name: string;
   cpf: string | null;
   status: string;
+  teseId: string | null;
   teseRef: { name: string } | null;
   acoes: Acao[];
 };
 type Tese = { id: string; name: string; _count: { clients: number } };
+type AtualizacaoApi = { id: string; data: string; titulo: string; texto: string; fonteUrl: string | null };
 
-const data = (s: string | null) => (s ? new Date(s).toLocaleDateString("pt-BR") : "");
+const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString("pt-BR") : "");
 
 function etapa(a: Acao) {
-  if (a.sentencaAt) return `Sentença em ${data(a.sentencaAt)}${a.sentencaResultado ? ` (${a.sentencaResultado})` : ""}`;
-  if (a.entradaAt) return `Processo ajuizado em ${data(a.entradaAt)}, aguardando sentença`;
-  if (a.docsEnviadosAt) return `Documentos enviados em ${data(a.docsEnviadosAt)}, aguardando ajuizamento`;
-  if (a.advConfirmadoAt) return `Advogado confirmado em ${data(a.advConfirmadoAt)}, aguardando documentos`;
+  if (a.sentencaAt) return `Sentença em ${fmt(a.sentencaAt)}${a.sentencaResultado ? ` (${a.sentencaResultado})` : ""}`;
+  if (a.entradaAt) return `Processo ajuizado em ${fmt(a.entradaAt)}, aguardando sentença`;
+  if (a.docsEnviadosAt) return `Documentos enviados em ${fmt(a.docsEnviadosAt)}, aguardando ajuizamento`;
+  if (a.advConfirmadoAt) return `Advogado confirmado em ${fmt(a.advConfirmadoAt)}, aguardando documentos`;
   return "Ação cadastrada, ainda sem andamento";
 }
 
-function textoCliente(c: Cliente) {
-  const primeiro = c.name.split(" ")[0];
-  const nome = primeiro.charAt(0) + primeiro.slice(1).toLowerCase();
-  if (!c.acoes.length) {
-    return `${nome}, seu cadastro está na ação ${c.teseRef?.name ?? ""}. O processo ainda não tem número na Justiça, então não há decisão para informar. Assim que houver andamento, o escritório te avisa.`;
+function primeiroNome(nome: string) {
+  const p = nome.trim().split(/\s+/)[0] ?? "";
+  return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+}
+
+function textoCliente(c: Cliente, ultimas: Atualizacao[]) {
+  const nome = primeiroNome(c.name);
+  const partes: string[] = [];
+  const acaoNome = c.teseRef?.name;
+  const ultima = ultimas[0];
+  if (ultima) {
+    partes.push(
+      `${nome}, sobre a sua ação${acaoNome ? ` (${acaoNome})` : ""}: a última atualização foi em ${quandoTexto(ultima)}. ${ultima.titulo}. ${ultima.texto}`,
+    );
   }
-  return c.acoes
-    .map((a) => {
-      const num = a.numCNJ || a.numProcesso;
-      const ult = a.movimentacoes[0];
-      const linhas = [`${nome}, sobre o seu processo${num ? ` ${num}` : ""}: ${etapa(a).charAt(0).toLowerCase() + etapa(a).slice(1)}.`];
-      if (ult) linhas.push(`A última movimentação foi em ${data(ult.data)}: ${ult.texto}`);
-      else if (a.ultimaMovimentacaoText) linhas.push(`A última movimentação foi em ${data(a.ultimaMovimentacaoAt)}: ${a.ultimaMovimentacaoText}`);
-      return linhas.join(" ");
-    })
-    .join("\n\n");
+  for (const a of c.acoes) {
+    const num = a.numCNJ || a.numProcesso;
+    const e = etapa(a);
+    let t = `${partes.length ? "Sobre" : `${nome}, sobre`} o seu processo${num ? ` ${num}` : ""}: ${e.charAt(0).toLowerCase() + e.slice(1)}.`;
+    const mov = a.movimentacoes[0];
+    if (mov) t += ` A última movimentação foi em ${fmt(mov.data)}: ${mov.texto}`;
+    else if (a.ultimaMovimentacaoText) t += ` A última movimentação foi em ${fmt(a.ultimaMovimentacaoAt)}: ${a.ultimaMovimentacaoText}`;
+    partes.push(t);
+  }
+  if (!partes.length) {
+    partes.push(
+      `${nome}, seu cadastro está${acaoNome ? ` na ação ${acaoNome}` : " com o escritório"}. Ainda não há decisão nova para informar. Assim que houver andamento, a gente te avisa.`,
+    );
+  } else {
+    partes.push("Qualquer novidade, a gente te avisa por aqui.");
+  }
+  return partes.join("\n\n");
 }
 
 export function BuscaAcoes() {
@@ -63,9 +85,14 @@ export function BuscaAcoes() {
   const [teseId, setTeseId] = useState("");
   const [q, setQ] = useState("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [daEquipe, setDaEquipe] = useState<Record<string, AtualizacaoApi[]>>({});
+  const [podeEditar, setPodeEditar] = useState(false);
   const [estado, setEstado] = useState<"carregando" | "sem-login" | "ok" | "erro">("carregando");
   const [buscando, setBuscando] = useState(false);
+  const [buscou, setBuscou] = useState(false);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [cadastroAberto, setCadastroAberto] = useState(false);
+  const [novaAberta, setNovaAberta] = useState(false);
 
   async function buscar(tid: string, termo: string) {
     setBuscando(true);
@@ -74,7 +101,7 @@ export function BuscaAcoes() {
       if (tid) params.set("teseId", tid);
       if (termo) params.set("q", termo);
       const r = await fetch(`/api/materias/busca?${params}`, { credentials: "include" });
-      if (r.status === 401 || r.status === 403) {
+      if (r.status === 401) {
         setEstado("sem-login");
         return;
       }
@@ -82,7 +109,10 @@ export function BuscaAcoes() {
       const j = await r.json();
       setTeses(j.teses);
       setClientes(j.clientes);
+      setDaEquipe(j.atualizacoes ?? {});
+      setPodeEditar(!!j.usuario?.podeEditar);
       setEstado("ok");
+      setBuscou(!!tid || termo.trim().length >= 3);
     } catch {
       setEstado("erro");
     } finally {
@@ -94,9 +124,17 @@ export function BuscaAcoes() {
     void buscar("", "");
   }, []);
 
+  const teseNomes = useMemo(() => Object.fromEntries(teses.map((t) => [t.id, t.name])), [teses]);
+
+  function atualizacoesDa(tid: string | null, nome?: string | null): Atualizacao[] {
+    const equipe: Atualizacao[] = tid ? (daEquipe[tid] ?? []).map((a) => ({ ...a })) : [];
+    const publicas = materiaDaTese(nome ?? (tid ? teseNomes[tid] : null))?.atualizacoes ?? [];
+    return juntarAtualizacoes(equipe, publicas);
+  }
+
   async function copiar(c: Cliente) {
     try {
-      await navigator.clipboard.writeText(textoCliente(c));
+      await navigator.clipboard.writeText(textoCliente(c, atualizacoesDa(c.teseId, c.teseRef?.name)));
       setCopiadoId(c.id);
       setTimeout(() => setCopiadoId(null), 2000);
     } catch {
@@ -104,25 +142,61 @@ export function BuscaAcoes() {
     }
   }
 
-  return (
-    <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-1 font-semibold">2. Buscar o cliente e ver as últimas decisões</h2>
+  async function apagar(id: string) {
+    if (!confirm("Apagar esta atualização?")) return;
+    const r = await fetch(`/api/materias/atualizacoes?id=${id}`, { method: "DELETE", credentials: "include" });
+    if (r.ok) void buscar(teseId, q);
+  }
 
-      {estado === "carregando" && <p className="text-sm text-slate-500">Carregando...</p>}
+  const teseSel = teses.find((t) => t.id === teseId);
+  const atualizacoesSel = teseId ? atualizacoesDa(teseId) : [];
+
+  return (
+    <section className="industrial-panel mb-6 rounded-2xl p-5 sm:p-6">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-primary">Passo 2</p>
+          <h2 className="text-lg font-semibold">Buscar o cliente e ver as atualizações</h2>
+        </div>
+        {estado === "ok" && (
+          <button type="button" onClick={() => setCadastroAberto((v) => !v)} className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-xs">
+            <UserPlus className="h-3.5 w-3.5" aria-hidden /> Cadastrar cliente
+          </button>
+        )}
+      </div>
+
+      {estado === "carregando" && <p className="text-sm text-muted">Carregando...</p>}
 
       {estado === "sem-login" && (
-        <p className="text-sm text-slate-700">
-          A busca mostra dados de clientes, então só funciona com login.{" "}
-          <a href="/login" className="font-medium text-blue-700 underline">Entrar no SCS</a> e voltar para esta página.
-        </p>
+        <div className="soft-card rounded-xl p-4 text-sm">
+          <p>A busca, as atualizações de cada processo e o cadastro mostram dados de clientes, então só funcionam com login.</p>
+          <a href="/login?from=/materias" className="btn-primary mt-3 inline-flex px-4 py-2 text-sm">
+            Entrar no SCS
+          </a>
+        </div>
       )}
 
-      {estado === "erro" && <p className="text-sm text-red-600">Não foi possível buscar agora. Tente de novo.</p>}
+      {estado === "erro" && <p className="text-sm text-danger">Não foi possível buscar agora. Tente de novo.</p>}
 
       {estado === "ok" && (
         <>
+          {cadastroAberto && (
+            <div className="mb-4">
+              <CadastroCliente
+                teses={teses}
+                teseInicial={teseId}
+                nomeInicial={q.trim().length >= 3 && !/\d/.test(q) ? q.trim() : ""}
+                onCriado={(nome) => {
+                  setQ(nome);
+                  void buscar(teseId, nome);
+                }}
+                onFechar={() => setCadastroAberto(false)}
+              />
+            </div>
+          )}
+
           <form
-            className="mt-2 flex flex-col gap-2 sm:flex-row"
+            className="filter-bar flex flex-col gap-2 rounded-xl p-3 sm:flex-row"
             onSubmit={(e) => {
               e.preventDefault();
               void buscar(teseId, q);
@@ -132,9 +206,10 @@ export function BuscaAcoes() {
               value={teseId}
               onChange={(e) => {
                 setTeseId(e.target.value);
+                setNovaAberta(false);
                 void buscar(e.target.value, q);
               }}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="industrial-input sm:w-64"
               aria-label="Ação"
             >
               <option value="">Todas as ações</option>
@@ -144,78 +219,177 @@ export function BuscaAcoes() {
                 </option>
               ))}
             </select>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Nome, CPF ou número do processo"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-            <button className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" aria-hidden />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Nome, CPF ou número do processo"
+                className="industrial-input w-full pl-8"
+              />
+            </div>
+            <button className="btn-primary px-4 py-2 text-sm" disabled={buscando}>
               {buscando ? "Buscando..." : "Buscar"}
             </button>
           </form>
           {!teseId && q.trim().length < 3 && (
-            <p className="mt-2 text-xs text-slate-500">Escolha a ação ou digite pelo menos 3 letras.</p>
+            <p className="mt-2 text-xs text-muted">Escolha a ação ou digite pelo menos 3 letras.</p>
+          )}
+
+          {teseSel && (
+            <div className="soft-card mt-4 rounded-xl p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">Atualizações da ação {teseSel.name}</h3>
+                {podeEditar && (
+                  <button type="button" onClick={() => setNovaAberta((v) => !v)} className="btn-ghost flex items-center gap-1 px-2 py-1 text-xs">
+                    <Plus className="h-3.5 w-3.5" aria-hidden /> Registrar atualização
+                  </button>
+                )}
+              </div>
+              {novaAberta && (
+                <NovaAtualizacao
+                  teseId={teseSel.id}
+                  onSalva={() => {
+                    setNovaAberta(false);
+                    void buscar(teseId, q);
+                  }}
+                />
+              )}
+              <ListaAtualizacoes
+                itens={atualizacoesSel}
+                vazio="Nenhuma atualização registrada para esta ação. Use Registrar atualização quando sair uma decisão."
+                onApagar={podeEditar ? apagar : undefined}
+              />
+            </div>
           )}
 
           <ul className="mt-4 space-y-3">
-            {clientes.map((c) => (
-              <li key={c.id} className="rounded-lg border border-slate-200 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{c.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {c.teseRef?.name ?? "Sem ação definida"}
-                      {c.cpf ? ` · CPF ${c.cpf}` : ""}
-                    </p>
+            {clientes.map((c) => {
+              const ultimas = atualizacoesDa(c.teseId, c.teseRef?.name);
+              return (
+                <li key={c.id} className="soft-card rounded-xl p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">{c.name}</p>
+                      <p className="text-xs text-muted">
+                        {c.teseRef?.name ?? "Sem ação definida"}
+                        {c.cpf ? ` · CPF ${c.cpf}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <a href={`/clients/${c.id}`} className="btn-ghost flex items-center gap-1 px-2.5 py-1.5 text-xs">
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Abrir
+                      </a>
+                      <button type="button" onClick={() => copiar(c)} className="btn-primary flex items-center gap-1 px-2.5 py-1.5 text-xs">
+                        {copiadoId === c.id ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+                        {copiadoId === c.id ? "Copiado" : "Copiar resposta"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <a href={`/clients/${c.id}`} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50">
-                      Abrir
-                    </a>
-                    <button onClick={() => copiar(c)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700">
-                      {copiadoId === c.id ? "Copiado" : "Copiar resposta"}
-                    </button>
-                  </div>
-                </div>
 
-                {c.acoes.length === 0 && (
-                  <p className="mt-2 text-sm text-slate-600">Ainda sem processo cadastrado para este cliente.</p>
-                )}
+                  {ultimas[0] && !teseSel && (
+                    <div className="mt-3 border-t border-border pt-3">
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Última atualização da ação</p>
+                      <ListaAtualizacoes itens={ultimas} limite={1} />
+                    </div>
+                  )}
 
-                {c.acoes.map((a) => (
-                  <div key={a.id} className="mt-3 border-t border-slate-100 pt-3 text-sm">
-                    <p className="font-medium">
-                      {a.numCNJ || a.numProcesso || "Sem número"}
-                      {a.tribunal ? ` · ${a.tribunal}` : ""}
-                      {a.vara ? ` · ${a.vara}` : ""}
-                    </p>
-                    <p className="text-slate-600">{etapa(a)}</p>
-                    {a.movimentacoes.length > 0 ? (
-                      <ol className="mt-2 space-y-1">
-                        {a.movimentacoes.map((m) => (
-                          <li key={m.id} className="flex gap-2">
-                            <span className="shrink-0 tabular-nums text-slate-500">{data(m.data)}</span>
-                            <span>{m.texto}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <p className="mt-1 text-slate-500">Nenhuma movimentação registrada ainda.</p>
-                    )}
-                    {a.ultimaConsultaAt && (
-                      <p className="mt-1 text-xs text-slate-400">Consultado no tribunal em {data(a.ultimaConsultaAt)}</p>
-                    )}
-                  </div>
-                ))}
+                  {c.acoes.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted">Sem processo individual cadastrado.</p>
+                  ) : (
+                    c.acoes.map((a) => (
+                      <div key={a.id} className="mt-3 border-t border-border pt-3 text-sm">
+                        <p className="font-medium text-foreground">
+                          {a.numCNJ || a.numProcesso || "Sem número"}
+                          {a.tribunal ? ` · ${a.tribunal}` : ""}
+                          {a.vara ? ` · ${a.vara}` : ""}
+                        </p>
+                        <p className="text-muted">{etapa(a)}</p>
+                        {a.movimentacoes.length > 0 ? (
+                          <ol className="mt-2 space-y-1">
+                            {a.movimentacoes.map((m) => (
+                              <li key={m.id} className="flex gap-2">
+                                <span className="shrink-0 tabular-nums text-muted">{fmt(m.data)}</span>
+                                <span>{m.texto}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className="mt-1 text-muted">Nenhuma movimentação registrada ainda.</p>
+                        )}
+                        {a.ultimaConsultaAt && (
+                          <p className="mt-1 text-xs text-muted">Consultado no tribunal em {fmt(a.ultimaConsultaAt)}</p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </li>
+              );
+            })}
+            {buscou && clientes.length === 0 && !buscando && (
+              <li className="soft-card rounded-xl p-4 text-sm text-muted">
+                Nenhum cliente encontrado.{" "}
+                <button type="button" onClick={() => setCadastroAberto(true)} className="font-medium text-primary hover:underline">
+                  Cadastrar agora
+                </button>
               </li>
-            ))}
-            {clientes.length === 0 && (teseId || q.trim().length >= 3) && !buscando && (
-              <li className="text-sm text-slate-500">Nenhum cliente encontrado.</li>
             )}
           </ul>
         </>
       )}
     </section>
+  );
+}
+
+function NovaAtualizacao({ teseId, onSalva }: { teseId: string; onSalva: () => void }) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [data, setData] = useState(hoje);
+  const [titulo, setTitulo] = useState("");
+  const [texto, setTexto] = useState("");
+  const [fonteUrl, setFonteUrl] = useState("");
+  const [erro, setErro] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setErro("");
+    setSalvando(true);
+    try {
+      const r = await fetch("/api/materias/atualizacoes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teseId, data, titulo, texto, fonteUrl: fonteUrl || null }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) return setErro(d.error ?? "Não foi possível salvar.");
+      onSalva();
+    } catch {
+      setErro("Não foi possível salvar.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={salvar} className="mb-4 grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[10rem_1fr]">
+      <input type="date" value={data} onChange={(e) => setData(e.target.value)} className="industrial-input" required aria-label="Data" />
+      <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título (ex.: TRF5 marca julgamento)" className="industrial-input" required />
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        rows={3}
+        placeholder="O que foi decidido e o que muda para o cliente"
+        className="industrial-input sm:col-span-2"
+        required
+      />
+      <input value={fonteUrl} onChange={(e) => setFonteUrl(e.target.value)} placeholder="Link da fonte (opcional)" className="industrial-input sm:col-span-2" />
+      {erro && <p className="text-sm text-danger sm:col-span-2">{erro}</p>}
+      <div className="sm:col-span-2">
+        <button type="submit" disabled={salvando} className="btn-primary px-4 py-2 text-sm">
+          {salvando ? "Salvando..." : "Salvar atualização"}
+        </button>
+      </div>
+    </form>
   );
 }
