@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
+import type { Advogado } from "./BuscaAcoes";
 
 type Tese = { id: string; name: string };
 type Categoria = { id: string; name: string };
 
 export function CadastroCliente({
   teses,
+  advogados,
   teseInicial,
   nomeInicial,
   onCriado,
   onFechar,
 }: {
   teses: Tese[];
+  advogados: Advogado[];
   teseInicial: string;
   nomeInicial: string;
   onCriado: (nome: string) => void;
@@ -25,10 +28,11 @@ export function CadastroCliente({
   const [telefone, setTelefone] = useState("");
   const [teseId, setTeseId] = useState(teseInicial);
   const [categoriaId, setCategoriaId] = useState("");
+  const [advogadoId, setAdvogadoId] = useState("");
   const [obs, setObs] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
-  const [criado, setCriado] = useState<{ id: string; nome: string } | null>(null);
+  const [criado, setCriado] = useState<{ id: string; nome: string; aviso: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/categories", { credentials: "include" })
@@ -66,7 +70,20 @@ export function CadastroCliente({
         setErro(d.error ?? "Não foi possível cadastrar.");
         return;
       }
-      setCriado({ id: d.client?.id, nome: nome.trim() });
+      let aviso = "";
+      if (advogadoId && d.client?.id) {
+        const v = await fetch("/api/materias/vincular", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId: d.client.id, advogadoId }),
+        });
+        if (!v.ok) {
+          const dv = await v.json().catch(() => ({}));
+          aviso = dv.error ?? "Cliente cadastrado, mas não foi possível definir o advogado.";
+        }
+      }
+      setCriado({ id: d.client?.id, nome: nome.trim(), aviso });
       onCriado(nome.trim());
     } catch {
       setErro("Não foi possível cadastrar. Tente de novo.");
@@ -79,6 +96,7 @@ export function CadastroCliente({
     return (
       <div className="soft-card rounded-xl p-4">
         <p className="text-sm font-semibold text-success">Cliente cadastrado: {criado.nome}</p>
+        {criado.aviso && <p className="mt-1 text-sm text-danger">{criado.aviso}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
           {criado.id && (
             <a href={`/clients/${criado.id}`} className="btn-primary px-3 py-1.5 text-xs">
@@ -130,6 +148,20 @@ export function CadastroCliente({
             ))}
           </select>
         </label>
+        {advogados.length > 0 && (
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-muted">Advogado responsável</span>
+            <select value={advogadoId} onChange={(e) => setAdvogadoId(e.target.value)} className="industrial-input w-full">
+              <option value="">Definir depois</option>
+              {advogados.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.role === "GERENTE" ? " (gerente)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="sm:col-span-2">
           <span className="mb-1 block text-xs font-medium text-muted">Observação do atendimento</span>
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} className="industrial-input w-full" />

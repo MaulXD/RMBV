@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Plus, Search, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Plus, Search, UserCog, UserPlus } from "lucide-react";
 import { juntarAtualizacoes, materiaDaTese, quandoTexto, type Atualizacao } from "./dados";
 import { ListaAtualizacoes } from "./Atualizacoes";
 import { CadastroCliente } from "./CadastroCliente";
@@ -30,10 +30,13 @@ type Cliente = {
   cpf: string | null;
   status: string;
   teseId: string | null;
+  teamId: string | null;
   teseRef: { name: string } | null;
+  advogado: { id: string; name: string } | null;
   acoes: Acao[];
 };
-type Tese = { id: string; name: string; _count: { clients: number } };
+type Tese = { id: string; name: string; teamId: string | null; _count: { clients: number } };
+export type Advogado = { id: string; name: string; role: string; teamId: string | null };
 type AtualizacaoApi = { id: string; data: string; titulo: string; texto: string; fonteUrl: string | null };
 
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString("pt-BR") : "");
@@ -51,28 +54,42 @@ function primeiroNome(nome: string) {
   return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
 }
 
+/** "FELIPE BEZERRA NUNES LIMA" vira "Felipe Lima". */
+function nomeCurto(nome: string) {
+  const partes = nome
+    .trim()
+    .split(/\s+/)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+  return partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1]}` : (partes[0] ?? "");
+}
+
 function textoCliente(c: Cliente, ultimas: Atualizacao[]) {
   const nome = primeiroNome(c.name);
   const partes: string[] = [];
   const acaoNome = c.teseRef?.name;
   const ultima = ultimas[0];
+  if (c.advogado) {
+    partes.push(`${nome}, ${nomeCurto(c.advogado.name)}, que acompanha a sua ação, separou esta atualização para você.`);
+  }
+  // Sem a frase do advogado, o primeiro parágrafo começa pelo nome do cliente.
+  const inicio = (frase: string) => (partes.length ? frase.charAt(0).toUpperCase() + frase.slice(1) : `${nome}, ${frase}`);
   if (ultima) {
     partes.push(
-      `${nome}, sobre a sua ação${acaoNome ? ` (${acaoNome})` : ""}: a última atualização foi em ${quandoTexto(ultima)}. ${ultima.titulo}. ${ultima.texto}`,
+      inicio(`sobre a sua ação${acaoNome ? ` (${acaoNome})` : ""}: a última atualização foi em ${quandoTexto(ultima)}. ${ultima.titulo}. ${ultima.texto}`),
     );
   }
   for (const a of c.acoes) {
     const num = a.numCNJ || a.numProcesso;
     const e = etapa(a);
-    let t = `${partes.length ? "Sobre" : `${nome}, sobre`} o seu processo${num ? ` ${num}` : ""}: ${e.charAt(0).toLowerCase() + e.slice(1)}.`;
+    let t = inicio(`sobre o seu processo${num ? ` ${num}` : ""}: ${e.charAt(0).toLowerCase() + e.slice(1)}.`);
     const mov = a.movimentacoes[0];
     if (mov) t += ` A última movimentação foi em ${fmt(mov.data)}: ${mov.texto}`;
     else if (a.ultimaMovimentacaoText) t += ` A última movimentação foi em ${fmt(a.ultimaMovimentacaoAt)}: ${a.ultimaMovimentacaoText}`;
     partes.push(t);
   }
-  if (!partes.length) {
+  if (!ultima && c.acoes.length === 0) {
     partes.push(
-      `${nome}, seu cadastro está${acaoNome ? ` na ação ${acaoNome}` : " com o escritório"}. Ainda não há decisão nova para informar. Assim que houver andamento, a gente te avisa.`,
+      inicio(`seu cadastro está${acaoNome ? ` na ação ${acaoNome}` : " com o escritório"}. Ainda não há decisão nova para informar. Assim que houver andamento, a gente te avisa.`),
     );
   } else {
     partes.push("Qualquer novidade, a gente te avisa por aqui.");
@@ -82,6 +99,8 @@ function textoCliente(c: Cliente, ultimas: Atualizacao[]) {
 
 export function BuscaAcoes() {
   const [teses, setTeses] = useState<Tese[]>([]);
+  const [advogados, setAdvogados] = useState<Advogado[]>([]);
+  const [vinculoId, setVinculoId] = useState<string | null>(null);
   const [teseId, setTeseId] = useState("");
   const [q, setQ] = useState("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -108,6 +127,7 @@ export function BuscaAcoes() {
       if (!r.ok) throw new Error();
       const j = await r.json();
       setTeses(j.teses);
+      setAdvogados(j.advogados ?? []);
       setClientes(j.clientes);
       setDaEquipe(j.atualizacoes ?? {});
       setPodeEditar(!!j.usuario?.podeEditar);
@@ -185,6 +205,7 @@ export function BuscaAcoes() {
             <div className="mb-4">
               <CadastroCliente
                 teses={teses}
+                advogados={advogados}
                 teseInicial={teseId}
                 nomeInicial={q.trim().length >= 3 && !/\d/.test(q) ? q.trim() : ""}
                 onCriado={(nome) => {
@@ -276,8 +297,20 @@ export function BuscaAcoes() {
                         {c.teseRef?.name ?? "Sem ação definida"}
                         {c.cpf ? ` · CPF ${c.cpf}` : ""}
                       </p>
+                      <p className="text-xs text-muted">
+                        {c.advogado ? `Advogado responsável: ${c.advogado.name}` : "Sem advogado responsável"}
+                      </p>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {podeEditar && (
+                        <button
+                          type="button"
+                          onClick={() => setVinculoId((v) => (v === c.id ? null : c.id))}
+                          className="btn-ghost flex items-center gap-1 px-2.5 py-1.5 text-xs"
+                        >
+                          <UserCog className="h-3.5 w-3.5" aria-hidden /> Ação e advogado
+                        </button>
+                      )}
                       <a href={`/clients/${c.id}`} className="btn-ghost flex items-center gap-1 px-2.5 py-1.5 text-xs">
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Abrir
                       </a>
@@ -287,6 +320,19 @@ export function BuscaAcoes() {
                       </button>
                     </div>
                   </div>
+
+                  {vinculoId === c.id && (
+                    <Vinculo
+                      cliente={c}
+                      teses={teses.filter((t) => !c.teamId || !t.teamId || t.teamId === c.teamId)}
+                      advogados={advogados}
+                      onSalvo={() => {
+                        setVinculoId(null);
+                        void buscar(teseId, q);
+                      }}
+                      onFechar={() => setVinculoId(null)}
+                    />
+                  )}
 
                   {ultimas[0] && !teseSel && (
                     <div className="mt-3 border-t border-border pt-3">
@@ -339,6 +385,88 @@ export function BuscaAcoes() {
         </>
       )}
     </section>
+  );
+}
+
+function Vinculo({
+  cliente,
+  teses,
+  advogados,
+  onSalvo,
+  onFechar,
+}: {
+  cliente: Cliente;
+  teses: Tese[];
+  advogados: Advogado[];
+  onSalvo: () => void;
+  onFechar: () => void;
+}) {
+  const [teseId, setTeseId] = useState(cliente.teseId ?? "");
+  const [advogadoId, setAdvogadoId] = useState(cliente.advogado?.id ?? "");
+  const [erro, setErro] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const daEquipe = advogados.filter((a) => !cliente.teamId || a.teamId === cliente.teamId);
+  const lista = daEquipe.length ? daEquipe : advogados;
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setErro("");
+    setSalvando(true);
+    try {
+      const r = await fetch("/api/materias/vincular", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: cliente.id, teseId: teseId || null, advogadoId: advogadoId || null }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) return setErro(d.error ?? "Não foi possível salvar.");
+      onSalvo();
+    } catch {
+      setErro("Não foi possível salvar.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={salvar} className="mt-3 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
+      <label>
+        <span className="mb-1 block text-xs font-medium text-muted">Ação</span>
+        <select value={teseId} onChange={(e) => setTeseId(e.target.value)} className="industrial-input w-full">
+          <option value="">Sem ação definida</option>
+          {teses.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-medium text-muted">Advogado responsável</span>
+        <select value={advogadoId} onChange={(e) => setAdvogadoId(e.target.value)} className="industrial-input w-full">
+          <option value="">Sem advogado</option>
+          {lista.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+              {a.role === "GERENTE" ? " (gerente)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
+      {erro && <p className="text-sm text-danger sm:col-span-2">{erro}</p>}
+      <p className="text-xs text-muted sm:col-span-2">
+        O nome do advogado abre o texto do Copiar resposta. A mudança fica no histórico do cliente.
+      </p>
+      <div className="flex gap-2 sm:col-span-2">
+        <button type="submit" disabled={salvando} className="btn-primary px-4 py-2 text-sm">
+          {salvando ? "Salvando..." : "Salvar"}
+        </button>
+        <button type="button" onClick={onFechar} className="btn-ghost px-4 py-2 text-sm">
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }
 

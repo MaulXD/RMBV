@@ -172,6 +172,7 @@ model User {
   updatedAt      DateTime @updatedAt
   ownedTeams     Team[]   @relation("TeamOwner")
   clientsCreated              Client[]           @relation("CreatedBy")
+  clientsAdvogado             Client[]           @relation("ClientAdvogado")
   documentsUploaded           ClientDocument[]   @relation("DocumentsUploaded")
   finalizationRequests        Client[]           @relation("FinalizationRequested")
   finalizationApprovals       Client[]           @relation("FinalizationApproved")
@@ -296,6 +297,9 @@ model Client {
   teseId         String?
   teseRef        Tese?            @relation(fields: [teseId], references: [id], onDelete: SetNull)
   tese           String?
+  // Advogado responsável pelo cliente (definido na tela Dúvidas)
+  advogadoId     String?
+  advogado       User?            @relation("ClientAdvogado", fields: [advogadoId], references: [id], onDelete: SetNull)
   name           String
   cpf            String?
   birthDate      String?
@@ -355,6 +359,7 @@ model Client {
   @@index([teamId, status])
   @@index([teamId, workflowStatus])
   @@index([teseId])
+  @@index([advogadoId])
   @@index([followUpAt])
 }
 

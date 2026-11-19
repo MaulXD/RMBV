@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api";
 import { teamScopeWhere, isAdminUser } from "@/lib/team-access";
-import { podeEditarAtualizacoes } from "@/lib/materias-access";
+import { ROLES_ADVOGADO, podeEditarAtualizacoes } from "@/lib/materias-access";
 
 export const runtime = "nodejs";
 
@@ -43,13 +43,23 @@ export async function GET(request: NextRequest) {
         ...(isAdminUser(user) ? {} : { teamId: user.teamId ?? "__no_team__" }),
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, _count: { select: { clients: true } } },
+      select: { id: true, name: true, teamId: true, _count: { select: { clients: true } } },
     });
 
     const usuario = { podeEditar: podeEditarAtualizacoes(user), nome: user.name };
 
+    const advogados = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ROLES_ADVOGADO },
+        ...(isAdminUser(user) ? {} : { teamId: user.teamId ?? "__no_team__" }),
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, role: true, teamId: true },
+    });
+
     if (!teseId && q.length < 3) {
-      return NextResponse.json({ teses, clientes: [], atualizacoes: {}, usuario });
+      return NextResponse.json({ teses, advogados, clientes: [], atualizacoes: {}, usuario });
     }
 
     const digits = q.replace(/\D/g, "");
@@ -76,7 +86,9 @@ export async function GET(request: NextRequest) {
         cpf: true,
         status: true,
         teseId: true,
+        teamId: true,
         teseRef: { select: { name: true } },
+        advogado: { select: { id: true, name: true } },
         acoes: {
           orderBy: { updatedAt: "desc" },
           select: {
@@ -109,6 +121,6 @@ export async function GET(request: NextRequest) {
     for (const c of clientes) if (c.teseId) ids.add(c.teseId);
     const atualizacoes = await atualizacoesPorTese([...ids]);
 
-    return NextResponse.json({ teses, clientes, atualizacoes, usuario });
+    return NextResponse.json({ teses, advogados, clientes, atualizacoes, usuario });
   });
 }
