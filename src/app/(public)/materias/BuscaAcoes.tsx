@@ -169,6 +169,12 @@ export function BuscaAcoes() {
     if (r.ok) void buscar(teseId, q);
   }
 
+  function escolherAcao(id: string) {
+    setTeseId(id);
+    setNovaAberta(false);
+    void buscar(id, q);
+  }
+
   const teseSel = teses.find((t) => t.id === teseId);
   const atualizacoesSel = teseId ? atualizacoesDa(teseId) : [];
 
@@ -217,46 +223,65 @@ export function BuscaAcoes() {
             </div>
           )}
 
+          <div className="soft-card rounded-xl p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">1. Escolha a ação</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => escolherAcao("")}
+                className={`nav-pill rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                  teseId === "" ? "nav-pill-active" : "nav-pill-idle"
+                }`}
+              >
+                Todas as ações
+              </button>
+              {teses.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => escolherAcao(t.id)}
+                  className={`nav-pill flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                    t.id === teseId ? "nav-pill-active" : "nav-pill-idle"
+                  }`}
+                >
+                  {t.name}
+                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-primary">
+                    {t._count.clients.toLocaleString("pt-BR")}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {teses.length === 0 && <p className="mt-2 text-sm text-muted">Sua equipe ainda não tem ações cadastradas.</p>}
+          </div>
+
           <form
-            className="filter-bar flex flex-col gap-2 rounded-xl p-3 sm:flex-row"
+            className="soft-card mt-3 rounded-xl p-4"
             onSubmit={(e) => {
               e.preventDefault();
               void buscar(teseId, q);
             }}
           >
-            <select
-              value={teseId}
-              onChange={(e) => {
-                setTeseId(e.target.value);
-                setNovaAberta(false);
-                void buscar(e.target.value, q);
-              }}
-              className="industrial-input sm:w-64"
-              aria-label="Ação"
-            >
-              <option value="">Todas as ações</option>
-              {teses.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t._count.clients})
-                </option>
-              ))}
-            </select>
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" aria-hidden />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Nome, CPF ou número do processo"
-                className="industrial-input w-full pl-8"
-              />
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">
+              2. Busque o cliente{teseSel ? ` em ${teseSel.name}` : ""}
+            </p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" aria-hidden />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Nome, CPF ou número do processo"
+                  className="industrial-input w-full pl-8"
+                />
+              </div>
+              <button className="btn-primary px-4 py-2 text-sm" disabled={buscando}>
+                {buscando ? "Buscando..." : "Buscar"}
+              </button>
             </div>
-            <button className="btn-primary px-4 py-2 text-sm" disabled={buscando}>
-              {buscando ? "Buscando..." : "Buscar"}
-            </button>
+            {!teseId && q.trim().length < 3 && (
+              <p className="mt-2 text-xs text-muted">Escolha a ação acima ou digite pelo menos 3 letras.</p>
+            )}
           </form>
-          {!teseId && q.trim().length < 3 && (
-            <p className="mt-2 text-xs text-muted">Escolha a ação ou digite pelo menos 3 letras.</p>
-          )}
 
           {teseSel && (
             <div className="soft-card mt-4 rounded-xl p-4">
@@ -285,7 +310,12 @@ export function BuscaAcoes() {
             </div>
           )}
 
-          <ul className="mt-4 space-y-3">
+          {clientes.length > 0 && (
+            <p className="mt-5 text-xs font-medium uppercase tracking-wider text-muted">
+              {clientes.length === 30 ? "Clientes encontrados (primeiros 30)" : `Clientes encontrados (${clientes.length})`}
+            </p>
+          )}
+          <ul className="mt-2 space-y-3">
             {clientes.map((c) => {
               const ultimas = atualizacoesDa(c.teseId, c.teseRef?.name);
               return (
