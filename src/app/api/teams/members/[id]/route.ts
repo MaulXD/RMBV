@@ -13,6 +13,7 @@ const patchSchema = z.object({
   workType: z.enum(["ESTAGIARIO", "CLT"]).optional(),
   gpsRequired: z.boolean().optional(),
   gpsRadiusMeters: z.number().int().min(50).max(5000).optional().nullable(),
+  faceDisabled: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -44,7 +45,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Membro não encontrado" }, { status: 404 });
     }
 
-    if (target.role === "ADV" || target.role === "ADMIN") {
+    // No ADV da equipe só dá para ligar ou desligar o facial; o resto continua bloqueado.
+    const soFacial = Object.keys(parsed.data).every((k) => k === "faceDisabled");
+    if (target.role === "ADMIN" || (target.role === "ADV" && !soFacial)) {
       return NextResponse.json(
         { error: "Não é possível modificar este usuário" },
         { status: 403 }
@@ -61,6 +64,7 @@ export async function PATCH(
         ...(parsed.data.gpsRadiusMeters !== undefined
           ? { gpsRadiusMeters: parsed.data.gpsRadiusMeters }
           : {}),
+        ...(parsed.data.faceDisabled !== undefined ? { faceDisabled: parsed.data.faceDisabled } : {}),
       },
       select: {
         id: true,
@@ -71,6 +75,7 @@ export async function PATCH(
         workType: true,
         gpsRequired: true,
         gpsRadiusMeters: true,
+        faceDisabled: true,
         createdAt: true,
       },
     });

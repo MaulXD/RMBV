@@ -166,6 +166,8 @@ model User {
   workType       WorkType @default(CLT)
   lgpdFaceConsentAt DateTime?
   lgpdFaceConsentVersion String?
+  // Dispensa o cadastro e o reconhecimento facial deste usuário (definido pelo ADV ou admin)
+  faceDisabled   Boolean  @default(false)
   gpsRequired    Boolean  @default(false)
   gpsRadiusMeters Int?
   createdAt      DateTime @default(now())

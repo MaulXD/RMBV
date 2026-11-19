@@ -15,6 +15,7 @@ type Member = {
   workType?: "ESTAGIARIO" | "CLT" | null;
   gpsRequired?: boolean;
   gpsRadiusMeters?: number | null;
+  faceDisabled?: boolean;
 };
 
 type TeamInfo = {
@@ -104,7 +105,7 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
 
   async function patchMember(
     id: string,
-    patch: { role?: string; isActive?: boolean; workType?: string; gpsRequired?: boolean }
+    patch: { role?: string; isActive?: boolean; workType?: string; gpsRequired?: boolean; faceDisabled?: boolean }
   ) {
     setPatchingId(id);
     setError(null);
@@ -176,6 +177,9 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
                       )}
                     </p>
                     <p className="text-xs text-muted">{m.email}</p>
+                    {m.faceDisabled && (
+                      <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Facial desabilitado</p>
+                    )}
                     {m.workType && (
                       <p className="text-[11px] text-muted">
                         {m.workType === "ESTAGIARIO" ? "Estagiário (6h)" : "CLT (8h)"}
@@ -185,6 +189,18 @@ export function TeamMembersManager({ canInvite }: { canInvite: boolean }) {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {canEdit && m.role !== "ADMIN" && (
+                      <button
+                        type="button"
+                        className="btn-ghost flex items-center gap-1 px-2 py-1 text-xs"
+                        disabled={isPatching}
+                        title="Sem o facial, o usuário entra e bate o ponto só com o login"
+                        onClick={() => void patchMember(m.id, { faceDisabled: !m.faceDisabled })}
+                      >
+                        <Icon name="scanFace" className="h-3.5 w-3.5" />
+                        {m.faceDisabled ? "Habilitar facial" : "Desabilitar facial"}
+                      </button>
+                    )}
                     {isEditable && (
                       <select
                         className="industrial-input py-1 text-xs"

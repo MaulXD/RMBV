@@ -22,6 +22,7 @@ export type SessionUser = {
   mustChangePassword?: boolean;
   hasFace?: boolean;
   hasFaceConsent?: boolean;
+  faceDisabled?: boolean;
   workType?: "ESTAGIARIO" | "CLT";
   gpsRequired?: boolean;
 };

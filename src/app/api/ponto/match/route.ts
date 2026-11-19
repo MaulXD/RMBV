@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       where: {
         teamId: parsed.data.teamId,
         isActive: true,
+        faceDisabled: false,
         faceDescriptor: { not: Prisma.DbNull },
         lgpdFaceConsentAt: { not: null },
       },

@@ -79,6 +79,8 @@ export function SelfServicePonto({ user }: { user: SessionUser }) {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [suggestedType, setSuggestedType] = useState<PontoType>("ENTRADA");
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [semFacialMsg, setSemFacialMsg] = useState("");
+  const [semFacialEnviando, setSemFacialEnviando] = useState(false);
   const [gpsConfig, setGpsConfig] = useState<{
     gpsRequired: boolean;
     officeConfigured: boolean;
@@ -368,6 +370,83 @@ export function SelfServicePonto({ user }: { user: SessionUser }) {
   const workType = user.workType ?? "CLT";
   const dayHours = hoursSummary(records, workType);
   const clockActive = clockPhase !== "idle";
+
+  // Facial desabilitado pelo ADV ou admin: o ponto é batido só com o login.
+  async function baterSemFacial() {
+    setSemFacialMsg("");
+    setSemFacialEnviando(true);
+    try {
+      const gps = await getGpsCoords();
+      if (user.gpsRequired && !gps) {
+        setSemFacialMsg(formatGpsPontoError(gpsError ?? "Localização obrigatória para bater ponto."));
+        return;
+      }
+      const res = await fetch("/api/ponto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          teamId: user.teamId,
+          type: suggestedType,
+          origin: "DESKTOP",
+          ...(gps ? { latitude: gps.latitude, longitude: gps.longitude } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        setSemFacialMsg(formatGpsPontoError(err.error ?? "Não foi possível registrar."));
+        return;
+      }
+      setSemFacialMsg(`${pontoTypeLabel(suggestedType)} registrada às ${fmtPontoTime(new Date().toISOString())}`);
+      await loadRecords();
+    } catch {
+      setSemFacialMsg("Erro ao registrar. Tente novamente.");
+    } finally {
+      setSemFacialEnviando(false);
+    }
+  }
+
+  if (user.faceDisabled) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="page-title">Ponto</h1>
+          <p className="page-subtitle capitalize">{dateLabel}</p>
+        </div>
+        <div className="industrial-panel space-y-3 p-4">
+          <p className="text-sm text-muted">
+            O reconhecimento facial está desabilitado para o seu usuário. O ponto é registrado com o seu login.
+          </p>
+          <button
+            type="button"
+            className="btn-primary px-4 py-2"
+            disabled={semFacialEnviando || gpsBlocked}
+            onClick={() => void baterSemFacial()}
+          >
+            {semFacialEnviando ? "Registrando..." : `Registrar ${pontoTypeLabel(suggestedType).toLowerCase()}`}
+          </button>
+          {semFacialMsg && <p className="text-sm">{semFacialMsg}</p>}
+        </div>
+        <div className="industrial-panel p-4">
+          <p className="mb-2 text-sm font-semibold">Registros de hoje</p>
+          {recordsLoading ? (
+            <p className="text-sm text-muted">Carregando...</p>
+          ) : records.length === 0 ? (
+            <p className="text-sm text-muted">Nenhum registro hoje.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {records.map((r) => (
+                <li key={r.id} className="flex justify-between gap-3">
+                  <span>{pontoTypeLabel(r.type)}</span>
+                  <span className="tabular-nums text-muted">{fmtPontoTime(r.recordedAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-lg space-y-4">

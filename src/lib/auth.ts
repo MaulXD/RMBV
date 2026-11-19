@@ -19,6 +19,8 @@ export type SessionUser = {
   mustChangePassword: boolean;
   hasFace: boolean;
   hasFaceConsent: boolean;
+  /** Facial desabilitado pelo ADV ou admin: hasFace e hasFaceConsent vêm true. */
+  faceDisabled?: boolean;
   workType: "ESTAGIARIO" | "CLT";
   gpsRequired: boolean;
 };
@@ -110,6 +112,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       mustChangePassword: true,
       faceDescriptor: true,
       lgpdFaceConsentAt: true,
+      faceDisabled: true,
       workType: true,
       gpsRequired: true,
       team: { select: { name: true } },
@@ -127,8 +130,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     teamName: user.team?.name ?? null,
     avatarUrl: user.avatarUrl ?? null,
     mustChangePassword: user.mustChangePassword,
-    hasFace: user.faceDescriptor !== null,
-    hasFaceConsent: user.lgpdFaceConsentAt !== null,
+    hasFace: user.faceDisabled || user.faceDescriptor !== null,
+    hasFaceConsent: user.faceDisabled || user.lgpdFaceConsentAt !== null,
+    faceDisabled: user.faceDisabled,
     workType: user.workType,
     gpsRequired: user.gpsRequired,
   };
@@ -166,6 +170,7 @@ export async function authenticateUser(login: string, password: string) {
       mustChangePassword: true,
       faceDescriptor: true,
       lgpdFaceConsentAt: true,
+      faceDisabled: true,
       workType: true,
       gpsRequired: true,
       team: { select: { name: true } },
@@ -185,8 +190,9 @@ export async function authenticateUser(login: string, password: string) {
     teamName: user.team?.name ?? null,
     avatarUrl: user.avatarUrl ?? null,
     mustChangePassword: user.mustChangePassword,
-    hasFace: user.faceDescriptor !== null,
-    hasFaceConsent: user.lgpdFaceConsentAt !== null,
+    hasFace: user.faceDisabled || user.faceDescriptor !== null,
+    hasFaceConsent: user.faceDisabled || user.lgpdFaceConsentAt !== null,
+    faceDisabled: user.faceDisabled,
     workType: user.workType,
     gpsRequired: user.gpsRequired,
   } satisfies SessionUser;

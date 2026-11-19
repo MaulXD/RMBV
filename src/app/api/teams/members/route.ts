@@ -55,6 +55,7 @@ export async function GET() {
         workType: true,
         gpsRequired: true,
         gpsRadiusMeters: true,
+        faceDisabled: true,
         createdAt: true,
       },
     });

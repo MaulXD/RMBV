@@ -19,6 +19,7 @@ const patchSchema = z.object({
   workType: z.enum(["ESTAGIARIO", "CLT"]).optional(),
   gpsRequired: z.boolean().optional(),
   gpsRadiusMeters: z.number().int().min(50).max(5000).optional().nullable(),
+  faceDisabled: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -62,6 +63,7 @@ export async function PATCH(
       workType?: "ESTAGIARIO" | "CLT";
       gpsRequired?: boolean;
       gpsRadiusMeters?: number | null;
+      faceDisabled?: boolean;
     } = {};
 
     if (parsed.data.name) data.name = parsed.data.name.trim();
@@ -73,6 +75,7 @@ export async function PATCH(
     if (parsed.data.workType !== undefined) data.workType = parsed.data.workType;
     if (parsed.data.gpsRequired !== undefined) data.gpsRequired = parsed.data.gpsRequired;
     if (parsed.data.gpsRadiusMeters !== undefined) data.gpsRadiusMeters = parsed.data.gpsRadiusMeters;
+    if (parsed.data.faceDisabled !== undefined) data.faceDisabled = parsed.data.faceDisabled;
 
     try {
       const updated = await prisma.$transaction(async (tx) => {

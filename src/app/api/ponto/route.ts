@@ -16,7 +16,7 @@ const recordSchema = z.object({
   teamId: z.string().uuid().optional().nullable(),
   type: z.enum(["ENTRADA", "SAIDA", "INTERVALO_INICIO", "INTERVALO_FIM"]).optional(),
   /** Descritor 128D capturado na hora — validado no servidor. */
-  descriptor: z.array(z.number()).length(128),
+  descriptor: z.array(z.number()).length(128).optional(),
   origin: z.enum(["MOBILE", "KIOSK", "DESKTOP"]).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -112,11 +112,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
     }
 
-    const probe = parseProbeDescriptor(parsed.data.descriptor);
-    if (!probe) {
-      return NextResponse.json({ error: "Descritor facial inválido" }, { status: 400 });
-    }
-
     const user = await prisma.user.findUnique({
       where: { id: parsed.data.userId },
       select: {
@@ -125,6 +120,7 @@ export async function POST(request: Request) {
         isActive: true,
         faceDescriptor: true,
         lgpdFaceConsentAt: true,
+        faceDisabled: true,
         teamId: true,
       },
     });
@@ -132,14 +128,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    if (!user.faceDescriptor || !user.lgpdFaceConsentAt) {
+    // Facial desabilitado pelo ADV ou admin: o ponto vale só com login, sem rosto.
+    if (user.faceDisabled && !sessionUser) {
+      return NextResponse.json({ error: "Faça login para bater o ponto" }, { status: 401 });
+    }
+
+    const probe = user.faceDisabled ? null : parseProbeDescriptor(parsed.data.descriptor);
+    if (!user.faceDisabled && !probe) {
+      return NextResponse.json({ error: "Descritor facial inválido" }, { status: 400 });
+    }
+
+    if (!user.faceDisabled && (!user.faceDescriptor || !user.lgpdFaceConsentAt)) {
       return NextResponse.json(
         { error: "Cadastro facial e consentimento LGPD obrigatórios" },
         { status: 403 },
       );
     }
 
-    const faceCheck = verifyFaceProbe(user.faceDescriptor, probe);
+    const faceCheck = user.faceDisabled
+      ? ({ ok: true, confidence: null, distance: null } as const)
+      : verifyFaceProbe(user.faceDescriptor, probe!);
     if (!faceCheck.ok) {
       await recordFaceAudit({
         actorId: parsed.data.userId,
@@ -204,6 +212,7 @@ export async function POST(request: Request) {
       teamId: record.teamId,
       action: "PONTO_OK",
       metadata: {
+        semFacial: user.faceDisabled,
         type,
         origin: parsed.data.origin,
         confidence: faceCheck.confidence,

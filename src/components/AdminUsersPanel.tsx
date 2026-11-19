@@ -13,6 +13,7 @@ type UserRow = {
   email: string;
   role: "ADV" | "GERENTE" | "COLABORADOR" | "PESQUISADOR" | "TI" | "SUPORTE";
   isActive: boolean;
+  faceDisabled?: boolean;
   team: { id: string; name: string } | null;
 };
 
@@ -75,6 +76,24 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
       isActive: user.isActive,
       password: "",
     });
+  }
+
+  async function toggleFacial(u: UserRow) {
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ faceDisabled: !u.faceDisabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao salvar");
+      setMessage(u.faceDisabled ? `Facial habilitado para ${u.name}.` : `Facial desabilitado para ${u.name}.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    }
   }
 
   async function saveEdit() {
@@ -260,6 +279,7 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
                       <p className="font-medium">
                         {u.name}
                         {!u.isActive && <span className="ml-2 text-xs text-red-500">(inativo)</span>}
+                        {u.faceDisabled && <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(facial desabilitado)</span>}
                       </p>
                       <p className="text-xs text-muted">{u.email}</p>
                     </div>
@@ -268,6 +288,15 @@ export function AdminUsersPanel({ teams }: { teams: TeamOption[] }) {
                         <p>{ROLE_LABELS[u.role]}</p>
                         <p>{u.team?.name ?? "—"}</p>
                       </div>
+                      <button
+                        type="button"
+                        className="btn-ghost flex items-center gap-1 px-2 py-1 text-xs"
+                        title="Sem o facial, o usuário entra e bate o ponto só com o login"
+                        onClick={() => void toggleFacial(u)}
+                      >
+                        <Icon name="scanFace" className="h-3.5 w-3.5" />
+                        {u.faceDisabled ? "Habilitar facial" : "Desabilitar facial"}
+                      </button>
                       <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => startEdit(u)}>
                         Editar
                       </button>

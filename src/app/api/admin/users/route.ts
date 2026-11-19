@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         email: true,
         role: true,
         isActive: true,
+        faceDisabled: true,
         createdAt: true,
         team: { select: { id: true, name: true } },
       },

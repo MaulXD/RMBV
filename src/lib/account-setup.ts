@@ -14,6 +14,7 @@ export async function getAccountSetupStatus(userId: string): Promise<AccountSetu
       mustChangePassword: true,
       faceDescriptor: true,
       lgpdFaceConsentAt: true,
+      faceDisabled: true,
     },
   });
 
@@ -26,8 +27,9 @@ export async function getAccountSetupStatus(userId: string): Promise<AccountSetu
     };
   }
 
-  const hasFace = user.faceDescriptor !== null;
-  const hasConsent = user.lgpdFaceConsentAt !== null;
+  // Com o facial desabilitado, rosto e consentimento deixam de ser exigidos.
+  const hasFace = user.faceDisabled || user.faceDescriptor !== null;
+  const hasConsent = user.faceDisabled || user.lgpdFaceConsentAt !== null;
   const needsConsent = !hasConsent;
   const needsFace = !hasFace;
 
