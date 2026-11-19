@@ -1,4 +1,5 @@
 import { MATERIAS_COLETIVAS } from "./coletivas";
+import { MATERIAS_COLETIVAS_2 } from "./coletivas2";
 
 export type Nivel = "simples" | "detalhado" | "elaborado";
 
@@ -42,12 +43,13 @@ export const NIVEIS: { id: Nivel; nome: string; dica: string }[] = [
 export const ABERTURA =
   "Olá! O advogado responsável separou uma mensagem para te passar a atualização do seu processo. Pode me confirmar seu nome completo?";
 
-export type Grupo = "ufal" | "servidores" | "trabalhador" | "inss" | "pagamentos";
+export type Grupo = "ufal" | "servidores" | "trabalhador" | "consumidor" | "inss" | "pagamentos";
 
 export const GRUPOS: { id: Grupo; nome: string }[] = [
   { id: "ufal", nome: "Servidores da UFAL" },
   { id: "servidores", nome: "Servidores públicos" },
   { id: "trabalhador", nome: "Trabalhador e poupador" },
+  { id: "consumidor", nome: "Consumidor e moradores" },
   { id: "inss", nome: "INSS e aposentadoria" },
   { id: "pagamentos", nome: "Pagamento" },
 ];
@@ -640,7 +642,7 @@ const MATERIAS_BASE: Materia[] = [
   },
 ];
 
-export const MATERIAS: Materia[] = [...MATERIAS_BASE, ...MATERIAS_COLETIVAS];
+export const MATERIAS: Materia[] = [...MATERIAS_BASE, ...MATERIAS_COLETIVAS, ...MATERIAS_COLETIVAS_2];
 
 export function materiaDaTese(teseNome: string | null | undefined): Materia | null {
   if (!teseNome) return null;
