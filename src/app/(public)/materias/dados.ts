@@ -1,5 +1,6 @@
 import { MATERIAS_COLETIVAS } from "./coletivas";
 import { MATERIAS_COLETIVAS_2 } from "./coletivas2";
+import { MATERIAS_COLETIVAS_3 } from "./coletivas3";
 
 export type Nivel = "simples" | "detalhado" | "elaborado";
 
@@ -642,7 +643,7 @@ const MATERIAS_BASE: Materia[] = [
   },
 ];
 
-export const MATERIAS: Materia[] = [...MATERIAS_BASE, ...MATERIAS_COLETIVAS, ...MATERIAS_COLETIVAS_2];
+export const MATERIAS: Materia[] = [...MATERIAS_BASE, ...MATERIAS_COLETIVAS, ...MATERIAS_COLETIVAS_2, ...MATERIAS_COLETIVAS_3];
 
 export function materiaDaTese(teseNome: string | null | undefined): Materia | null {
   if (!teseNome) return null;
