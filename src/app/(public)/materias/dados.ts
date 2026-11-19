@@ -1,3 +1,5 @@
+import { MATERIAS_COLETIVAS } from "./coletivas";
+
 export type Nivel = "simples" | "detalhado" | "elaborado";
 
 export type Atualizacao = {
@@ -22,6 +24,10 @@ export type Materia = {
   /** true = a linha do tempo é do próprio processo coletivo e entra na resposta ao cliente.
    *  false = é histórico de jurisprudência; na resposta entram só as atualizações da equipe. */
   linhaDoProcesso?: boolean;
+  /** Grupo em que a matéria aparece no seletor */
+  grupo: Grupo;
+  /** Ação coletiva (sindicato, associação, MP ou ação civil pública) */
+  coletiva?: boolean;
   resumos: Record<Nivel, string[]>;
   atualizacoes: Atualizacao[];
   fontes: { nome: string; url: string }[];
@@ -36,9 +42,21 @@ export const NIVEIS: { id: Nivel; nome: string; dica: string }[] = [
 export const ABERTURA =
   "Olá! O advogado responsável separou uma mensagem para te passar a atualização do seu processo. Pode me confirmar seu nome completo?";
 
-export const MATERIAS: Materia[] = [
+export type Grupo = "ufal" | "servidores" | "trabalhador" | "inss" | "pagamentos";
+
+export const GRUPOS: { id: Grupo; nome: string }[] = [
+  { id: "ufal", nome: "Servidores da UFAL" },
+  { id: "servidores", nome: "Servidores públicos" },
+  { id: "trabalhador", nome: "Trabalhador e poupador" },
+  { id: "inss", nome: "INSS e aposentadoria" },
+  { id: "pagamentos", nome: "Pagamento" },
+];
+
+const MATERIAS_BASE: Materia[] = [
   {
     id: "4794",
+    grupo: "ufal",
+    coletiva: true,
     titulo: "Ação dos 47,94% (UFAL)",
     subtitulo: "Índice de 1994 cobrado pela Adufal e pelo Sintufal",
     tesePadrao: /47[,.]94/,
@@ -126,6 +144,8 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "2886",
+    grupo: "ufal",
+    coletiva: true,
     titulo: "Ação dos 28,86% (UFAL)",
     subtitulo: "Reajuste de 1993 dado aos militares e não aos civis",
     tesePadrao: /28[,.]86/,
@@ -195,6 +215,8 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "urp",
+    grupo: "ufal",
+    coletiva: true,
     titulo: "Ação da URP de 1989 (26,05%)",
     subtitulo: "Rubrica judicial dos servidores da UFAL",
     tesePadrao: /URP|26[,.]05/i,
@@ -265,6 +287,8 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "317",
+    grupo: "servidores",
+    coletiva: true,
     titulo: "Ação dos 3,17% (URV de 1995)",
     subtitulo: "Perda na conversão dos salários dos servidores federais",
     tesePadrao: /3[,.]17/,
@@ -330,6 +354,7 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "medicos",
+    grupo: "servidores",
     titulo: "Médicos com dois vínculos públicos",
     subtitulo: "Teto por vínculo e carga horária na acumulação",
     tesePadrao: /m[eé]dic/i,
@@ -399,6 +424,7 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "terco-ferias",
+    grupo: "servidores",
     titulo: "Contribuição sobre o terço de férias",
     subtitulo: "PSS do servidor sobre verbas que não entram na aposentadoria",
     tesePadrao: /ter[cç]o de f[eé]rias|PSS/i,
@@ -438,6 +464,7 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "vida-toda",
+    grupo: "inss",
     titulo: "Revisão da vida toda (INSS)",
     subtitulo: "Tese derrubada pelo STF em 2024",
     tesePadrao: /vida toda/i,
@@ -503,6 +530,7 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "descontos-inss",
+    grupo: "inss",
     titulo: "Descontos indevidos no INSS",
     subtitulo: "Mensalidades de associações cobradas sem autorização",
     tesePadrao: /descont/i,
@@ -570,6 +598,7 @@ export const MATERIAS: Materia[] = [
   },
   {
     id: "precatorios",
+    grupo: "pagamentos",
     titulo: "Precatórios e RPV",
     subtitulo: "Como a União paga o que perdeu na Justiça",
     resumos: {
@@ -610,6 +639,8 @@ export const MATERIAS: Materia[] = [
     ],
   },
 ];
+
+export const MATERIAS: Materia[] = [...MATERIAS_BASE, ...MATERIAS_COLETIVAS];
 
 export function materiaDaTese(teseNome: string | null | undefined): Materia | null {
   if (!teseNome) return null;

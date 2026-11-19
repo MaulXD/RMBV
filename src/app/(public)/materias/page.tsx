@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Copy, Scale } from "lucide-react";
 import { BuscaAcoes } from "./BuscaAcoes";
 import { ListaAtualizacoes } from "./Atualizacoes";
-import { ABERTURA, MATERIAS, NIVEIS, type Nivel } from "./dados";
+import { ABERTURA, GRUPOS, MATERIAS, NIVEIS, type Nivel } from "./dados";
 
 function useCopiar() {
   const [copiado, setCopiado] = useState<string | null>(null);
@@ -23,6 +23,7 @@ function useCopiar() {
 export default function MateriasPage() {
   const [materiaId, setMateriaId] = useState(MATERIAS[0].id);
   const [nivel, setNivel] = useState<Nivel>("simples");
+  const [soColetivas, setSoColetivas] = useState(false);
   const { copiado, copiar } = useCopiar();
   const materia = MATERIAS.find((m) => m.id === materiaId) ?? MATERIAS[0];
   const texto = materia.resumos[nivel];
@@ -67,20 +68,40 @@ export default function MateriasPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-primary">Passo 3</p>
           <h2 className="mb-3 text-lg font-semibold">Explicar a ação</h2>
 
-          <p className="mb-1.5 text-xs font-medium text-muted">Trocar matéria</p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {MATERIAS.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMateriaId(m.id)}
-                className={`nav-pill rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                  m.id === materiaId ? "nav-pill-active" : "nav-pill-idle"
-                }`}
-              >
-                {m.titulo}
-              </button>
-            ))}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted">Trocar matéria ({MATERIAS.length})</p>
+            <label className="flex items-center gap-1.5 text-xs text-muted">
+              <input type="checkbox" checked={soColetivas} onChange={(e) => setSoColetivas(e.target.checked)} />
+              Só ações coletivas
+            </label>
+          </div>
+          <div className="mb-4 space-y-3">
+            {GRUPOS.map((g) => {
+              const itens = MATERIAS.filter((m) => m.grupo === g.id && (!soColetivas || m.coletiva));
+              if (!itens.length) return null;
+              return (
+                <div key={g.id}>
+                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted">{g.nome}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {itens.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setMateriaId(m.id)}
+                        className={`nav-pill flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                          m.id === materiaId ? "nav-pill-active" : "nav-pill-idle"
+                        }`}
+                      >
+                        {m.titulo}
+                        {m.coletiva && (
+                          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Coletiva</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mb-4 grid grid-cols-3 gap-2" role="tablist" aria-label="Tamanho do resumo">
